@@ -817,16 +817,6 @@ def debug_server():
         "4_Config_Flask_Template": app.template_folder
     })
 
-# --- ROTA DE EMERGÊNCIA (RESETAR BANCO) ---
-@app.route('/reset-db-force')
-def reset_db_force():
-    try:
-        # CUIDADO: Isso apaga todos os dados do banco!
-        db.drop_all()   # Destrói todas as tabelas antigas/erradas
-        db.create_all() # Cria tudo novo, certinho, com a coluna email
-        return "Banco de dados resetado com sucesso! Tabelas recriadas."
-    except Exception as e:
-        return f"Erro ao resetar: {e}"
 
 if __name__ == '__main__':
     app.run(debug=True)
