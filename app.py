@@ -23,7 +23,7 @@ app = Flask(__name__, template_folder=template_dir, static_folder=static_dir)
 # --- CONFIG ---
 app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID', '601074892036-k72kp3f9rj9q129qhgbua1g56rm8r9um.apps.googleusercontent.com')
 app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get('GOOGLE_CLIENT_SECRET', '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')
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI','sqlite:///' + os.path.join(basedir,'site.db'))
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI','sqlite:///' + os.path.join(base_dir,'site.db'))
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY','chave-secreta-simples-para-desenvolvimento')
 app.config['MAX_CONTENT_LENGTH'] = 15 * 1024 * 1024  # Limite de 15MB
 app.config['CLOUDINARY_CLOUD_NAME'] = os.environ.get('CLOUDINARY_CLOUD_NAME','drucooybh')
