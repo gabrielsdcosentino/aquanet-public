@@ -1,0 +1,371 @@
+{% extends "base.html" %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="container mx-auto px-4 py-6 max-w-6xl">
+
+    <div class="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-8 relative overflow-hidden">
+        <div class="absolute top-0 left-0 w-2 h-full bg-blue-500"></div>
+        
+        <div class="block lg:flex lg:justify-between lg:items-start ml-3">
+            
+            <div class="w-full lg:flex-1 lg:mr-8 mb-6 lg:mb-0">
+                <div class="flex items-center justify-between lg:justify-start gap-3 mb-3">
+                    <h1 class="text-3xl font-black text-gray-800 tracking-tight break-words">{{ aquarium.name }}</h1>
+                    <a href="{{ url_for('edit_aquarium', aquarium_id=aquarium.id) }}" class="text-gray-400 hover:text-blue-600 transition-colors p-2 rounded-full hover:bg-blue-50" title="Editar Configurações">
+                        <i class="fas fa-cog text-lg"></i>
+                    </a>
+                </div>
+                
+                <div class="flex flex-wrap gap-2 items-center text-sm font-medium text-gray-500 mb-4">
+                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-100">
+                        <i class="fas fa-water mr-1"></i> {{ aquarium.aquarium_type }}
+                    </span>
+                    <span class="bg-blue-50 text-blue-700 px-3 py-1 rounded-lg border border-blue-100">
+                        <i class="fas fa-cube mr-1"></i> {{ aquarium.volume }}L
+                    </span>
+                    {% if aquarium.setup_date %}
+                    <span class="flex items-center ml-1 text-gray-400">
+                        <i class="far fa-calendar-alt mr-1.5"></i> {{ aquarium.setup_date.strftime('%d/%m/%Y') }}
+                    </span>
+                    {% endif %}
+                </div>
+                
+                <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <p class="text-gray-600 text-sm leading-relaxed">
+                        {{ aquarium.description if aquarium.description else 'Nenhuma descrição adicionada.' }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto pt-2">
+                <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-95 text-center">
+                    <i class="fas fa-plus-circle"></i> <span>Medição</span>
+                </a>
+                <a href="{{ url_for('log_maintenance', aquarium_id=aquarium.id) }}" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-95 text-center">
+                    <i class="fas fa-broom"></i> <span>Manutenção</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex overflow-x-auto pb-2 mb-6 gap-2 no-scrollbar">
+        <button onclick="openTab('overview', this)" class="tab-btn active flex-shrink-0 bg-gray-900 text-white px-6 py-2.5 rounded-xl font-bold text-sm shadow-md transition-all">
+            <i class="fas fa-chart-pie mr-2"></i>Visão Geral
+        </button>
+        <button onclick="openTab('parameters', this)" class="tab-btn flex-shrink-0 bg-white text-gray-500 hover:bg-gray-50 hover:text-blue-600 px-6 py-2.5 rounded-xl font-bold text-sm border border-gray-100 transition-all">
+            <i class="fas fa-flask mr-2"></i>Parâmetros
+        </button>
+        <button onclick="openTab('maintenance', this)" class="tab-btn flex-shrink-0 bg-white text-gray-500 hover:bg-gray-50 hover:text-green-600 px-6 py-2.5 rounded-xl font-bold text-sm border border-gray-100 transition-all">
+            <i class="fas fa-tools mr-2"></i>Manutenções
+        </button>
+        <button onclick="openTab('fauna', this)" class="tab-btn flex-shrink-0 bg-white text-gray-500 hover:bg-gray-50 hover:text-orange-500 px-6 py-2.5 rounded-xl font-bold text-sm border border-gray-100 transition-all">
+            <i class="fas fa-fish mr-2"></i>Fauna
+        </button>
+    </div>
+    <div id="overview" class="tab-content block animate-fade-in">
+        
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-2 space-y-6">
+                
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-line mr-2 text-blue-500"></i>Evolução dos Parâmetros</h3>
+                        {% if latest_log %}
+                        <button onclick="openShareModal()" class="bg-purple-100 text-purple-600 hover:bg-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
+                            <i class="fas fa-share-alt mr-1"></i> Compartilhar
+                        </button>
+                        {% endif %}
+                    </div>
+                    
+                    {% if history_logs|length > 0 %}
+                        <div class="relative h-72 w-full">
+                            <canvas id="parametersChart"></canvas>
+                        </div>
+                    {% else %}
+                        <div class="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                            <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-3">
+                                <i class="fas fa-chart-area text-gray-400 text-xl"></i>
+                            </div>
+                            <p class="text-gray-500 font-medium">Sem dados suficientes para o gráfico.</p>
+                            <p class="text-xs text-gray-400 mt-1">Faça seu primeiro registro de medição!</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2 text-green-500"></i>Última Manutenção</h3>
+                    
+                    {% if latest_maint %}
+                        <div class="flex items-start p-4 bg-green-50 rounded-2xl border border-green-100">
+                            <div class="bg-green-200 text-green-700 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mr-4">
+                                <i class="fas fa-check"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-green-900">{{ latest_maint.maintenance_type }}</h4>
+                                <p class="text-sm text-green-700 mt-1">{{ latest_maint.description }}</p>
+                                <p class="text-xs text-green-600 mt-2 font-semibold"><i class="far fa-clock mr-1"></i> {{ latest_maint.date.strftime('%d/%m/%Y às %H:%M') }}</p>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-6 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                            <p>Nenhuma manutenção registrada ainda.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Última Medição</h3>
+                        {% if latest_log %}
+                        <span class="text-xs font-medium text-gray-400">{{ latest_log.date.strftime('%d/%m %H:%M') }}</span>
+                        {% endif %}
+                    </div>
+
+                    {% if latest_log %}
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center">
+                                <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">pH</span>
+                                <p class="text-2xl font-black text-blue-700 mt-1">{{ latest_log.ph if latest_log.ph else '--' }}</p>
+                            </div>
+                            <div class="bg-orange-50 p-4 rounded-2xl border border-orange-100 text-center">
+                                <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Temp</span>
+                                <p class="text-2xl font-black text-orange-700 mt-1">{{ latest_log.temperature if latest_log.temperature else '--' }}<span class="text-sm align-top">°C</span></p>
+                            </div>
+                            <div class="bg-red-50 p-4 rounded-2xl border border-red-100 text-center">
+                                <span class="text-xs font-bold text-red-400 uppercase tracking-wider">Amônia</span>
+                                <p class="text-2xl font-black text-red-700 mt-1">{{ latest_log.ammonia if latest_log.ammonia is not none else '--' }}</p>
+                                <span class="text-[10px] text-red-400">ppm</span>
+                            </div>
+                            <div class="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-center">
+                                <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
+                                <p class="text-2xl font-black text-purple-700 mt-1">{{ latest_log.nitrite if latest_log.nitrite is not none else '--' }}</p>
+                                <span class="text-[10px] text-purple-400">ppm</span>
+                            </div>
+                        </div>
+                        
+                        {% if latest_log.notes %}
+                        <div class="mt-4 p-3 bg-gray-50 rounded-xl text-sm text-gray-600 italic border border-gray-100">
+                            "{{ latest_log.notes }}"
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-8">
+                            <p class="text-gray-400 mb-3">Sem dados recentes.</p>
+                            <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="text-blue-600 font-bold hover:underline text-sm">Registrar Agora</a>
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-bold text-gray-800">Habitantes</h3>
+                        <button onclick="openTab('fauna', document.querySelectorAll('.tab-btn')[3])" class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">Ver Todos</button>
+                    </div>
+                    
+                    {% if aquarium.fauna %}
+                    <div class="flex flex-wrap gap-2">
+                        {% for item in aquarium.fauna[:6] %}
+                        <span class="inline-flex items-center bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                            {% if item.fauna_type == 'Peixe' %}🐟{% elif item.fauna_type == 'Planta' %}🌿{% else %}🐌{% endif %}
+                            <span class="ml-1">{{ item.name }}</span>
+                            <span class="ml-1.5 bg-gray-200 text-gray-600 px-1.5 rounded-md text-[10px]">{{ item.quantity }}</span>
+                        </span>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <p class="text-gray-400 text-sm">Aquário vazio.</p>
+                        </div>
+                    {% endif %}
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="parameters" class="tab-content hidden animate-fade-in">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">Log de Medições</h3>
+                <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition-all"><i class="fas fa-plus mr-1"></i> Novo</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-500 font-medium">
+                        <tr><th class="py-4 px-6">Data</th><th class="py-4 px-6">pH</th><th class="py-4 px-6">Temp</th><th class="py-4 px-6">Amônia</th><th class="py-4 px-6">Nitrito</th><th class="py-4 px-6">Notas</th></tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for log in history_logs %}
+                        <tr class="hover:bg-blue-50/30">
+                            <td class="py-4 px-6">{{ log.date.strftime('%d/%m %H:%M') }}</td>
+                            <td class="py-4 px-6 font-bold text-blue-600">{{ log.ph or '-' }}</td>
+                            <td class="py-4 px-6 text-orange-600">{{ log.temperature or '-' }}°C</td>
+                            <td class="py-4 px-6 {{ 'text-red-500' if log.ammonia else '' }}">{{ log.ammonia if log.ammonia is not none else '-' }}</td>
+                            <td class="py-4 px-6 {{ 'text-purple-500' if log.nitrite else '' }}">{{ log.nitrite if log.nitrite is not none else '-' }}</td>
+                            <td class="py-4 px-6 text-gray-400 italic truncate max-w-xs">{{ log.notes or '' }}</td>
+                        </tr>
+                        {% else %}<tr><td colspan="6" class="py-12 text-center text-gray-400">Sem registros.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="maintenance" class="tab-content hidden animate-fade-in">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+             <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">Log de Manutenções</h3>
+                <a href="{{ url_for('log_maintenance', aquarium_id=aquarium.id) }}" class="bg-green-600 hover:bg-green-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition-all"><i class="fas fa-plus mr-1"></i> Nova</a>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm text-left">
+                    <thead class="bg-gray-50 text-gray-500 font-medium"><tr><th class="py-4 px-6">Data</th><th class="py-4 px-6">Tipo</th><th class="py-4 px-6">Descrição</th></tr></thead>
+                    <tbody class="divide-y divide-gray-100">
+                        {% for maint in history_maint %}
+                        <tr class="hover:bg-green-50/30"><td class="py-4 px-6">{{ maint.date.strftime('%d/%m %H:%M') }}</td><td class="py-4 px-6"><span class="bg-green-100 text-green-700 px-2 py-1 rounded-lg text-xs font-bold uppercase">{{ maint.maintenance_type }}</span></td><td class="py-4 px-6 text-gray-600">{{ maint.description or '-' }}</td></tr>
+                        {% else %}<tr><td colspan="3" class="py-12 text-center text-gray-400">Sem registros.</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="fauna" class="tab-content hidden animate-fade-in">
+        <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+             <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+                <h3 class="font-bold text-gray-800">Fauna & Flora</h3>
+                <a href="{{ url_for('add_fauna', aquarium_id=aquarium.id) }}" class="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-xl shadow transition-all"><i class="fas fa-plus mr-1"></i> Adicionar</a>
+            </div>
+            {% if aquarium.fauna %}
+                <ul class="divide-y divide-gray-100">
+                    {% for item in aquarium.fauna %}
+                    <li class="p-5 flex justify-between items-center hover:bg-gray-50">
+                        <div class="flex items-center gap-4">
+                            <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-xl">{% if item.fauna_type == 'Peixe' %}🐟{% elif item.fauna_type == 'Planta' %}🌿{% else %}🐌{% endif %}</div>
+                            <div><p class="font-bold text-gray-800">{{ item.name }}</p><p class="text-xs text-gray-400 uppercase font-bold">{{ item.fauna_type }}</p></div>
+                        </div>
+                        <div class="flex items-center gap-3"><span class="bg-gray-100 text-gray-600 text-xs font-bold px-2 py-1 rounded">x{{ item.quantity }}</span><a href="{{ url_for('delete_fauna', fauna_id=item.id) }}" class="text-gray-300 hover:text-red-500" onclick="return confirm('Apagar?')"><i class="fas fa-trash"></i></a></div>
+                    </li>
+                    {% endfor %}
+                </ul>
+            {% else %}<div class="text-center py-16"><i class="fas fa-fish text-4xl text-gray-200 mb-2"></i><p class="text-gray-400">Vazio.</p></div>{% endif %}
+        </div>
+    </div>
+    <div id="shareModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 animate-fade-in">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
+            <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center text-white">
+                <i class="fas fa-share-alt text-2xl mb-2"></i>
+                <h3 class="font-black text-xl">Compartilhar</h3>
+            </div>
+            <div class="p-6">
+                <label class="block text-xs font-bold text-gray-500 uppercase mb-2">Selecione uma Comunidade</label>
+                
+                <select id="communitySelect" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 mb-2 outline-none focus:ring-2 focus:ring-blue-500">
+                    {% for com in all_communities %}
+                        <option value="{{ com.slug }}">{{ com.name }}</option>
+                    {% endfor %}
+                </select>
+                
+                <div class="text-right mb-6">
+                    <a href="{{ url_for('create_community') }}" class="text-xs font-bold text-blue-600 hover:underline">
+                        Ou crie uma nova comunidade
+                    </a>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="closeShareModal()" class="py-3 font-bold text-gray-500 hover:bg-gray-100 rounded-xl">Cancelar</button>
+                    <button onclick="confirmShare()" class="py-3 font-bold bg-blue-600 text-white hover:bg-blue-700 rounded-xl shadow-md">Postar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>.no-scrollbar::-webkit-scrollbar{display:none}.no-scrollbar{-ms-overflow-style:none;scrollbar-width:none}@keyframes fade-in{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}.animate-fade-in{animation:fade-in 0.3s ease-out forwards}</style>
+
+<script>
+function openTab(n,e){document.querySelectorAll('.tab-content').forEach(e=>e.classList.add('hidden')),document.querySelectorAll('.tab-btn').forEach(e=>{e.classList.remove('active','bg-gray-900','text-white'),e.classList.add('bg-white','text-gray-500')}),document.getElementById(n).classList.remove('hidden'),e.classList.remove('bg-white','text-gray-500'),e.classList.add('active','bg-gray-900','text-white')}
+
+const shareText=`{{ share_text|safe }}`;
+function openShareModal(){document.getElementById('shareModal').classList.remove('hidden')}
+function closeShareModal(){document.getElementById('shareModal').classList.add('hidden')}
+function confirmShare(){const e=document.getElementById('communitySelect').value;return e?void(window.location.href=`/c/${e}?share_text=${encodeURIComponent(shareText)}`):alert("Escolha uma comunidade!")}
+
+{% if history_logs|length > 0 %}
+document.addEventListener("DOMContentLoaded",function(){
+    const e=document.getElementById('parametersChart');
+    if(e){
+        new Chart(e,{
+            type:'line',
+            data:{
+                labels:[{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}],
+                datasets:[
+                    {
+                        label:'pH',
+                        data:[{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}],
+                        borderColor:'#3B82F6',
+                        backgroundColor:'rgba(59, 130, 246, 0.1)',
+                        borderWidth:3,
+                        tension:.4,
+                        pointRadius:4,
+                        spanGaps: true, // IMPORTANTE: Liga os pontos mesmo se faltar dados
+                        yAxisID:'y'
+                    },
+                    {
+                        label:'Amônia',
+                        data:[{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}],
+                        borderColor:'#EF4444',
+                        borderWidth:2,
+                        borderDash:[5,5],
+                        tension:.4,
+                        pointRadius:3,
+                        spanGaps: true, // IMPORTANTE
+                        yAxisID:'y1'
+                    },
+                    {
+                        label:'Nitrito',
+                        data:[{% for log in history_logs|reverse %}{{ log.nitrite if log.nitrite is not none else 'null' }},{% endfor %}],
+                        borderColor:'#A855F7',
+                        borderWidth:2,
+                        tension:.4,
+                        pointRadius:3,
+                        spanGaps: true, // IMPORTANTE
+                        yAxisID:'y1'
+                    }
+                ]
+            },
+            options:{
+                responsive:!0,
+                maintainAspectRatio:!1,
+                interaction:{mode:'index',intersect:!1},
+                plugins:{legend:{position:'bottom'}},
+                scales:{
+                    x:{grid:{display:!1}},
+                    y:{
+                        type:'linear',display:!0,position:'left',
+                        title:{display:!0,text:'pH'},
+                        suggestedMin: 6.0, // Garante que o gráfico não fique "achatado"
+                        suggestedMax: 8.0
+                    },
+                    y1:{
+                        type:'linear',display:!0,position:'right',
+                        title:{display:!0,text:'ppm'},
+                        grid:{display:!1},
+                        suggestedMin: 0, // Garante que 0 apareça na base
+                        suggestedMax: 2.0
+                    }
+                }
+            }
+        })
+    }
+});
+{% endif %}
+</script>
+{% endblock %}

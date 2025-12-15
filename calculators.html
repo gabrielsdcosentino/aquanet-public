@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto p-4 md:py-8 max-w-3xl">
+    
+    <div class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-black text-gray-800 tracking-tight">
+            <i class="fas fa-ruler-combined text-blue-500 mr-2"></i>Mestre das Medidas
+        </h1>
+        <p class="text-gray-500 mt-2 text-lg leading-relaxed">Calculadoras de volume e substrato para seu projeto.</p>
+    </div>
+
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100 relative z-10">
+        
+        <div class="flex overflow-x-auto bg-gray-50/80 p-2 border-b border-gray-100 gap-2 no-scrollbar">
+            <button onclick="openTab('rectangular')" class="tab-btn flex-1 py-3 px-4 rounded-xl font-bold text-sm md:text-base transition-all active-tab whitespace-nowrap" data-tab="rectangular">
+                <i class="fas fa-vector-square mr-2"></i>Retangular
+            </button>
+            <button onclick="openTab('cube')" class="tab-btn flex-1 py-3 px-4 rounded-xl font-bold text-sm md:text-base text-gray-500 hover:bg-white hover:shadow-sm transition-all whitespace-nowrap" data-tab="cube">
+                <i class="fas fa-cube mr-2"></i>Cubo
+            </button>
+            <button onclick="openTab('cylinder')" class="tab-btn flex-1 py-3 px-4 rounded-xl font-bold text-sm md:text-base text-gray-500 hover:bg-white hover:shadow-sm transition-all whitespace-nowrap" data-tab="cylinder">
+                <i class="fas fa-database mr-2"></i>Cilíndrico
+            </button>
+            <button onclick="openTab('substrate')" class="tab-btn flex-1 py-3 px-4 rounded-xl font-bold text-sm md:text-base text-gray-500 hover:bg-white hover:shadow-sm transition-all whitespace-nowrap text-amber-600" data-tab="substrate">
+                <i class="fas fa-layer-group mr-2"></i>Substrato
+            </button>
+        </div>
+
+        <div class="p-6 md:p-8 min-h-[400px]">
+            
+            <div id="rectangular" class="tab-content block">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center mr-3 text-blue-600">
+                        <i class="fas fa-vector-square"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">Aquário Padrão</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                    {% for id, label in [('rect_comp', 'Comprimento'), ('rect_larg', 'Largura'), ('rect_alt', 'Altura')] %}
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">{{ label }}</label>
+                        <div class="relative group">
+                            <input type="number" id="{{ id }}" placeholder="0" oninput="calcRect()" class="w-full bg-gray-50 text-gray-900 font-bold text-xl border-2 border-gray-100 focus:border-blue-500 rounded-2xl p-3 pl-4 outline-none transition-all">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">cm</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="bg-blue-600 rounded-2xl p-6 text-center text-white shadow-lg mb-6 relative overflow-hidden">
+                    <p class="text-blue-100 text-xs font-bold uppercase tracking-widest mb-1">Volume Total</p>
+                    <div class="flex justify-center items-baseline">
+                        <span id="res_rect" class="font-black text-6xl tracking-tighter">0</span>
+                        <span class="text-xl ml-2 font-bold text-blue-200">Litros</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cube" class="tab-content hidden">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center mr-3 text-purple-600">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">Aquário Cubo</h2>
+                </div>
+
+                <div class="mb-8 max-w-xs mx-auto">
+                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">Lado / Aresta</label>
+                    <div class="relative group">
+                        <input type="number" id="cube_side" placeholder="0" oninput="calcCube()" class="w-full bg-gray-50 text-gray-900 font-bold text-xl border-2 border-gray-100 focus:border-purple-500 rounded-2xl p-3 pl-4 outline-none transition-all">
+                        <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">cm</span>
+                    </div>
+                </div>
+
+                <div class="bg-purple-600 rounded-2xl p-6 text-center text-white shadow-lg mb-6 relative overflow-hidden">
+                    <p class="text-purple-100 text-xs font-bold uppercase tracking-widest mb-1">Volume Total</p>
+                    <div class="flex justify-center items-baseline">
+                        <span id="res_cube" class="font-black text-6xl tracking-tighter">0</span>
+                        <span class="text-xl ml-2 font-bold text-purple-200">Litros</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="cylinder" class="tab-content hidden">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 bg-teal-100 rounded-lg flex items-center justify-center mr-3 text-teal-600">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">Aquário Cilíndrico</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">Diâmetro</label>
+                        <div class="relative group">
+                            <input type="number" id="cyl_diam" placeholder="0" oninput="calcCyl()" class="w-full bg-gray-50 text-gray-900 font-bold text-xl border-2 border-gray-100 focus:border-teal-500 rounded-2xl p-3 pl-4 outline-none transition-all">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">cm</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">Altura</label>
+                        <div class="relative group">
+                            <input type="number" id="cyl_alt" placeholder="0" oninput="calcCyl()" class="w-full bg-gray-50 text-gray-900 font-bold text-xl border-2 border-gray-100 focus:border-teal-500 rounded-2xl p-3 pl-4 outline-none transition-all">
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-bold text-sm">cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-teal-600 rounded-2xl p-6 text-center text-white shadow-lg mb-6 relative overflow-hidden">
+                    <p class="text-teal-100 text-xs font-bold uppercase tracking-widest mb-1">Volume Total</p>
+                    <div class="flex justify-center items-baseline">
+                        <span id="res_cyl" class="font-black text-6xl tracking-tighter">0</span>
+                        <span class="text-xl ml-2 font-bold text-teal-200">Litros</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="substrate" class="tab-content hidden">
+                <div class="flex items-center mb-6">
+                    <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center mr-3 text-amber-600">
+                        <i class="fas fa-layer-group"></i>
+                    </div>
+                    <h2 class="text-xl font-bold text-gray-800">Calculadora de Substrato</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">Comp. do Aquário</label>
+                        <div class="relative">
+                            <input type="number" id="sub_comp" placeholder="60" oninput="calcSub()" class="w-full bg-gray-50 font-bold border-2 border-gray-100 focus:border-amber-500 rounded-xl p-2 pl-3 outline-none">
+                            <span class="absolute right-3 top-2 text-gray-400 text-sm font-bold">cm</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">Larg. do Aquário</label>
+                        <div class="relative">
+                            <input type="number" id="sub_larg" placeholder="30" oninput="calcSub()" class="w-full bg-gray-50 font-bold border-2 border-gray-100 focus:border-amber-500 rounded-xl p-2 pl-3 outline-none">
+                            <span class="absolute right-3 top-2 text-gray-400 text-sm font-bold">cm</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <label class="block text-xs font-bold text-gray-500 mb-2 uppercase pl-1">Altura da Camada (Desejada)</label>
+                    <div class="flex items-center gap-4">
+                        <div class="relative flex-grow">
+                            <input type="number" id="sub_alt" placeholder="5" oninput="calcSub()" class="w-full bg-gray-50 font-bold text-lg border-2 border-gray-100 focus:border-amber-500 rounded-xl p-3 pl-4 outline-none">
+                            <span class="absolute right-4 top-3.5 text-gray-400 font-bold">cm</span>
+                        </div>
+                        <div class="flex-grow">
+                             <select id="sub_type" onchange="calcSub()" class="w-full bg-white font-bold text-gray-700 border-2 border-gray-200 focus:border-amber-500 rounded-xl p-3 outline-none">
+                                <option value="1.5" data-name="Areia/Cascalho">Areia / Cascalho</option>
+                                <option value="1.2" data-name="Terra Fértil">Terra Fértil</option>
+                                <option value="1.0" data-name="Manado">Manado</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-amber-500 rounded-2xl p-6 text-center text-white shadow-lg mb-6 relative overflow-hidden">
+                    <p class="text-amber-100 text-xs font-bold uppercase tracking-widest mb-1">Peso Estimado</p>
+                    <div class="flex justify-center items-baseline">
+                        <span id="res_sub" class="font-black text-6xl tracking-tighter">0</span>
+                        <span class="text-xl ml-2 font-bold text-amber-100">Kg</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 border-t border-gray-100 pt-6">
+                {% if current_user.is_authenticated %}
+                    <button onclick="goToCreate()" class="w-full flex justify-center py-4 px-4 font-bold rounded-2xl text-white bg-gray-900 hover:bg-black transition-all shadow-md items-center">
+                        <i class="fas fa-save mr-2"></i> Criar Aquário com estes dados
+                    </button>
+                {% else %}
+                    <a href="{{ url_for('register') }}" class="w-full flex justify-center py-4 px-4 font-bold rounded-2xl text-white bg-green-600 hover:bg-green-700 transition-all shadow-md items-center">
+                        <i class="fas fa-user-plus mr-2"></i> Cadastre-se para Salvar
+                    </a>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<style>
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .active-tab { background-color: white; color: #2563EB; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    #substrate.active-tab-target ~ .active-tab { color: #D97706; }
+</style>
+
+<script>
+    // --- LÓGICA INTELIGENTE DE MEMÓRIA ---
+    let currentTab = 'rectangular'; 
+    let lastVolumeTab = 'rectangular'; // Memoriza qual formato de volume o usuário estava usando
+
+    function openTab(tabName) {
+        currentTab = tabName;
+        
+        // Se a aba aberta for de volume, atualiza a memória
+        if (['rectangular', 'cube', 'cylinder'].includes(tabName)) {
+            lastVolumeTab = tabName;
+        }
+
+        // Lógica visual (esconde/mostra)
+        document.querySelectorAll('.tab-content').forEach(el => { el.classList.add('hidden'); el.classList.remove('block'); });
+        document.getElementById(tabName).classList.remove('hidden');
+        document.getElementById(tabName).classList.add('block');
+        document.querySelectorAll('.tab-btn').forEach(btn => { btn.classList.remove('active-tab', 'text-blue-600', 'text-amber-600'); btn.classList.add('text-gray-500'); });
+        
+        const activeBtn = event.currentTarget;
+        activeBtn.classList.remove('text-gray-500');
+        activeBtn.classList.add('active-tab');
+        if (tabName === 'substrate') activeBtn.classList.add('text-amber-600');
+        else activeBtn.classList.add('text-blue-600');
+    }
+
+    function formatNum(num) { return Number.isInteger(num) ? num : num.toFixed(1); }
+    
+    // Cálculos
+    function calcRect() {
+        const c = parseFloat(document.getElementById('rect_comp').value)||0, l = parseFloat(document.getElementById('rect_larg').value)||0, a = parseFloat(document.getElementById('rect_alt').value)||0;
+        document.getElementById('res_rect').innerText = formatNum((c*l*a)/1000);
+    }
+    function calcCube() { const s = parseFloat(document.getElementById('cube_side').value)||0; document.getElementById('res_cube').innerText = formatNum((s*s*s)/1000); }
+    function calcCyl() { const d = parseFloat(document.getElementById('cyl_diam').value)||0, h = parseFloat(document.getElementById('cyl_alt').value)||0; document.getElementById('res_cyl').innerText = formatNum((Math.PI*(d/2)*(d/2)*h)/1000); }
+    function calcSub() {
+        const c = parseFloat(document.getElementById('sub_comp').value)||0, l = parseFloat(document.getElementById('sub_larg').value)||0, h = parseFloat(document.getElementById('sub_alt').value)||0, d = parseFloat(document.getElementById('sub_type').value)||1.5;
+        document.getElementById('res_sub').innerText = formatNum(((c*l*h)/1000)*d);
+    }
+
+    // --- FUNÇÃO INTELIGENTE DE REDIRECIONAMENTO ---
+    function goToCreate() {
+        let vol = 0;
+        let descParts = []; // Array para juntar as descrições
+
+        // 1. Recupera dados do VOLUME (baseado na última aba de volume que o usuário viu)
+        if (lastVolumeTab === 'rectangular') {
+            vol = parseFloat(document.getElementById('res_rect').innerText) || 0;
+            const c = document.getElementById('rect_comp').value;
+            const l = document.getElementById('rect_larg').value;
+            const a = document.getElementById('rect_alt').value;
+            if (vol > 0) descParts.push(`Dimensões: ${c}x${l}x${a}cm (Retangular)`);
+        
+        } else if (lastVolumeTab === 'cube') {
+            vol = parseFloat(document.getElementById('res_cube').innerText) || 0;
+            const s = document.getElementById('cube_side').value;
+            if (vol > 0) descParts.push(`Dimensões: Cubo de ${s}cm`);
+        
+        } else if (lastVolumeTab === 'cylinder') {
+            vol = parseFloat(document.getElementById('res_cyl').innerText) || 0;
+            const d = document.getElementById('cyl_diam').value;
+            const h = document.getElementById('cyl_alt').value;
+            if (vol > 0) descParts.push(`Dimensões: Diâmetro ${d}cm x Altura ${h}cm (Cilíndrico)`);
+        }
+
+        // 2. Recupera dados do SUBSTRATO (se foi calculado > 0)
+        const subWeight = parseFloat(document.getElementById('res_sub').innerText) || 0;
+        if (subWeight > 0) {
+            const sel = document.getElementById('sub_type');
+            const tipo = sel.options[sel.selectedIndex].text;
+            const h_sub = document.getElementById('sub_alt').value;
+            descParts.push(`Substrato Planejado: ${subWeight}kg de ${tipo} (${h_sub}cm de altura)`);
+        }
+
+        // Junta as descrições com quebra de linha
+        const finalDesc = descParts.join('\n');
+
+        // Redireciona
+        const url = `{{ url_for('create_aquarium') }}?volume=${vol > 0 ? vol : ''}&description=${encodeURIComponent(finalDesc)}`;
+        window.location.href = url;
+    }
+</script>
+{% endblock %}
+
+
+
+

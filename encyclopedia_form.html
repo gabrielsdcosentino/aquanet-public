@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ legend }} - Enciclopédia{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+    <h2 class="text-2xl font-bold text-gray-800 mb-6">{{ legend }}</h2>
+    
+    {% set action_url = url_for('edit_entry', slug=entry.slug) if entry else url_for('create_entry') %}
+    
+    <form method="POST" action="{{ action_url }}" enctype="multipart/form-data">
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Título do Tópico</label>
+            <input type="text" name="title" value="{{ entry.title if entry else '' }}" required {{ 'readonly' if entry else '' }} 
+                   class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none {{ 'bg-gray-100 text-gray-500' if entry else '' }}">
+            {% if entry %}<p class="text-xs text-gray-400 mt-1">O título não pode ser alterado para manter o link.</p>{% endif %}
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Categoria</label>
+            <select name="category" class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 bg-white" required>
+                {% for cat in categories %}
+                    <option value="{{ cat }}" {% if (entry and entry.category == cat) or selected_category == cat %}selected{% endif %}>{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Conteúdo</label>
+            <textarea name="content" rows="12" required class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">{{ entry.content if entry else '' }}</textarea>
+            <p class="text-xs text-gray-500 mt-1">Dica: Use quebras de linha para separar parágrafos.</p>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 text-sm font-bold mb-2">Imagem (Opcional)</label>
+            <input type="file" name="image" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition">
+            Salvar Tópico
+        </button>
+    </form>
+</div>
+{% endblock %}

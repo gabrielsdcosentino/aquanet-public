@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ entry.title }} - Enciclopédia{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 mt-4 mb-20">
+    <div class="text-sm text-gray-500 mb-4 flex items-center">
+        <a href="{{ url_for('encyclopedia') }}" class="hover:text-blue-600">Enciclopédia</a>
+        <i class="fas fa-chevron-right text-xs mx-2"></i>
+        <a href="{{ url_for('encyclopedia_category', category=entry.category) }}" class="hover:text-blue-600">{{ entry.category }}</a>
+    </div>
+
+    <article class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+        {% if entry.image_file %}
+        <div class="w-full h-64 md:h-80 bg-gray-100 relative">
+            <img src="{{ entry.image_file }}" class="w-full h-full object-cover">
+        </div>
+        {% endif %}
+
+        <div class="p-6 md:p-8">
+            <div class="flex justify-between items-start mb-6 border-b border-gray-100 pb-4">
+                <h1 class="text-3xl md:text-4xl font-extrabold text-gray-900 break-words">{{ entry.title }}</h1>
+                
+                <div class="flex space-x-3 flex-shrink-0 ml-4">
+                    <a href="{{ url_for('edit_entry', slug=entry.slug) }}" class="text-gray-400 hover:text-blue-600 transition" title="Editar este tópico">
+                        <i class="fas fa-edit text-xl"></i>
+                    </a>
+
+                    {% if current_user.username == 'bielcosen14' %}
+                    <form action="{{ url_for('delete_entry', slug=entry.slug) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este tópico? A ação é irreversível.')">
+                        <button type="submit" class="text-gray-400 hover:text-red-600 transition" title="Excluir Tópico (Admin)">
+                            <i class="fas fa-trash text-xl"></i>
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="prose max-w-none text-gray-800 text-lg leading-relaxed break-words" 
+                 style="white-space: pre-wrap; word-wrap: break-word;">{{ entry.content }}</div>
+
+            <div class="mt-10 pt-4 border-t border-gray-100 text-xs text-gray-400 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <span>Última atualização: {{ entry.updated_at.strftime('%d/%m/%Y às %H:%M') }}</span>
+                {% if entry.last_editor %}
+                <a href="{{ url_for('profile', username=entry.last_editor.username) }}" class="flex items-center hover:text-blue-600 transition">
+                    Editado por <img src="{{ entry.last_editor.profile_pic_url }}" class="w-5 h-5 rounded-full ml-2 mr-1 object-cover border border-gray-200"> 
+                    <span class="font-semibold">{{ entry.last_editor.username }}</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </article>
+</div>
+{% endblock %}

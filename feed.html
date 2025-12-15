@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}
+    {% if current_community %}
+        {{ current_community.name }} - AquaNet
+    {% else %}
+        Meu Feed - AquaNet
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+
+    {% if current_community %}
+        <section class="bg-white p-4 rounded-lg shadow mb-5">
+            <form method="POST" action="{{ url_for('community_feed', community_slug=current_community.slug) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
+                <div class="flex gap-3 items-center">
+                    <img src="{{ current_user.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border border-gray-300">
+                   
+                    <textarea id="post-content" name="content" placeholder="Postar em {{ current_community.name }}..." class="flex-grow border border-gray-300 rounded-md shadow-sm px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500 min-h-[40px] resize-none text-sm" rows="1" maxlength="2500"></textarea>
+                   
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded" title="Postar">Postar</button>
+                </div>
+
+                 <div class="flex justify-between items-center mt-3 pt-3 border-t">
+                   
+                    <div id="char-counter" class="text-xs text-gray-500 font-medium">0 / 2500</div>
+                   
+                    <div>
+                         <input type="file" name="image" id="post-image" accept="image/*,video/mp4,video/mov,video/webm" class="block w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100">
+                    </div>
+                </div>
+            </form>
+        </section>
+    {% else %}
+        <h2 class="text-xl font-semibold mb-4 text-gray-800">Seu Feed</h2>
+    {% endif %}
+
+    <section id="feed-posts-container">
+        {% if posts.items %}
+            {% include 'post_list.html' %}
+        {% else %}
+            <p class="text-gray-600 text-center py-5 bg-white rounded-lg shadow">
+                {% if current_community %}
+                    Nenhum post nesta comunidade ainda. Seja o primeiro a postar!
+                {% else %}
+                    Nenhum post no feed ainda. Navegue pelas comunidades e participe.
+                {% endif %}
+            </p>
+        {% endif %}
+    </section>
+
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- 1. Contador de Caracteres ---
+        const postContent = document.getElementById('post-content');
+        const charCounter = document.getElementById('char-counter');
+       
+        if (postContent && charCounter) {
+            const maxLength = postContent.getAttribute('maxlength');
+            function updateCounter() {
+                const currentLength = postContent.value.length;
+                charCounter.textContent = `${currentLength} / ${maxLength}`;
+                if (currentLength >= maxLength) {
+                    charCounter.classList.add('text-red-600', 'font-bold');
+                } else {
+                    charCounter.classList.remove('text-red-600', 'font-bold');
+                }
+            }
+            postContent.addEventListener('input', updateCounter);
+            updateCounter();
+        }
+
+        // --- 2. Lógica do Carregar Mais (Infinite Scroll) ---
+        document.body.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'load-more-btn') {
+                const btn = e.target;
+                const container = document.getElementById('next-page-trigger');
+                const nextPage = container.dataset.nextPage;
+                
+                btn.textContent = 'Carregando...';
+                btn.disabled = true;
+
+                fetch(`${window.location.pathname}?page=${nextPage}`, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(response => response.text())
+                .then(html => {
+                    // Remove o botão antigo
+                    container.remove();
+                    // Cola os novos posts no final da lista
+                    document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html);
+                })
+                .catch(err => {
+                    console.error('Erro ao carregar posts:', err);
+                    btn.textContent = 'Erro ao carregar';
+                    btn.disabled = false;
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category }} - Enciclopédia{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-2 max-w-4xl">
+    <div class="flex items-center justify-between mb-6">
+        <h2 class="text-2xl font-bold text-gray-800 flex items-center">
+            <a href="{{ url_for('encyclopedia') }}" class="text-gray-400 hover:text-blue-600 mr-2"><i class="fas fa-arrow-left text-lg"></i></a>
+            {{ category }}
+        </h2>
+        <a href="{{ url_for('create_entry', category=category) }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-700 shadow-sm">
+            <i class="fas fa-plus mr-1"></i> Criar Tópico
+        </a>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 divide-y divide-gray-100 overflow-hidden">
+        {% for entry in entries %}
+        <a href="{{ url_for('view_entry', slug=entry.slug) }}" class="block p-4 hover:bg-blue-50 transition flex justify-between items-center group">
+            <span class="font-semibold text-gray-700 group-hover:text-blue-700 text-lg">{{ entry.title }}</span>
+            <i class="fas fa-chevron-right text-gray-300 group-hover:text-blue-400"></i>
+        </a>
+        {% else %}
+        <div class="p-8 text-center text-gray-500">
+            <i class="fas fa-folder-open text-4xl mb-2 text-gray-300"></i>
+            <p>Nenhum tópico criado em {{ category }} ainda.</p>
+            <p class="text-sm mt-1">Seja o primeiro a contribuir!</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

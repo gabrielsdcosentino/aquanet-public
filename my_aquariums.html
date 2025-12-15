@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="mt-2">
+    
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-2xl font-black text-gray-800 tracking-tight">
+            🐟 Meus Aquários
+        </h2>
+        <a href="{{ url_for('create_aquarium') }}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-2xl text-sm flex items-center shadow-md transition-all hover:shadow-lg active:scale-95">
+            <i class="fas fa-plus mr-2"></i>
+            Novo Aquário
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {% for aqua in aquariums %}
+        <div class="bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border border-gray-100 group">
+            <div class="p-5">
+                <div class="flex justify-between items-start mb-3">
+                    <h3 class="text-lg font-bold text-gray-800 leading-tight group-hover:text-blue-600 transition-colors">{{ aqua.name }}</h3>
+                    <span class="bg-blue-50 text-blue-600 text-[10px] uppercase tracking-wider px-2 py-1 rounded-lg font-bold border border-blue-100">
+                        {{ aqua.aquarium_type }}
+                    </span>
+                </div>
+                
+                <div class="flex items-center text-gray-500 text-xs mb-4 font-medium">
+                    <i class="fas fa-tint mr-1.5 text-blue-400"></i> {{ aqua.volume }}L
+                    <span class="mx-2 text-gray-300">|</span>
+                    <i class="far fa-calendar mr-1.5 text-blue-400"></i> {{ aqua.setup_date.strftime('%d/%m/%Y') if aqua.setup_date else 'Data N/A' }}
+                </div>
+                
+                <p class="text-gray-500 text-sm mb-5 line-clamp-2 min-h-[40px]">
+                    {{ aqua.description if aqua.description else 'Sem descrição definida para este tanque.' }}
+                </p>
+
+                <div class="flex gap-2">
+                    <a href="{{ url_for('aquarium_dashboard', aquarium_id=aqua.id) }}" class="flex-1 bg-gray-900 hover:bg-black text-white text-center py-2.5 rounded-xl text-sm font-bold transition-colors flex justify-center items-center">
+                        <i class="fas fa-book-open mr-2 text-gray-400"></i> Diário
+                    </a>
+                    <a href="{{ url_for('edit_aquarium', aquarium_id=aqua.id) }}" class="w-10 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-sm transition-colors" title="Configurações">
+                        <i class="fas fa-cog"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="col-span-full text-center py-12 bg-white rounded-3xl border-2 border-dashed border-gray-200">
+            <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-water text-2xl"></i>
+            </div>
+            <h3 class="text-lg font-bold text-gray-900">Nenhum aquário ainda</h3>
+            <p class="text-gray-500 text-sm mt-1 mb-4">Comece a registrar a evolução do seu tanque.</p>
+            <a href="{{ url_for('create_aquarium') }}" class="inline-flex items-center bg-blue-600 text-white px-6 py-2.5 rounded-full font-bold hover:bg-blue-700 shadow-md transition-all">
+                Adicionar Primeiro Aquário
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+

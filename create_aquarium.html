@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mx-auto px-4 mt-8 max-w-md pb-10">
+    
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+        <div class="p-8">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-black text-blue-600">Novo Aquário 🐠</h2>
+                <p class="text-gray-400 text-sm mt-1">Registre seu ecossistema</p>
+            </div>
+
+            <form method="POST">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 text-sm ml-1">Nome do Aquário</label>
+                        <input type="text" name="name" required placeholder="Ex: Meu Betta, Comunitário..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-sm ml-1">Tipo</label>
+                            <div class="relative">
+                                <select name="aquarium_type" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 appearance-none font-semibold text-gray-600">
+                                    <option value="Água Doce">Água Doce</option>
+                                    <option value="Marinho">Marinho</option>
+                                    <option value="Plantado">Plantado</option>
+                                    <option value="Ciclídeos">Ciclídeos</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                                    <svg class="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-sm ml-1">Litragem (L)</label>
+                            <input type="number" step="0.1" name="volume" placeholder="Ex: 20" value="{{ request.args.get('volume', '') }}" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 text-sm ml-1">Data da Montagem</label>
+                        <input type="date" name="setup_date" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-gray-600">
+                    </div>
+
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 text-sm ml-1">Descrição / Equipamentos</label>
+                        <textarea name="description" rows="3" placeholder="Filtro, iluminação, substrato..." class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold">{{ request.args.get('description', '') }}</textarea>
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-xl transition-all transform active:scale-95">
+                        Criar Diário de Bordo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

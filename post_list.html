@@ -1,0 +1,67 @@
+{% for post in posts.items %}
+<article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition cursor-pointer relative post-item">
+    
+    <a href="{{ url_for('post_detail', post_id=post.id) }}" class="absolute inset-0 z-0" aria-label="Ver post"></a>
+
+    <div class="p-4">
+        <div class="text-xs text-gray-600 mb-2 flex items-center flex-wrap gap-1">
+            {% if post.community %}
+                <a href="{{ url_for('community_feed', community_slug=post.community.slug) }}" class="font-bold text-black hover:underline flex items-center relative z-10">
+                    c/{{ post.community.name }}
+                </a>
+                <span class="text-gray-400">•</span>
+            {% endif %}
+            <span class="relative z-10">Postado por <a href="{{ url_for('profile', username=post.author.username) }}" class="hover:underline">u/{{ post.author.username }}</a></span>
+            <span class="text-gray-400">•</span>
+            <span>{{ post.timestamp.strftime('%d/%m') }}</span>
+        </div>
+        
+        <p class="text-gray-800 text-base mb-3 whitespace-pre-line leading-relaxed">{{ post.content }}</p>
+    </div>
+
+    {% if post.image_file %}
+        {% if post.image_file.endswith('.mp4') or post.image_file.endswith('.mov') or post.image_file.endswith('.webm') %}
+            <div class="bg-black flex justify-center relative z-10">
+                <video controls class="w-full max-h-[500px]" preload="metadata">
+                    <source src="{{ post.image_file }}" type="video/mp4">
+                    Seu navegador não suporta vídeos.
+                </video>
+            </div>
+        {% else %}
+            <div class="bg-gray-100 flex justify-center">
+                <img src="{{ post.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <div class="px-4 py-2 flex items-center text-sm text-gray-500 font-semibold border-t border-gray-100 bg-gray-50 relative z-10">
+        <a href="{{ url_for('post_detail', post_id=post.id) }}" class="flex items-center hover:bg-gray-200 p-2 rounded-md mr-2 transition relative z-10">
+            <i class="far fa-comment-alt mr-1 text-lg"></i>
+            {{ post.comments|length }} <span class="hidden sm:inline ml-1">Comentários</span>
+        </a>
+
+        <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form flex items-center mr-auto relative z-10">
+            <button type="submit" class="like-button group flex items-center p-2 rounded-md transition {{ 'text-blue-600 hover:bg-blue-50' if current_user.has_liked_post(post) else 'text-gray-500 hover:bg-gray-200 hover:text-blue-600' }}">
+                <i class="{{ 'fas' if current_user.has_liked_post(post) else 'far' }} fa-thumbs-up text-lg mr-1 transition-transform group-active:scale-110"></i>
+                <span class="like-count-text font-semibold">
+                    {{ post.likes|length if post.likes|length > 0 else '' }}
+                </span>
+            </button>
+        </form>
+       
+        {% if post.user_id == current_user.id or (current_community and current_community.creator_id == current_user.id) %}
+            <a href="{{ url_for('delete_post', post_id=post.id) }}" class="p-2 text-gray-400 hover:text-red-600 rounded-md transition-colors relative z-10" title="Excluir" onclick="return confirm('Excluir este post?')">
+                <i class="fas fa-trash-alt text-lg"></i>
+            </a>
+        {% endif %}
+    </div>
+</article>
+{% endfor %}
+
+{% if posts.has_next %}
+    <div id="next-page-trigger" data-next-page="{{ posts.next_num }}" class="text-center py-4">
+        <button id="load-more-btn" class="bg-white border border-gray-300 text-gray-600 font-bold py-2 px-6 rounded-full hover:bg-gray-50 hover:text-blue-600 transition shadow-sm">
+            Carregar Mais
+        </button>
+    </div>
+{% endif %}

@@ -1,0 +1,21 @@
+{% extends 'base.html' %}
+
+{% block title %}Todas as Comunidades - AquaNet{% endblock %}
+
+{% block content %}
+    <div class="bg-white p-6 rounded-lg shadow">
+        <h2 class="text-2xl font-semibold mb-4 border-b pb-3">Todas as Comunidades</h2>
+        
+        {% for community in communities %}
+            <div class="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                    <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="text-lg font-semibold text-blue-600 hover:underline">{{ community.name }}</a>
+                    <p class="text-sm text-gray-600">{{ community.description or "Sem descrição." }}</p>
+                </div>
+                <span class="text-sm text-gray-500">{{ community.posts|length }} post(s)</span>
+            </div>
+        {% else %}
+            <p class="text-gray-600 text-center py-5">Nenhuma comunidade foi criada ainda. Seja o primeiro!</p>
+        {% endfor %}
+    </div>
+{% endblock %}

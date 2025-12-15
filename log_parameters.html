@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-6 border-t-4 border-blue-500">
+    <h2 class="text-xl font-bold mb-2 text-gray-800">🧪 Registrar Parâmetros</h2>
+    <p class="text-sm text-gray-500 mb-6">Aquário: {{ aquarium.name }}</p>
+    
+    <form method="POST">
+        <div class="flex gap-4 mb-4">
+            <div class="w-1/2">
+                <label class="block text-gray-700 font-bold mb-1 text-sm">pH</label>
+                <input type="number" step="0.1" name="ph" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="7.0">
+            </div>
+            <div class="w-1/2">
+                <label class="block text-gray-700 font-bold mb-1 text-sm">Temp (°C)</label>
+                <input type="number" step="0.1" name="temperature" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="26">
+            </div>
+        </div>
+
+        <div class="flex gap-4 mb-4">
+            <div class="w-1/2">
+                <label class="block text-gray-700 font-bold mb-1 text-sm">Amônia (ppm)</label>
+                <input type="number" step="0.01" name="ammonia" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="0.00">
+            </div>
+            <div class="w-1/2">
+                <label class="block text-gray-700 font-bold mb-1 text-sm">Nitrito (ppm)</label>
+                <input type="number" step="0.01" name="nitrite" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="0.00">
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <label class="block text-gray-700 font-bold mb-1 text-sm">Observações (Opcional)</label>
+            <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="Peixes parecem ofegantes..."></textarea>
+        </div>
+
+        <div class="flex gap-2">
+            <a href="{{ url_for('aquarium_dashboard', aquarium_id=aquarium.id) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">Cancelar</a>
+            <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
+                Salvar Registro 💾
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
