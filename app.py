@@ -49,9 +49,9 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True') == 'True'
-app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME', 'bielcosen14@gmail.com')
-app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD', 'iowlnrcbfrxsphlv')
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER', 'bielcosen14@gmail.com')
+app.config['MAIL_USERNAME'] = app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 # --- MODERAÇÃO AVANÇADA ---
 CUSTOM_BAD_WORDS = [
     'anal', 'anta', 'arrombado', 'arrombada', 'babaca', 'bacanal', 'batoré', 'besta', 'bicha', 'biscate', 
