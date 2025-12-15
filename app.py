@@ -735,6 +735,43 @@ def create_aquarium():
         db.session.commit(); return redirect(url_for('my_aquariums'))
     return render_template('create_aquarium.html')
 
+@app.route('/aquarium/<int:aquarium_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_aquarium(aquarium_id):
+    # 1. Pega o aquário ou dá erro 404 se não existir
+    aqua = Aquarium.query.get_or_404(aquarium_id)
+    
+    # 2. Segurança: Só o dono pode editar
+    if aqua.user_id != current_user.id:
+        flash('Você não tem permissão para editar este aquário.', 'danger')
+        return redirect(url_for('my_aquariums'))
+
+    # 3. Se for POST (Salvar as alterações)
+    if request.method == 'POST':
+        aqua.name = request.form.get('name')
+        aqua.aquarium_type = request.form.get('aquarium_type')
+        aqua.description = request.form.get('description')
+        
+        # Tenta converter o volume para número
+        try: 
+            aqua.volume = float(request.form.get('volume') or 0)
+        except: 
+            pass
+
+        # Tenta converter a data
+        dt = request.form.get('setup_date')
+        if dt:
+            try: aqua.setup_date = datetime.datetime.strptime(dt, '%Y-%m-%d').date()
+            except: pass
+            
+        db.session.commit()
+        flash('Aquário atualizado com sucesso!', 'success')
+        return redirect(url_for('my_aquariums'))
+
+    # 4. Se for GET (Abrir o formulário), reutiliza o template de criar
+    # Passamos a variável 'aquarium' para preencher os campos
+    return render_template('create_aquarium.html', aquarium=aqua, legend="Editar Aquário")
+
 @app.route('/aquarium/<int:aquarium_id>')
 @login_required
 def aquarium_dashboard(aquarium_id):
