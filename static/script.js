@@ -187,3 +187,21 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 });
+// --- VALIDAÇÃO DE TAMANHO DE ARQUIVO (ANTI-ERRO 413) ---
+document.addEventListener('DOMContentLoaded', function() {
+    var fileInputs = document.querySelectorAll('input[type="file"]');
+    
+    fileInputs.forEach(function(input) {
+        input.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                var fileSize = this.files[0].size; // Tamanho em bytes
+                var maxSize = 4.5 * 1024 * 1024; // 4.5MB (Limite da Vercel)
+                
+                if (fileSize > maxSize) {
+                    alert('⚠️ O arquivo é muito grande! O limite é 4.5MB para vídeos e fotos.');
+                    this.value = ""; // Limpa o arquivo selecionado
+                }
+            }
+        });
+    });
+});
