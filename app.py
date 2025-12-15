@@ -814,4 +814,4 @@ def unfollow(username):
     current_user.unfollow_user(user); return redirect(url_for('profile', username=username))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
