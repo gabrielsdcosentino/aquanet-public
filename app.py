@@ -785,5 +785,37 @@ def unfollow(username):
     user = User.query.filter_by(username=username).first_or_404()
     current_user.unfollow_user(user); return redirect(url_for('profile', username=username))
 
+# --- ROTA DE DIAGNÓSTICO (APAGUE DEPOIS QUE FUNCIONAR) ---
+@app.route('/debug')
+def debug_server():
+    import os
+    
+    # 1. Onde estou rodando?
+    current_path = os.getcwd()
+    
+    # 2. O que tem na pasta atual?
+    try:
+        root_files = os.listdir(current_path)
+    except Exception as e:
+        root_files = [f"Erro ao ler raiz: {e}"]
+        
+    # 3. O que tem na pasta templates (se ela existir)?
+    templates_path = os.path.join(current_path, 'templates')
+    templates_files = []
+    if os.path.exists(templates_path):
+        try:
+            templates_files = os.listdir(templates_path)
+        except Exception as e:
+            templates_files = [f"Erro ao ler templates: {e}"]
+    else:
+        templates_files = ["A PASTA TEMPLATES NÃO EXISTE!"]
+
+    return jsonify({
+        "1_Onde_Estou": current_path,
+        "2_Arquivos_na_Raiz": root_files,
+        "3_Arquivos_em_Templates": templates_files,
+        "4_Config_Flask_Template": app.template_folder
+    })
+
 if __name__ == '__main__':
     app.run(debug=True)
