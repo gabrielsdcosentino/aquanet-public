@@ -350,14 +350,29 @@ def auth_google():
 def register():
     if current_user.is_authenticated: return redirect(url_for('home'))
     if request.method == 'POST':
-        username = request.form.get('username'); email = request.form.get('email'); password = request.form.get('password')
+        username = request.form.get('username')
+        email = request.form.get('email')
+        password = request.form.get('password')
+
+        # Verificações
         if contains_bad_words(username): flash('Nome de usuário impróprio.', 'danger'); return redirect(url_for('register'))
         if ' ' in username: flash('Nome não pode conter espaços.', 'danger'); return redirect(url_for('register'))
         if User.query.filter_by(username=username).first(): flash('Nome em uso.', 'danger'); return redirect(url_for('register'))
         if User.query.filter_by(email=email).first(): flash('Email já cadastrado.', 'danger'); return redirect(url_for('register'))
-        new_user = User(username=username, email=email); new_user.set_password(password)
-        db.session.add(new_user); db.session.commit()
-        flash('Conta criada!', 'success'); return redirect(url_for('login'))
+        
+        # --- CORREÇÃO DA FOTO PADRÃO ---
+        # Usa um serviço que cria a imagem com as letras do nome
+        avatar_url = f"https://ui-avatars.com/api/?name={username}&background=random&color=fff&size=150"
+        
+        new_user = User(username=username, email=email, profile_pic_url=avatar_url)
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+        
+        flash('Conta criada com sucesso!', 'success')
+        return redirect(url_for('login'))
+        
     return render_template("register.html")
 
 @app.route('/reset_password', methods=['GET', 'POST'])
