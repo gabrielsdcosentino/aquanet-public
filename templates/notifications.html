@@ -17,7 +17,7 @@
             
             <div class="flex items-start p-4 hover:bg-gray-50 transition-all relative group">
                 
-                <div class="absolute top-4 left-4 z-0">
+                <div class="flex-shrink-0 mr-4 mt-1">
                      <div class="w-10 h-10 rounded-full flex items-center justify-center
                                 {% if n.action == 'like_post' or n.action == 'like_comment' %} bg-red-100 text-red-500 
                                 {% elif n.action == 'comment' or n.action == 'reply' %} bg-blue-100 text-blue-500 
@@ -31,27 +31,27 @@
                     </div>
                 </div>
 
-                <div class="pl-12 w-full">
-                    <div class="flex justify-between items-start mb-1">
-                        <a href="{{ url_for('profile', username=n.sender.username) }}" class="flex items-center group/profile z-10 relative">
-                            <img src="{{ n.sender.profile_pic_url }}" class="w-6 h-6 rounded-full object-cover mr-2 border border-gray-200">
-                            <span class="font-bold text-gray-900 hover:underline hover:text-blue-600 text-sm">
+                <div class="flex-grow min-w-0"> <div class="flex justify-between items-start">
+                        
+                        <a href="{{ url_for('profile', username=n.sender.username) }}" class="flex items-center group/profile pr-2 max-w-[70%]">
+                            <img src="{{ n.sender.profile_pic_url }}" class="w-5 h-5 rounded-full object-cover mr-2 border border-gray-200 flex-shrink-0">
+                            <span class="font-bold text-gray-900 hover:underline hover:text-blue-600 text-sm truncate">
                                 @{{ n.sender.username }}
                             </span>
                         </a>
 
-                        <small class="text-xs text-gray-400 whitespace-nowrap ml-2">
+                        <small class="text-[10px] text-gray-400 whitespace-nowrap flex-shrink-0 mt-0.5">
                             {{ n.timestamp.strftime('%d/%m %H:%M') }}
                         </small>
                     </div>
 
-                    <a href="{{ target_url }}" class="block text-sm text-gray-600 hover:text-gray-900 transition-colors">
+                    <a href="{{ target_url }}" class="block text-sm text-gray-600 hover:text-gray-900 transition-colors mt-0.5">
                         {% if n.action == 'like_post' %} 
                             curtiu seu post. <i class="fas fa-heart text-red-400 text-xs ml-1"></i>
                         {% elif n.action == 'like_comment' %} 
                             curtiu seu comentário.
                         {% elif n.action == 'comment' %} 
-                            comentou no seu post: <span class="italic text-gray-500">"Ver comentário..."</span>
+                            comentou: <span class="italic text-gray-500">"Ver comentário..."</span>
                         {% elif n.action == 'follow' %} 
                             começou a te seguir.
                         {% elif n.action == 'reply' %} 
