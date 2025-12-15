@@ -1,33 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-<meta name="csrf-token" content="{{ csrf_token() }}">
-
-<script>
-    // 2. Robô que injeta o token em todos os formulários automaticamente
-    document.addEventListener("DOMContentLoaded", function() {
-        // Pega o token da meta tag ali em cima
-        var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-        
-        // Encontra todos os formulários que usam POST
-        var forms = document.querySelectorAll('form[method="POST"]');
-
-        forms.forEach(function(form) {
-            // Se o formulário ainda não tem o token, cria e adiciona
-            if (!form.querySelector('input[name="csrf_token"]')) {
-                var input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'csrf_token';
-                input.value = csrfToken;
-                form.appendChild(input);
-                console.log("🔒 Token de segurança injetado automaticamente.");
-            }
-        });
-    });
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <meta name="csrf-token" content="{{ csrf_token() }}">
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
@@ -44,10 +22,27 @@
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
     </style>
-</head>
-<body class="bg-gray-100 font-sans pb-16 md:pb-0"> 
 
-    <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            var forms = document.querySelectorAll('form[method="POST"]');
+
+            forms.forEach(function(form) {
+                // Se o formulário não tem o token, cria e coloca dentro
+                if (!form.querySelector('input[name="csrf_token"]')) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = csrfToken;
+                    form.appendChild(input);
+                }
+            });
+        });
+    </script>
+</head>
+<body class="bg-gray-100 font-sans pb-16 md:pb-0">
+<div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
     <aside id="mobile-drawer" class="fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
         <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
@@ -108,7 +103,7 @@
                     {% for community in popular_communities %}
                         <li>
                             <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center text-sm text-gray-700 hover:text-blue-600">
-                                <span class="bg-blue-100 text-blue-600 text-[10px] font-bold px-2 py-0.5 rounded-full mr-2 w-5 text-center">{{ loop.index }}</span>
+                                <span class="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full mr-2 w-5 text-center">{{ loop.index }}</span>
                                 {{ community.name }}
                             </a>
                         </li>
@@ -130,8 +125,7 @@
             {% endif %}
         </div>
     </aside>
-
-    <header class="bg-white text-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200">
+<header class="bg-white text-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200">
         <div class="container mx-auto px-4 py-3 flex justify-between items-center max-w-7xl">
             <div class="flex-shrink-0 flex items-center">
                 <button onclick="toggleDrawer()" class="md:hidden mr-3 text-gray-600 focus:outline-none p-1">
@@ -219,8 +213,7 @@
             <span class="text-[10px] font-medium">Criar</span>
         </a>
     </nav>
-
-    <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
+<div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
         
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
