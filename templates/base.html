@@ -34,7 +34,6 @@
             width: 70% !important; opacity: 1 !important;
         }
         
-        /* Previne o piscar em telas grandes */
         @media (min-width: 768px) {
             #mobile-drawer { display: none !important; }
             .mobile-bottom-nav { display: none !important; }
@@ -48,7 +47,6 @@
         document.addEventListener("DOMContentLoaded", function() {
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
-            // Injeta CSRF em todos os forms
             document.querySelectorAll('form[method="POST"]').forEach(function(form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
                     var input = document.createElement('input');
@@ -57,7 +55,6 @@
                 }
             });
 
-            // Configura HTMX
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 evt.detail.headers['X-CSRFToken'] = csrfToken;
             });
@@ -339,7 +336,6 @@
                 drawer.classList.add('drawer-closed');
             }
             if (overlay) overlay.classList.add('hidden');
-            // GARANTE O SCROLL LIVRE
             document.body.style.overflow = 'visible';
             document.documentElement.style.overflow = 'visible';
         }
@@ -360,14 +356,12 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             
-            // --- CORREÇÃO DO LIKE: INTERCEPTAÇÃO AGRESSIVA ---
-            // Usa 'true' no final para ativar CAPTURE phase (antes do HTMX)
+            // --- CORREÇÃO DO LIKE (Event Delegation com Limpeza) ---
             document.body.addEventListener('submit', function(e) {
                 const form = e.target;
                 const action = form.getAttribute('action') || '';
 
                 if (action.includes('like') || action.includes('comment')) {
-                    // IMPEDE TUDO (HTMX e SUBMIT PADRÃO)
                     e.preventDefault();
                     e.stopPropagation(); 
                     e.stopImmediatePropagation();
@@ -382,39 +376,33 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.liked !== undefined) {
-                            // Procura o ícone dentro do botão
-                            const icon = btn.querySelector('.fa-heart'); 
+                            const icon = btn.querySelector('i');
                             
-                            // Lógica do Coração
+                            // 1. Atualiza Ícone
                             if (icon) {
                                 if (data.liked) {
-                                    icon.classList.remove('far', 'fa-regular', 'text-gray-400');
-                                    icon.classList.add('fas', 'fa-solid', 'text-red-500');
+                                    icon.className = 'fas fa-heart text-red-500 mr-1';
                                 } else {
-                                    icon.classList.remove('fas', 'fa-solid', 'text-red-500');
-                                    icon.classList.add('far', 'fa-regular', 'text-gray-400');
+                                    icon.className = 'far fa-heart text-gray-400 mr-1';
                                 }
                             }
                             
-                            // Lógica do Número (Tenta achar o texto ao lado do ícone)
-                            // Isso assume que o número está solto dentro do botão
+                            // 2. CORREÇÃO "12": Limpa tudo que NÃO é o ícone e põe o número novo
                             if (btn) {
-                                // Pega todos os nós de texto do botão
-                                const textNodes = Array.from(btn.childNodes).filter(node => node.nodeType === 3);
-                                if (textNodes.length > 0) {
-                                    // Atualiza o último nó de texto (geralmente o número)
-                                    textNodes[textNodes.length - 1].textContent = " " + data.like_count;
-                                } else {
-                                    // Se não tiver texto, cria um
-                                    btn.appendChild(document.createTextNode(" " + data.like_count));
-                                }
+                                // Remove todos os nós de texto (o número antigo)
+                                Array.from(btn.childNodes).forEach(node => {
+                                    if (node !== icon && node.nodeType === 3) {
+                                        node.remove();
+                                    }
+                                });
+                                // Adiciona o novo número
+                                btn.appendChild(document.createTextNode(" " + data.like_count));
                             }
                         } else if (data.success && data.comment) {
                             window.location.reload(); 
                         }
                     })
                     .catch(err => console.error(err));
-                    
                     return false;
                 }
 
@@ -437,9 +425,9 @@
                     }, 15000);
                 }
 
-            }, true); // <--- IMPORTANTE: 'true' para capturar antes do HTMX
+            }, true); 
 
-            // Correção Scroll e Menu
+            // Correção Scroll e Menu (HTMX)
             document.body.addEventListener('htmx:afterSwap', function(evt) {
                 closeDrawer();
                 document.getElementById('page-loader').style.width = '100%';
