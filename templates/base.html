@@ -32,15 +32,20 @@
             opacity: 0;
         }
         
-        /* Classe do HTMX enquanto carrega */
+        /* Mostra a barra quando o HTMX trabalha */
         .htmx-request #page-loader {
             width: 70% !important;
             opacity: 1 !important;
         }
         
-        .desktop-only { display: none !important; }
+        /* CORREÇÃO DO LAYOUT DESKTOP E PISCAR (FOUC) */
+        .desktop-flex, .desktop-block { display: none !important; }
+        
         @media (min-width: 768px) {
-            .desktop-only { display: block !important; }
+            /* No PC, força o tipo de display correto */
+            .desktop-flex { display: flex !important; }
+            .desktop-block { display: block !important; }
+            
             #mobile-drawer { display: none !important; }
             .mobile-bottom-nav { display: none !important; }
             #mobile-search-bar { display: none !important; }
@@ -52,19 +57,17 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            var forms = document.querySelectorAll('form[method="POST"]');
-
-            forms.forEach(function(form) {
+            
+            // Injeta CSRF em todos os formulários padrão
+            document.querySelectorAll('form[method="POST"]').forEach(function(form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
                     var input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = 'csrf_token';
-                    input.value = csrfToken;
+                    input.type = 'hidden'; input.name = 'csrf_token'; input.value = csrfToken;
                     form.appendChild(input);
                 }
             });
 
-            // Configuração global do HTMX para CSRF
+            // Configura HTMX para usar CSRF
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 evt.detail.headers['X-CSRFToken'] = csrfToken;
             });
@@ -74,7 +77,6 @@
 <body class="bg-gray-100 font-sans pb-16 md:pb-0" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
-
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
@@ -106,11 +108,11 @@
                     <li><a href="{{ url_for('feed') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-user-friends w-6 text-center text-gray-400 mr-2"></i> Feed Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-fish w-6 text-center text-gray-400 mr-2"></i> Meus Aquários</a></li>
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-book w-6 text-center text-gray-400 mr-2"></i> Enciclopédia</a></li>
-                    
                     <li><a href="{{ url_for('calculators') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-calculator w-6 text-center text-gray-400 mr-2"></i> Ferramentas</a></li>
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-users w-6 text-center text-gray-400 mr-2"></i> Todas as Comunidades</a></li>
                 </ul>
             </div>
+            
             {% if current_user.is_authenticated and current_user.joined_communities|length > 0 %}
             <hr class="border-gray-100">
             <div>
@@ -145,6 +147,7 @@
             </div>
             {% endif %}
         </div>
+        
         <div class="p-4 border-t bg-gray-50 mt-auto">
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('edit_profile') }}" class="flex items-center justify-center w-full text-blue-600 font-bold border border-blue-200 bg-blue-50 hover:bg-blue-100 p-3 rounded-xl transition-colors mb-2">
@@ -171,14 +174,14 @@
                 </a>
             </div>
             
-            <div class="desktop-only flex-grow max-w-md mx-4 hidden md:block">
+            <div class="desktop-block flex-grow max-w-md mx-4 hidden md:block">
                 <form action="{{ url_for('search') }}" method="GET" class="relative">
                     <input type="text" name="q" placeholder="Buscar no AquaNet..." class="w-full bg-gray-100 border-transparent focus:bg-white focus:border-blue-300 rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all">
                     <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
                 </form>
             </div>
 
-            <nav class="desktop-only hidden md:flex items-center">
+            <nav class="desktop-flex hidden md:flex items-center">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 mr-4 transition-colors" title="Notificações">
                         <i class="fas fa-bell text-xl"></i>
@@ -251,17 +254,14 @@
     </nav>
 
     <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
-        
-        <aside class="desktop-only md:col-span-3 hidden md:block h-fit sticky top-24">
+        <aside class="desktop-block md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Navegação</h3>
                 <ul class="space-y-1">
                     <li><a href="{{ url_for('feed') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-user-friends w-6"></i> Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint and 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
                     <li><a href="{{ url_for('home') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'home' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-globe w-6"></i> Feed Global</a></li>
-                    
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
-                    
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'communities_directory' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                     <li><a href="{{ url_for('calculators') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
                 </ul>
@@ -302,7 +302,8 @@
             {% endwith %}
             {% block content %}{% endblock %}
         </main>
-        <aside class="desktop-only md:col-span-3 hidden md:block h-fit sticky top-24">
+        
+        <aside class="desktop-block md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
                 {% if popular_communities %}
@@ -337,38 +338,54 @@
                 searchBar.classList.add('hidden');
             }
         }
+        
+        // FUNÇÃO DE FECHAR O MENU (Importante para o scroll)
+        function closeDrawer() {
+            const drawer = document.getElementById('mobile-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            if (drawer) {
+                drawer.classList.remove('drawer-open');
+                drawer.classList.add('drawer-closed');
+            }
+            if (overlay) overlay.classList.add('hidden');
+            
+            // FORÇA A REMOÇÃO DO TRAVAMENTO
+            document.body.style.overflow = '';
+            document.documentElement.style.overflow = '';
+        }
+
         function toggleDrawer() {
             const drawer = document.getElementById('mobile-drawer');
             const overlay = document.getElementById('drawer-overlay');
+            
             if (drawer.classList.contains('drawer-closed')) {
+                // Abrir
                 drawer.classList.remove('drawer-closed');
                 drawer.classList.add('drawer-open');
                 overlay.classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; 
+                document.body.style.overflow = 'hidden'; // Trava
             } else {
-                drawer.classList.remove('drawer-open');
-                drawer.classList.add('drawer-closed');
-                overlay.classList.add('hidden');
-                document.body.style.overflow = ''; 
+                // Fechar
+                closeDrawer();
             }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // CORREÇÃO: Limpeza automática ao trocar de página via HTMX
-            document.body.addEventListener('htmx:afterSwap', function(evt) {
-                // 1. Destrava a rolagem (Resolve o bug do vídeo)
-                document.body.style.overflow = ''; 
-                
-                // 2. Garante que o menu feche
-                const drawer = document.getElementById('mobile-drawer');
-                const overlay = document.getElementById('drawer-overlay');
-                if (drawer) {
-                    drawer.classList.remove('drawer-open');
-                    drawer.classList.add('drawer-closed');
+            
+            // CORREÇÃO DOS LIKES: Desativa HTMX apenas para botões de Like/Comentário
+            // O HTMX vai ignorar esses formulários e deixar o script.js (AJAX) cuidar deles.
+            document.querySelectorAll('form').forEach(form => {
+                const action = form.getAttribute('action') || '';
+                if (action.includes('like') || action.includes('comment')) {
+                    form.setAttribute('hx-boost', 'false');
                 }
-                if (overlay) overlay.classList.add('hidden');
+            });
 
-                // 3. Reseta a barra de progresso
+            // CORREÇÃO DO SCROLL: Reseta tudo após a troca de página
+            document.body.addEventListener('htmx:afterSwap', function(evt) {
+                closeDrawer(); // Fecha menu e destrava scroll
+                
+                // Reseta barra de progresso
                 document.getElementById('page-loader').style.width = '100%';
                 setTimeout(() => {
                     document.getElementById('page-loader').style.opacity = '0';
@@ -376,28 +393,21 @@
                 }, 300);
             });
 
-            // Inicia barra de progresso ao clicar
+            // Inicia barra de progresso e fecha menu ao clicar
             document.body.addEventListener('htmx:beforeRequest', function(evt) {
                 document.getElementById('page-loader').style.width = '30%';
                 document.getElementById('page-loader').style.opacity = '1';
-                
-                // Fecha o menu imediatamente ao clicar em um link (Sensação de rapidez)
-                const drawer = document.getElementById('mobile-drawer');
-                const overlay = document.getElementById('drawer-overlay');
-                if (drawer && drawer.classList.contains('drawer-open')) {
-                    drawer.classList.remove('drawer-open');
-                    drawer.classList.add('drawer-closed');
-                    overlay.classList.add('hidden');
-                    document.body.style.overflow = '';
-                }
+                closeDrawer(); // Tenta fechar imediatamente para sensação de rapidez
             });
 
-            // Script Anti-Duplo Clique (Mantido)
+            // Script Anti-Duplo Clique (Para formulários normais)
             const forms = document.querySelectorAll('form');
             forms.forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const action = this.getAttribute('action') || window.location.href;
+                    // Se for like/comentário, deixa o script.js cuidar (não bloqueia aqui)
                     if (action.includes('like') || action.includes('comment')) return;
+                    
                     if (this.dataset.submitting === "true") { e.preventDefault(); return; }
                     const btn = this.querySelector('button[type="submit"]');
                     if (btn) {
