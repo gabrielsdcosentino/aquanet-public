@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,18 +14,17 @@
         body { font-family: 'Inter', sans-serif; background-color: #DAE0E6; }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         
-        /* Ajustes de Alertas */
         .flashes { margin-bottom: 1rem; }
         .flash-success { background-color: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         
-        /* Transição do Menu */
+        /* Menu Mobile - Transição */
         #mobile-drawer { transition: transform 0.3s ease-in-out; }
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
-        /* Barra de Progresso (Azul no Topo) */
+        /* Barra de Progresso */
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
             background-color: #2563EB; z-index: 9999; transition: width 0.2s ease-out;
@@ -36,7 +34,7 @@
             width: 70% !important; opacity: 1 !important;
         }
         
-        /* Previne o FOUC (Piscar) em telas grandes */
+        /* Previne o piscar em telas grandes */
         @media (min-width: 768px) {
             #mobile-drawer { display: none !important; }
             .mobile-bottom-nav { display: none !important; }
@@ -50,7 +48,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
-            // Injeta token em forms normais
+            // Injeta CSRF em todos os forms
             document.querySelectorAll('form[method="POST"]').forEach(function(form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
                     var input = document.createElement('input');
@@ -255,9 +253,7 @@
                     <li><a href="{{ url_for('feed') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-user-friends w-6"></i> Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint and 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
                     <li><a href="{{ url_for('home') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'home' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-globe w-6"></i> Feed Global</a></li>
-                    
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
-                    
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'communities_directory' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                     <li><a href="{{ url_for('calculators') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
                 </ul>
@@ -298,6 +294,7 @@
             {% endwith %}
             {% block content %}{% endblock %}
         </main>
+        
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
@@ -334,7 +331,6 @@
             }
         }
         
-        // Função para Fechar e Destravar
         function closeDrawer() {
             const drawer = document.getElementById('mobile-drawer');
             const overlay = document.getElementById('drawer-overlay');
@@ -343,8 +339,7 @@
                 drawer.classList.add('drawer-closed');
             }
             if (overlay) overlay.classList.add('hidden');
-            
-            // CORREÇÃO CRÍTICA DO SCROLL
+            // GARANTE O SCROLL LIVRE
             document.body.style.overflow = 'visible';
             document.documentElement.style.overflow = 'visible';
         }
@@ -365,43 +360,20 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             
-            // --- CORREÇÃO DO SCROLL E MENU ---
-            document.body.addEventListener('htmx:afterSwap', function(evt) {
-                closeDrawer(); // Garante que a tela destrava
-                
-                // Reseta barra de progresso
-                document.getElementById('page-loader').style.width = '100%';
-                setTimeout(() => {
-                    document.getElementById('page-loader').style.opacity = '0';
-                    document.getElementById('page-loader').style.width = '0%';
-                }, 300);
-            });
-
-            // Mostra barra ao carregar
-            document.body.addEventListener('htmx:beforeRequest', function(evt) {
-                document.getElementById('page-loader').style.width = '30%';
-                document.getElementById('page-loader').style.opacity = '1';
-                closeDrawer(); // Fecha menu instantaneamente
-            });
-
-            // --- CORREÇÃO DEFINITIVA DO LIKE (Event Delegation) ---
-            // Este script roda para sempre, mesmo se o HTMX trocar o conteúdo.
-            // Ele intercepta qualquer submit no corpo da página.
+            // --- CORREÇÃO DO LIKE: INTERCEPTAÇÃO AGRESSIVA ---
+            // Usa 'true' no final para ativar CAPTURE phase (antes do HTMX)
             document.body.addEventListener('submit', function(e) {
                 const form = e.target;
                 const action = form.getAttribute('action') || '';
 
-                // Se for Like ou Comentário, nós assumimos o controle (bypass HTMX)
                 if (action.includes('like') || action.includes('comment')) {
-                    e.preventDefault(); // Impede refresh e impede HTMX (se boost false)
-                    e.stopPropagation();
+                    // IMPEDE TUDO (HTMX e SUBMIT PADRÃO)
+                    e.preventDefault();
+                    e.stopPropagation(); 
+                    e.stopImmediatePropagation();
 
                     const btn = form.querySelector('button[type="submit"]');
-                    const originalContent = btn ? btn.innerHTML : '';
                     
-                    // Feedback Visual Imediato (Opcional, mas bom)
-                    // ...
-
                     fetch(action, {
                         method: 'POST',
                         headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')},
@@ -410,14 +382,13 @@
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.liked !== undefined) {
-                            // Atualiza o botão de Like
-                            const icon = form.querySelector('i');
-                            const countSpan = form.querySelector('span') || form.querySelector('div') || btn; 
+                            // Procura o ícone dentro do botão
+                            const icon = btn.querySelector('.fa-heart'); 
                             
-                            // Atualiza Coração
+                            // Lógica do Coração
                             if (icon) {
                                 if (data.liked) {
-                                    icon.classList.remove('far', 'fa-regular', 'text-gray-400', 'text-gray-500');
+                                    icon.classList.remove('far', 'fa-regular', 'text-gray-400');
                                     icon.classList.add('fas', 'fa-solid', 'text-red-500');
                                 } else {
                                     icon.classList.remove('fas', 'fa-solid', 'text-red-500');
@@ -425,57 +396,63 @@
                                 }
                             }
                             
-                            // Atualiza Número (Tenta achar onde está o número)
-                            // Procura um nó de texto que seja número
+                            // Lógica do Número (Tenta achar o texto ao lado do ícone)
+                            // Isso assume que o número está solto dentro do botão
                             if (btn) {
-                                // Modo Simples: Se o botão tem texto e ícone, atualiza o texto
-                                // Isso depende do seu HTML exato, mas geralmente funciona
-                                // Vamos tentar atualizar o texto que vem depois do ícone
-                                if(btn.lastChild.nodeType === 3) { // Nó de texto
-                                     btn.lastChild.textContent = " " + data.like_count;
-                                } else if (btn.innerText) {
-                                     // Fallback seguro
-                                     // Recria o HTML do botão preservando o ícone
-                                     const i = btn.querySelector('i');
-                                     if(i) {
-                                         btn.innerHTML = '';
-                                         btn.appendChild(i);
-                                         btn.appendChild(document.createTextNode(" " + data.like_count));
-                                     }
+                                // Pega todos os nós de texto do botão
+                                const textNodes = Array.from(btn.childNodes).filter(node => node.nodeType === 3);
+                                if (textNodes.length > 0) {
+                                    // Atualiza o último nó de texto (geralmente o número)
+                                    textNodes[textNodes.length - 1].textContent = " " + data.like_count;
+                                } else {
+                                    // Se não tiver texto, cria um
+                                    btn.appendChild(document.createTextNode(" " + data.like_count));
                                 }
                             }
                         } else if (data.success && data.comment) {
-                            // Se for comentário, recarrega para ver (ou adiciona na lista se quiser avançado)
                             window.location.reload(); 
                         }
                     })
                     .catch(err => console.error(err));
                     
-                    return; // Sai da função
+                    return false;
                 }
 
-                // --- SCRIPT ANTI-DUPLO CLIQUE (Para outros forms) ---
-                if (form.dataset.submitting === "true") {
-                    e.preventDefault();
-                    return;
-                }
-                
-                const btn = form.querySelector('button[type="submit"]');
-                if (btn) {
+                // Script Anti-Duplo Clique (Para outros forms)
+                if (form.dataset.submitting === "true") { e.preventDefault(); return; }
+                const btn2 = form.querySelector('button[type="submit"]');
+                if (btn2) {
                     form.dataset.submitting = "true";
-                    const originalText = btn.innerHTML;
-                    btn.disabled = true;
-                    btn.style.opacity = "0.7";
-                    btn.style.cursor = "not-allowed";
-                    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
+                    const originalText = btn2.innerHTML;
+                    btn2.disabled = true;
+                    btn2.style.opacity = "0.7";
+                    btn2.style.cursor = "not-allowed";
+                    btn2.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
                     setTimeout(() => {
                         form.dataset.submitting = "false";
-                        btn.disabled = false;
-                        btn.style.opacity = "1";
-                        btn.style.cursor = "pointer";
-                        btn.innerHTML = originalText;
+                        btn2.disabled = false;
+                        btn2.style.opacity = "1";
+                        btn2.style.cursor = "pointer";
+                        btn2.innerHTML = originalText;
                     }, 15000);
                 }
+
+            }, true); // <--- IMPORTANTE: 'true' para capturar antes do HTMX
+
+            // Correção Scroll e Menu
+            document.body.addEventListener('htmx:afterSwap', function(evt) {
+                closeDrawer();
+                document.getElementById('page-loader').style.width = '100%';
+                setTimeout(() => {
+                    document.getElementById('page-loader').style.opacity = '0';
+                    document.getElementById('page-loader').style.width = '0%';
+                }, 300);
+            });
+
+            document.body.addEventListener('htmx:beforeRequest', function(evt) {
+                document.getElementById('page-loader').style.width = '30%';
+                document.getElementById('page-loader').style.opacity = '1';
+                closeDrawer();
             });
         });
     </script>
