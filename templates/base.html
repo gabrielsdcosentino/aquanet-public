@@ -315,6 +315,48 @@
                 document.body.style.overflow = ''; 
             }
         }
+
+        // --- SCRIPT ANTI-DUPLO CLIQUE ---
+        document.addEventListener('DOMContentLoaded', function() {
+            // Seleciona todos os formulários do site
+            const forms = document.querySelectorAll('form');
+
+            forms.forEach(form => {
+                form.addEventListener('submit', function(e) {
+                    // Se o formulário já foi enviado, impede novo envio
+                    if (this.dataset.submitting === "true") {
+                        e.preventDefault();
+                        return;
+                    }
+
+                    const btn = this.querySelector('button[type="submit"]');
+                    
+                    // Se encontrou o botão de salvar/publicar
+                    if (btn) {
+                        // Marca o formulário como "enviando"
+                        this.dataset.submitting = "true";
+                        
+                        // Salva o texto original
+                        const originalText = btn.innerHTML;
+                        
+                        // Muda o visual do botão
+                        btn.disabled = true;
+                        btn.style.opacity = "0.7";
+                        btn.style.cursor = "not-allowed";
+                        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
+
+                        // (Opcional) Destrava após 15s caso dê erro no servidor e a página não recarregue
+                        setTimeout(() => {
+                            this.dataset.submitting = "false";
+                            btn.disabled = false;
+                            btn.style.opacity = "1";
+                            btn.style.cursor = "pointer";
+                            btn.innerHTML = originalText;
+                        }, 15000);
+                    }
+                });
+            });
+        });
     </script>
     {% block scripts %}
         <script src="/script.js" defer></script>

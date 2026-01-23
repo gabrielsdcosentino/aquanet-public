@@ -458,6 +458,15 @@ def community_feed(community_slug):
         if contains_bad_words(content):
             flash('Conteúdo impróprio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
 
+        # --- PROTEÇÃO BACKEND CONTRA DUPLICIDADE DE POSTS ---
+        last_post = Post.query.filter_by(author=current_user).order_by(Post.timestamp.desc()).first()
+        if last_post and last_post.content == content:
+             time_diff = (now_br() - last_post.timestamp).total_seconds()
+             if time_diff < 30: # 30 segundos de intervalo
+                 flash('Você já publicou isso agora pouco! (Duplicidade evitada)', 'warning')
+                 return redirect(url_for('community_feed', community_slug=community.slug))
+        # ----------------------------------------------------
+
         img_url = None; img_id = None
         if pic and app.config['CLOUDINARY_API_KEY']:
             try:
@@ -757,10 +766,22 @@ def my_aquariums(): return render_template('my_aquariums.html', aquariums=curren
 
 @app.route('/create_aquarium', methods=['GET', 'POST'])
 @login_required
+@limiter.limit("5 per minute", methods=['POST'])
 def create_aquarium():
     if request.method == 'POST':
+        name = request.form.get('name')
+        
+        # --- PROTEÇÃO BACKEND CONTRA DUPLICIDADE DE AQUÁRIOS ---
+        last_aqua = Aquarium.query.filter_by(owner=current_user, name=name).order_by(Aquarium.created_at.desc()).first()
+        if last_aqua:
+            time_diff = (now_br() - last_aqua.created_at).total_seconds()
+            if time_diff < 30: # 30 segundos
+                flash('Você já criou este aquário agora pouco!', 'warning')
+                return redirect(url_for('my_aquariums'))
+        # --------------------------------------------------------
+
         dt = datetime.datetime.strptime(request.form.get('setup_date'), '%Y-%m-%d').date() if request.form.get('setup_date') else None
-        db.session.add(Aquarium(name=request.form.get('name'), aquarium_type=request.form.get('aquarium_type'), volume=float(request.form.get('volume') or 0), description=request.form.get('description'), setup_date=dt, owner=current_user))
+        db.session.add(Aquarium(name=name, aquarium_type=request.form.get('aquarium_type'), volume=float(request.form.get('volume') or 0), description=request.form.get('description'), setup_date=dt, owner=current_user))
         db.session.commit(); return redirect(url_for('my_aquariums'))
     return render_template('create_aquarium.html')
 
