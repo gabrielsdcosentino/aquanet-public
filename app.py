@@ -893,9 +893,22 @@ def script_js():
 @app.route('/notifications')
 @login_required
 def notifications():
+    # 1. Pega todas as notificações
     notifs = current_user.notifications.order_by(Notification.timestamp.desc()).all()
-    for n in notifs: n.is_read = True; db.session.commit()
+    
+    # 2. Marca todas como lidas na memória (RAM) - Instantâneo
+    updates_made = False
+    for n in notifs: 
+        if not n.is_read:
+            n.is_read = True
+            updates_made = True
+    
+    # 3. Se teve mudança, salva no banco UMA VEZ SÓ
+    if updates_made:
+        db.session.commit()
+        
     return render_template('notifications.html', notifications=notifs, popular_communities=get_popular_communities())
+
 
 @app.route('/communities')
 @login_required
