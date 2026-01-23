@@ -19,32 +19,32 @@
         .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         
-        /* --- CSS CRÍTICO (Corrige a piscada no PC) --- */
-        /* Essas regras rodam ANTES do Tailwind */
-
-        /* 1. Menu Mobile */
-        #mobile-drawer {
-            transform: translateX(-100%); /* Começa fora da tela */
-            position: fixed; top: 0; left: 0; height: 100%; z-index: 70;
-            background-color: white;
-            transition: transform 0.3s ease-in-out;
-            width: 75%; max-width: 320px; /* Largura fixa para não quebrar */
-        }
-        /* No Desktop (telas > 768px), forçamos DESAPARECER imediatamente */
-        @media (min-width: 768px) {
-            #mobile-drawer { display: none !important; }
-            .mobile-bottom-nav { display: none !important; }
-            #mobile-search-bar { display: none !important; }
-        }
-
-        /* 2. Menu Desktop (Sidebar) */
-        /* No Mobile, forçamos DESAPARECER imediatamente */
-        @media (max-width: 767px) {
-            #desktop-sidebar { display: none !important; }
-        }
+        /* --- VACINA CONTRA O "PISCAR" (FOUC) --- */
         
-        /* Classe auxiliar para abrir o menu */
-        .drawer-open { transform: translateX(0) !important; }
+        /* 1. Menu Mobile: Começa fora da tela e invisível */
+        #mobile-drawer {
+            transform: translateX(-100%);
+            visibility: hidden;
+            transition: transform 0.3s ease-in-out, visibility 0.3s;
+        }
+        #mobile-drawer.drawer-open {
+            transform: translateX(0);
+            visibility: visible;
+        }
+
+        /* 2. Elementos Exclusivos de Desktop (.desktop-only) */
+        /* Esta regra força eles a sumirem no celular IMEDIATAMENTE, antes do Tailwind carregar */
+        .desktop-only {
+            display: none !important;
+        }
+
+        /* 3. Regras para telas de PC (acima de 768px) */
+        @media (min-width: 768px) {
+            .desktop-only { display: block !important; } /* Mostra os elementos de PC */
+            #mobile-drawer { display: none !important; } /* Garante que o menu mobile suma */
+            .mobile-bottom-nav { display: none !important; } /* Esconde nav inferior */
+            #mobile-search-bar { display: none !important; } /* Esconde busca mobile */
+        }
         
         [x-cloak] { display: none !important; }
     </style>
@@ -69,7 +69,7 @@
 <body class="bg-gray-100 font-sans pb-16 md:pb-0">
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
-    <aside id="mobile-drawer" class="md:hidden shadow-2xl overflow-y-auto flex flex-col">
+    <aside id="mobile-drawer" class="fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] shadow-2xl overflow-y-auto flex flex-col">
         <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
             <h2 class="font-bold text-gray-700 text-lg">Navegação</h2>
             <button onclick="toggleDrawer()" class="text-gray-500 hover:text-red-500">
@@ -162,14 +162,14 @@
                 </a>
             </div>
             
-            <div class="flex-grow max-w-md mx-4 hidden md:block">
+            <div class="desktop-only flex-grow max-w-md mx-4 hidden md:block">
                 <form action="{{ url_for('search') }}" method="GET" class="relative">
                     <input type="text" name="q" placeholder="Buscar no AquaNet..." class="w-full bg-gray-100 border-transparent focus:bg-white focus:border-blue-300 rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all">
                     <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
                 </form>
             </div>
 
-            <nav class="hidden md:flex items-center">
+            <nav class="desktop-only hidden md:flex items-center">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 mr-4 transition-colors" title="Notificações">
                         <i class="fas fa-bell text-xl"></i>
@@ -240,7 +240,7 @@
     </nav>
 <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
         
-        <aside id="desktop-sidebar" class="md:col-span-3 hidden md:block h-fit sticky top-24">
+        <aside class="desktop-only md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Navegação</h3>
                 <ul class="space-y-1">
@@ -290,7 +290,8 @@
             {% endwith %}
             {% block content %}{% endblock %}
         </main>
-        <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
+        
+        <aside class="desktop-only md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
                 {% if popular_communities %}
@@ -342,7 +343,6 @@
             }
         }
 
-        // Script Anti-Duplo Clique seletivo
         document.addEventListener('DOMContentLoaded', function() {
             const forms = document.querySelectorAll('form.prevent-double-submit');
 
