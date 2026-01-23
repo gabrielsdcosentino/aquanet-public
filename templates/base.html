@@ -29,7 +29,6 @@
             var forms = document.querySelectorAll('form[method="POST"]');
 
             forms.forEach(function(form) {
-                // Se o formulário não tem o token, cria e coloca dentro
                 if (!form.querySelector('input[name="csrf_token"]')) {
                     var input = document.createElement('input');
                     input.type = 'hidden';
@@ -42,9 +41,9 @@
     </script>
 </head>
 <body class="bg-gray-100 font-sans pb-16 md:pb-0">
-<div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
+    <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
-    <aside id="mobile-drawer" class="fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
+    <aside id="mobile-drawer" class="fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col" style="transform: translateX(-100%);">
         <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
             <h2 class="font-bold text-gray-700 text-lg">Navegação</h2>
             <button onclick="toggleDrawer()" class="text-gray-500 hover:text-red-500">
@@ -316,10 +315,10 @@
             }
         }
 
-        // --- SCRIPT ANTI-DUPLO CLIQUE ---
+        // --- CORREÇÃO DO SCRIPT ANTI-DUPLO CLIQUE ---
+        // Agora só afeta formulários com a classe específica 'prevent-double-submit'
         document.addEventListener('DOMContentLoaded', function() {
-            // Seleciona todos os formulários do site
-            const forms = document.querySelectorAll('form');
+            const forms = document.querySelectorAll('form.prevent-double-submit');
 
             forms.forEach(form => {
                 form.addEventListener('submit', function(e) {
@@ -331,21 +330,16 @@
 
                     const btn = this.querySelector('button[type="submit"]');
                     
-                    // Se encontrou o botão de salvar/publicar
                     if (btn) {
-                        // Marca o formulário como "enviando"
                         this.dataset.submitting = "true";
-                        
-                        // Salva o texto original
                         const originalText = btn.innerHTML;
                         
-                        // Muda o visual do botão
                         btn.disabled = true;
                         btn.style.opacity = "0.7";
                         btn.style.cursor = "not-allowed";
                         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
 
-                        // (Opcional) Destrava após 15s caso dê erro no servidor e a página não recarregue
+                        // Destrava após 15s em caso de erro
                         setTimeout(() => {
                             this.dataset.submitting = "false";
                             btn.disabled = false;
