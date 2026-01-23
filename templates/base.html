@@ -20,29 +20,24 @@
         .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         
+        /* Menu Mobile - Transição */
         #mobile-drawer { transition: transform 0.3s ease-in-out; }
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
-        /* --- BARRA DE PROGRESSO INTEGRADA AO HTMX --- */
+        /* Barra de Progresso */
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
-            background-color: #2563EB; /* Azul do AquaNet */
-            z-index: 9999; transition: width 0.2s ease-out;
-            opacity: 0; /* Invisível por padrão */
+            background-color: #2563EB; z-index: 9999; transition: width 0.2s ease-out;
+            opacity: 0;
         }
         
-        /* Quando o HTMX estiver carregando, mostra a barra */
+        /* Classe do HTMX enquanto carrega */
         .htmx-request #page-loader {
             width: 70% !important;
             opacity: 1 !important;
         }
         
-        /* Classe que o HTMX adiciona ao body quando está carregando */
-        .htmx-request.body-loading {
-            cursor: progress;
-        }
-
         .desktop-only { display: none !important; }
         @media (min-width: 768px) {
             .desktop-only { display: block !important; }
@@ -56,7 +51,6 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // CSRF Token para formulários padrão
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             var forms = document.querySelectorAll('form[method="POST"]');
 
@@ -70,23 +64,9 @@
                 }
             });
 
-            // Configuração do HTMX para incluir CSRF Token em todas as requisições AJAX
+            // Configuração global do HTMX para CSRF
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 evt.detail.headers['X-CSRFToken'] = csrfToken;
-            });
-
-            // Lógica da Barra de Progresso com HTMX
-            document.body.addEventListener('htmx:beforeRequest', function(evt) {
-                document.getElementById('page-loader').style.width = '30%';
-                document.getElementById('page-loader').style.opacity = '1';
-            });
-            
-            document.body.addEventListener('htmx:afterRequest', function(evt) {
-                document.getElementById('page-loader').style.width = '100%';
-                setTimeout(() => {
-                    document.getElementById('page-loader').style.opacity = '0';
-                    document.getElementById('page-loader').style.width = '0%';
-                }, 300);
             });
         });
     </script>
@@ -374,16 +354,51 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // CORREÇÃO: Limpeza automática ao trocar de página via HTMX
+            document.body.addEventListener('htmx:afterSwap', function(evt) {
+                // 1. Destrava a rolagem (Resolve o bug do vídeo)
+                document.body.style.overflow = ''; 
+                
+                // 2. Garante que o menu feche
+                const drawer = document.getElementById('mobile-drawer');
+                const overlay = document.getElementById('drawer-overlay');
+                if (drawer) {
+                    drawer.classList.remove('drawer-open');
+                    drawer.classList.add('drawer-closed');
+                }
+                if (overlay) overlay.classList.add('hidden');
+
+                // 3. Reseta a barra de progresso
+                document.getElementById('page-loader').style.width = '100%';
+                setTimeout(() => {
+                    document.getElementById('page-loader').style.opacity = '0';
+                    document.getElementById('page-loader').style.width = '0%';
+                }, 300);
+            });
+
+            // Inicia barra de progresso ao clicar
+            document.body.addEventListener('htmx:beforeRequest', function(evt) {
+                document.getElementById('page-loader').style.width = '30%';
+                document.getElementById('page-loader').style.opacity = '1';
+                
+                // Fecha o menu imediatamente ao clicar em um link (Sensação de rapidez)
+                const drawer = document.getElementById('mobile-drawer');
+                const overlay = document.getElementById('drawer-overlay');
+                if (drawer && drawer.classList.contains('drawer-open')) {
+                    drawer.classList.remove('drawer-open');
+                    drawer.classList.add('drawer-closed');
+                    overlay.classList.add('hidden');
+                    document.body.style.overflow = '';
+                }
+            });
+
+            // Script Anti-Duplo Clique (Mantido)
             const forms = document.querySelectorAll('form');
             forms.forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const action = this.getAttribute('action') || window.location.href;
                     if (action.includes('like') || action.includes('comment')) return;
-                    
-                    if (this.dataset.submitting === "true") {
-                        e.preventDefault();
-                        return;
-                    }
+                    if (this.dataset.submitting === "true") { e.preventDefault(); return; }
                     const btn = this.querySelector('button[type="submit"]');
                     if (btn) {
                         this.dataset.submitting = "true";
