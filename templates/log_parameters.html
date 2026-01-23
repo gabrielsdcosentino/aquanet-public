@@ -4,7 +4,8 @@
     <h2 class="text-xl font-bold mb-2 text-gray-800">🧪 Registrar Parâmetros</h2>
     <p class="text-sm text-gray-500 mb-6">Aquário: {{ aquarium.name }}</p>
     
-    <form method="POST">
+    <form method="POST" class="prevent-double-submit">
+
         <div class="flex gap-4 mb-4">
             <div class="w-1/2">
                 <label class="block text-gray-700 font-bold mb-1 text-sm">pH</label>
