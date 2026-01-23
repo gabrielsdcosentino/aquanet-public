@@ -8,6 +8,7 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     
     <title>{% block title %}AquaNet - Rede de Aquarismo{% endblock %}</title>
     <style>
@@ -23,22 +24,39 @@
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
-        /* --- NOVO: BARRA DE PROGRESSO NO TOPO --- */
+        /* --- BARRA DE PROGRESSO INTEGRADA AO HTMX --- */
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
             background-color: #2563EB; /* Azul do AquaNet */
             z-index: 9999; transition: width 0.2s ease-out;
-            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.5);
+            opacity: 0; /* Invisível por padrão */
         }
         
-        /* Efeito de clique nos links */
-        .nav-clicked { opacity: 0.5; transform: scale(0.95); transition: all 0.1s; }
+        /* Quando o HTMX estiver carregando, mostra a barra */
+        .htmx-request #page-loader {
+            width: 70% !important;
+            opacity: 1 !important;
+        }
+        
+        /* Classe que o HTMX adiciona ao body quando está carregando */
+        .htmx-request.body-loading {
+            cursor: progress;
+        }
+
+        .desktop-only { display: none !important; }
+        @media (min-width: 768px) {
+            .desktop-only { display: block !important; }
+            #mobile-drawer { display: none !important; }
+            .mobile-bottom-nav { display: none !important; }
+            #mobile-search-bar { display: none !important; }
+        }
         
         [x-cloak] { display: none !important; }
     </style>
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
+            // CSRF Token para formulários padrão
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             var forms = document.querySelectorAll('form[method="POST"]');
 
@@ -51,10 +69,30 @@
                     form.appendChild(input);
                 }
             });
+
+            // Configuração do HTMX para incluir CSRF Token em todas as requisições AJAX
+            document.body.addEventListener('htmx:configRequest', function(evt) {
+                evt.detail.headers['X-CSRFToken'] = csrfToken;
+            });
+
+            // Lógica da Barra de Progresso com HTMX
+            document.body.addEventListener('htmx:beforeRequest', function(evt) {
+                document.getElementById('page-loader').style.width = '30%';
+                document.getElementById('page-loader').style.opacity = '1';
+            });
+            
+            document.body.addEventListener('htmx:afterRequest', function(evt) {
+                document.getElementById('page-loader').style.width = '100%';
+                setTimeout(() => {
+                    document.getElementById('page-loader').style.opacity = '0';
+                    document.getElementById('page-loader').style.width = '0%';
+                }, 300);
+            });
         });
     </script>
 </head>
-<body class="bg-gray-100 font-sans pb-16 md:pb-0">
+<body class="bg-gray-100 font-sans pb-16 md:pb-0" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
+    
     <div id="page-loader"></div>
 
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
@@ -132,7 +170,7 @@
                 <a href="{{ url_for('edit_profile') }}" class="flex items-center justify-center w-full text-blue-600 font-bold border border-blue-200 bg-blue-50 hover:bg-blue-100 p-3 rounded-xl transition-colors mb-2">
                     <i class="fas fa-user-cog mr-2"></i> Editar Perfil
                 </a>
-                <a href="{{ url_for('logout') }}" class="flex items-center justify-center w-full text-red-600 font-bold border border-red-200 bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">
+                <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold border border-red-200 bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">
                     <i class="fas fa-sign-out-alt mr-2"></i> Sair
                 </a>
             {% else %}
@@ -173,7 +211,7 @@
                         <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover mr-2 border border-gray-300">
                         @{{ current_user.username }}
                     </a>
-                    <a href="{{ url_for('logout') }}" class="text-sm font-semibold text-gray-500 hover:text-red-600 p-2 transition-colors" title="Sair">
+                    <a href="{{ url_for('logout') }}" hx-boost="false" class="text-sm font-semibold text-gray-500 hover:text-red-600 p-2 transition-colors" title="Sair">
                         <i class="fas fa-sign-out-alt text-lg"></i>
                     </a>
                 {% else %}
@@ -336,42 +374,12 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            // --- NOVO: Feedback Visual Instantâneo nos Links de Navegação ---
-            const navLinks = document.querySelectorAll('.nav-link-mobile, aside a, header a');
-            const loader = document.getElementById('page-loader');
-
-            navLinks.forEach(link => {
-                link.addEventListener('click', function(e) {
-                    // Não ativa se for abrir em nova aba ou se for apenas âncora
-                    if (this.target === '_blank' || this.getAttribute('href').startsWith('#')) return;
-
-                    // Efeito no botão clicado (Feedback Tátil)
-                    this.classList.add('nav-clicked');
-                    
-                    // Inicia a barra de progresso no topo (Feedback de Carregamento)
-                    loader.style.width = '30%';
-                    setTimeout(() => { loader.style.width = '70%'; }, 500);
-                });
-            });
-
-            // Restaura estado se o usuário voltar a página (Back-Forward Cache)
-            window.addEventListener('pageshow', function(event) {
-                if (event.persisted) {
-                    const loader = document.getElementById('page-loader');
-                    loader.style.width = '0%';
-                }
-            });
-
-            // --- FIM DO NOVO BLOCO ---
-
-            // Script Anti-Duplo Clique (Existente)
             const forms = document.querySelectorAll('form');
             forms.forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const action = this.getAttribute('action') || window.location.href;
-                    if (action.includes('like') || action.includes('comment')) {
-                        return;
-                    }
+                    if (action.includes('like') || action.includes('comment')) return;
+                    
                     if (this.dataset.submitting === "true") {
                         e.preventDefault();
                         return;
