@@ -64,6 +64,7 @@
             <i class="fas fa-fish mr-2"></i>Fauna
         </button>
     </div>
+
     <div id="overview" class="tab-content block animate-fade-in">
         
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -129,28 +130,28 @@
 
                     {% if latest_log %}
                         <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-blue-50 p-3 rounded-2xl border border-blue-100 text-center">
-                                <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">pH</span>
-                                <p class="text-2xl font-black text-blue-700 mt-1">{{ latest_log.ph if latest_log.ph else '--' }}</p>
+                            <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 text-center">
+                                <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider">pH</span>
+                                <p class="text-xl font-black text-blue-700 mt-0.5">{{ latest_log.ph if latest_log.ph else '--' }}</p>
                             </div>
-                            <div class="bg-orange-50 p-3 rounded-2xl border border-orange-100 text-center">
-                                <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Temp</span>
-                                <p class="text-2xl font-black text-orange-700 mt-1">{{ latest_log.temperature if latest_log.temperature else '--' }}<span class="text-sm align-top">°C</span></p>
+                            <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100 text-center">
+                                <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Temp</span>
+                                <p class="text-xl font-black text-orange-700 mt-0.5">{{ latest_log.temperature if latest_log.temperature else '--' }}<span class="text-sm align-top">°C</span></p>
                             </div>
-                            <div class="bg-red-50 p-3 rounded-2xl border border-red-100 text-center">
-                                <span class="text-xs font-bold text-red-400 uppercase tracking-wider">Amônia</span>
-                                <p class="text-2xl font-black text-red-700 mt-1">{{ latest_log.ammonia if latest_log.ammonia is not none else '--' }}</p>
-                                <span class="text-[10px] text-red-400">ppm</span>
+                            <div class="bg-red-50 p-2.5 rounded-xl border border-red-100 text-center">
+                                <span class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Amônia</span>
+                                <p class="text-xl font-black text-red-700 mt-0.5">{{ latest_log.ammonia if latest_log.ammonia is not none else '--' }}</p>
+                                <span class="text-[9px] text-red-400">ppm</span>
                             </div>
-                            <div class="bg-purple-50 p-3 rounded-2xl border border-purple-100 text-center">
-                                <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
-                                <p class="text-2xl font-black text-purple-700 mt-1">{{ latest_log.nitrite if latest_log.nitrite is not none else '--' }}</p>
-                                <span class="text-[10px] text-purple-400">ppm</span>
+                            <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-100 text-center">
+                                <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
+                                <p class="text-xl font-black text-purple-700 mt-0.5">{{ latest_log.nitrite if latest_log.nitrite is not none else '--' }}</p>
+                                <span class="text-[9px] text-purple-400">ppm</span>
                             </div>
-                            <div class="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 text-center col-span-2 sm:col-span-1">
-                                <span class="text-xs font-bold text-yellow-500 uppercase tracking-wider">Nitrato</span>
-                                <p class="text-2xl font-black text-yellow-700 mt-1">{{ latest_log.nitrate if latest_log.nitrate is not none else '--' }}</p>
-                                <span class="text-[10px] text-yellow-500">ppm</span>
+                            <div class="bg-yellow-50 p-2.5 rounded-xl border border-yellow-100 text-center col-span-2">
+                                <span class="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">Nitrato</span>
+                                <p class="text-xl font-black text-yellow-700 mt-0.5">{{ latest_log.nitrate if latest_log.nitrate is not none else '--' }}</p>
+                                <span class="text-[9px] text-yellow-500">ppm</span>
                             </div>
                         </div>
                         
@@ -272,6 +273,7 @@
             {% else %}<div class="text-center py-16"><i class="fas fa-fish text-4xl text-gray-200 mb-2"></i><p class="text-gray-400">Vazio.</p></div>{% endif %}
         </div>
     </div>
+    
     <div id="shareModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4 animate-fade-in">
         <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
             <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center text-white">
@@ -316,7 +318,7 @@ function confirmShare(){const e=document.getElementById('communitySelect').value
 document.addEventListener("DOMContentLoaded",function(){
     const e = document.getElementById('parametersChart');
     if(e){
-        // Preparando os dados FORA do objeto de configuração para deixar o JS mais limpo
+        // Dados isolados para evitar erros no editor
         const labelsData = [{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}];
         const phData = [{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}];
         const ammoniaData = [{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}];
