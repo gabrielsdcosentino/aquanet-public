@@ -19,10 +19,20 @@
         .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         
-        /* Menu Mobile - Transição */
         #mobile-drawer { transition: transform 0.3s ease-in-out; }
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
+
+        /* --- NOVO: BARRA DE PROGRESSO NO TOPO --- */
+        #page-loader {
+            position: fixed; top: 0; left: 0; height: 3px; width: 0%;
+            background-color: #2563EB; /* Azul do AquaNet */
+            z-index: 9999; transition: width 0.2s ease-out;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.5);
+        }
+        
+        /* Efeito de clique nos links */
+        .nav-clicked { opacity: 0.5; transform: scale(0.95); transition: all 0.1s; }
         
         [x-cloak] { display: none !important; }
     </style>
@@ -45,6 +55,8 @@
     </script>
 </head>
 <body class="bg-gray-100 font-sans pb-16 md:pb-0">
+    <div id="page-loader"></div>
+
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
@@ -135,22 +147,20 @@
                 <button onclick="toggleDrawer()" class="md:hidden mr-3 text-gray-600 focus:outline-none p-1">
                     <i class="fas fa-bars text-2xl"></i>
                 </button>
-                
                 <a href="{{ url_for('home') }}" class="text-2xl font-black text-blue-600 mr-6 tracking-tighter hover:text-blue-700 transition-colors">AquaNet</a>
-                
                 <a href="{{ url_for('my_aquariums') }}" class="hidden md:flex items-center text-sm font-bold text-gray-600 hover:text-blue-600 transition-colors">
                     <i class="fas fa-fish mr-2 text-lg"></i> Meus Aquários
                 </a>
             </div>
             
-            <div class="flex-grow max-w-md mx-4 hidden md:block">
+            <div class="desktop-only flex-grow max-w-md mx-4 hidden md:block">
                 <form action="{{ url_for('search') }}" method="GET" class="relative">
                     <input type="text" name="q" placeholder="Buscar no AquaNet..." class="w-full bg-gray-100 border-transparent focus:bg-white focus:border-blue-300 rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all">
                     <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
                 </form>
             </div>
 
-            <nav class="hidden md:flex items-center">
+            <nav class="desktop-only hidden md:flex items-center">
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 mr-4 transition-colors" title="Notificações">
                         <i class="fas fa-bell text-xl"></i>
@@ -197,12 +207,12 @@
         </form>
     </div>
 
-    <nav class="md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
-        <a href="{{ url_for('home') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
+    <nav class="mobile-bottom-nav md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
+        <a href="{{ url_for('home') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
             <i class="fas fa-home text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Feed</span>
         </a>
-        <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
+        <a href="{{ url_for('my_aquariums') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
             <i class="fas fa-fish text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Aquários</span>
         </a>
@@ -212,11 +222,11 @@
              </div>
             <span class="text-[10px] font-medium mt-1">Buscar</span>
         </button>
-         <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
+         <a href="{{ url_for('communities_directory') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
             <i class="fas fa-users text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Comunidades</span>
         </a>
-        <a href="{{ url_for('create_community') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
+        <a href="{{ url_for('create_community') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
             <i class="fas fa-plus-circle text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Criar</span>
         </a>
@@ -224,7 +234,7 @@
 
     <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
         
-        <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
+        <aside class="desktop-only md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Navegação</h3>
                 <ul class="space-y-1">
@@ -274,8 +284,7 @@
             {% endwith %}
             {% block content %}{% endblock %}
         </main>
-        
-        <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
+        <aside class="desktop-only md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
                 {% if popular_communities %}
@@ -326,33 +335,55 @@
             }
         }
 
-        // Script Anti-Duplo Clique (Automático, ignora Likes)
         document.addEventListener('DOMContentLoaded', function() {
-            const forms = document.querySelectorAll('form');
+            // --- NOVO: Feedback Visual Instantâneo nos Links de Navegação ---
+            const navLinks = document.querySelectorAll('.nav-link-mobile, aside a, header a');
+            const loader = document.getElementById('page-loader');
 
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    // Não ativa se for abrir em nova aba ou se for apenas âncora
+                    if (this.target === '_blank' || this.getAttribute('href').startsWith('#')) return;
+
+                    // Efeito no botão clicado (Feedback Tátil)
+                    this.classList.add('nav-clicked');
+                    
+                    // Inicia a barra de progresso no topo (Feedback de Carregamento)
+                    loader.style.width = '30%';
+                    setTimeout(() => { loader.style.width = '70%'; }, 500);
+                });
+            });
+
+            // Restaura estado se o usuário voltar a página (Back-Forward Cache)
+            window.addEventListener('pageshow', function(event) {
+                if (event.persisted) {
+                    const loader = document.getElementById('page-loader');
+                    loader.style.width = '0%';
+                }
+            });
+
+            // --- FIM DO NOVO BLOCO ---
+
+            // Script Anti-Duplo Clique (Existente)
+            const forms = document.querySelectorAll('form');
             forms.forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const action = this.getAttribute('action') || window.location.href;
                     if (action.includes('like') || action.includes('comment')) {
-                        return; // Ignora likes e comentários
+                        return;
                     }
-
                     if (this.dataset.submitting === "true") {
                         e.preventDefault();
                         return;
                     }
-
                     const btn = this.querySelector('button[type="submit"]');
-                    
                     if (btn) {
                         this.dataset.submitting = "true";
                         const originalText = btn.innerHTML;
-                        
                         btn.disabled = true;
                         btn.style.opacity = "0.7";
                         btn.style.cursor = "not-allowed";
                         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
-
                         setTimeout(() => {
                             this.dataset.submitting = "false";
                             btn.disabled = false;
