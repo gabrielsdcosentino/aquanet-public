@@ -147,7 +147,7 @@ community_members = db.Table(
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# UTILS
+# --- SISTEMA DE CACHE SIMPLES (Memória) ---
 _cache_popular = {'data': [], 'timestamp': 0}
 
 def get_popular_communities():
@@ -160,7 +160,6 @@ def get_popular_communities():
 
     # 2. Se o cache está velho ou vazio, consulta o Banco de Dados
     try:
-        # Nota: Como estamos dentro da aplicação, não precisamos de 'with app.app_context()'
         results = (
             db.session.query(Community, func.count(Post.id).label('post_count'))
             .join(Post, Community.id == Post.community_id, isouter=True)
@@ -169,16 +168,25 @@ def get_popular_communities():
             .limit(5)
             .all()
         )
-        # Extrai apenas os objetos Community da tupla
         data = [c[0] for c in results]
         
-        # 3. Atualiza o cache com os novos dados e o horário atual
+        # 3. Atualiza o cache
         _cache_popular = {'data': data, 'timestamp': current_time}
         return data
     except Exception as e:
         print(f"Erro ao buscar comunidades populares: {e}")
-        # Em caso de erro, tenta retornar o cache antigo se existir, ou lista vazia
         return _cache_popular.get('data', [])
+
+def send_reset_email(user, mail_app):
+    token = user.get_reset_token()
+    sender_address = f"AquaNet <{current_app.config['MAIL_USERNAME']}>" 
+    msg = Message('Redefinição de Senha', sender=sender_address, recipients=[user.email])
+    msg.body = f'''Para redefinir sua senha, clique no link:
+{url_for('reset_token', token=token, _external=True)}
+Ignore se não solicitou.
+'''
+    try: mail_app.send(msg)
+    except Exception as e: print(f"ERRO EMAIL: {e}")
 
 # MODELS
 class User(db.Model, UserMixin):
@@ -905,6 +913,18 @@ def follow(username):
 def unfollow(username):
     user = User.query.filter_by(username=username).first_or_404()
     current_user.unfollow_user(user); return redirect(url_for('profile', username=username))
+
+# --- ROTA PARA MANTER O BANCO ACORDADO ---
+# Configure o Cron Job para acessar: https://seusite.com/api/wake_up
+@app.route('/api/wake_up')
+def wake_up():
+    try:
+        # Faz uma consulta real para "tocar o ombro" do banco de dados
+        # Isso impede que o Neon entre em suspensão profunda
+        User.query.first() 
+        return jsonify({'status': 'awake', 'timestamp': datetime.datetime.utcnow()})
+    except Exception as e:
+        return jsonify({'status': 'error', 'details': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=False)
