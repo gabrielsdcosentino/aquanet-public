@@ -799,7 +799,16 @@ def aquarium_dashboard(aquarium_id):
 @login_required
 def log_parameters(aquarium_id):
     if request.method == 'POST':
-        db.session.add(ParameterLog(aquarium_id=aquarium_id, ph=float(request.form.get('ph') or 0), ammonia=float(request.form.get('ammonia') or 0), nitrite=float(request.form.get('nitrite') or 0), temperature=float(request.form.get('temperature') or 0), notes=request.form.get('notes')))
+        # --- ATENÇÃO: Adicionei o nitrate aqui ---
+        db.session.add(ParameterLog(
+            aquarium_id=aquarium_id, 
+            ph=float(request.form.get('ph') or 0), 
+            ammonia=float(request.form.get('ammonia') or 0), 
+            nitrite=float(request.form.get('nitrite') or 0),
+            nitrate=float(request.form.get('nitrate') or 0), # NOVO CAMPO
+            temperature=float(request.form.get('temperature') or 0), 
+            notes=request.form.get('notes')
+        ))
         db.session.commit(); return redirect(url_for('aquarium_dashboard', aquarium_id=aquarium_id))
     return render_template('log_parameters.html', aquarium=Aquarium.query.get(aquarium_id))
 

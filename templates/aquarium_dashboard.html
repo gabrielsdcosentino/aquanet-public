@@ -39,11 +39,11 @@
                 </div>
             </div>
 
-            <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto pt-2">
-                <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-95 text-center">
+            <div class="flex flex-col sm:flex-row lg:flex-col gap-3 w-full lg:w-auto pt-2">
+                <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="w-full sm:w-auto lg:w-48 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-95 text-center">
                     <i class="fas fa-plus-circle"></i> <span>Medição</span>
                 </a>
-                <a href="{{ url_for('log_maintenance', aquarium_id=aquarium.id) }}" class="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-95 text-center">
+                <a href="{{ url_for('log_maintenance', aquarium_id=aquarium.id) }}" class="w-full sm:w-auto lg:w-48 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 transform active:scale-95 text-center">
                     <i class="fas fa-broom"></i> <span>Manutenção</span>
                 </a>
             </div>
@@ -128,24 +128,29 @@
                     </div>
 
                     {% if latest_log %}
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="bg-blue-50 p-4 rounded-2xl border border-blue-100 text-center">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-blue-50 p-3 rounded-2xl border border-blue-100 text-center">
                                 <span class="text-xs font-bold text-blue-400 uppercase tracking-wider">pH</span>
                                 <p class="text-2xl font-black text-blue-700 mt-1">{{ latest_log.ph if latest_log.ph else '--' }}</p>
                             </div>
-                            <div class="bg-orange-50 p-4 rounded-2xl border border-orange-100 text-center">
+                            <div class="bg-orange-50 p-3 rounded-2xl border border-orange-100 text-center">
                                 <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Temp</span>
                                 <p class="text-2xl font-black text-orange-700 mt-1">{{ latest_log.temperature if latest_log.temperature else '--' }}<span class="text-sm align-top">°C</span></p>
                             </div>
-                            <div class="bg-red-50 p-4 rounded-2xl border border-red-100 text-center">
+                            <div class="bg-red-50 p-3 rounded-2xl border border-red-100 text-center">
                                 <span class="text-xs font-bold text-red-400 uppercase tracking-wider">Amônia</span>
                                 <p class="text-2xl font-black text-red-700 mt-1">{{ latest_log.ammonia if latest_log.ammonia is not none else '--' }}</p>
                                 <span class="text-[10px] text-red-400">ppm</span>
                             </div>
-                            <div class="bg-purple-50 p-4 rounded-2xl border border-purple-100 text-center">
+                            <div class="bg-purple-50 p-3 rounded-2xl border border-purple-100 text-center">
                                 <span class="text-xs font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
                                 <p class="text-2xl font-black text-purple-700 mt-1">{{ latest_log.nitrite if latest_log.nitrite is not none else '--' }}</p>
                                 <span class="text-[10px] text-purple-400">ppm</span>
+                            </div>
+                            <div class="bg-yellow-50 p-3 rounded-2xl border border-yellow-100 text-center col-span-2 sm:col-span-1">
+                                <span class="text-xs font-bold text-yellow-500 uppercase tracking-wider">Nitrato</span>
+                                <p class="text-2xl font-black text-yellow-700 mt-1">{{ latest_log.nitrate if latest_log.nitrate is not none else '--' }}</p>
+                                <span class="text-[10px] text-yellow-500">ppm</span>
                             </div>
                         </div>
                         
@@ -199,7 +204,15 @@
             <div class="overflow-x-auto">
                 <table class="min-w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-500 font-medium">
-                        <tr><th class="py-4 px-6">Data</th><th class="py-4 px-6">pH</th><th class="py-4 px-6">Temp</th><th class="py-4 px-6">Amônia</th><th class="py-4 px-6">Nitrito</th><th class="py-4 px-6">Notas</th></tr>
+                        <tr>
+                            <th class="py-4 px-6">Data</th>
+                            <th class="py-4 px-6">pH</th>
+                            <th class="py-4 px-6">Temp</th>
+                            <th class="py-4 px-6">Amônia</th>
+                            <th class="py-4 px-6">Nitrito</th>
+                            <th class="py-4 px-6">Nitrato</th>
+                            <th class="py-4 px-6">Notas</th>
+                        </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         {% for log in history_logs %}
@@ -209,9 +222,10 @@
                             <td class="py-4 px-6 text-orange-600">{{ log.temperature or '-' }}°C</td>
                             <td class="py-4 px-6 {{ 'text-red-500' if log.ammonia else '' }}">{{ log.ammonia if log.ammonia is not none else '-' }}</td>
                             <td class="py-4 px-6 {{ 'text-purple-500' if log.nitrite else '' }}">{{ log.nitrite if log.nitrite is not none else '-' }}</td>
+                            <td class="py-4 px-6 {{ 'text-yellow-600' if log.nitrate else '' }}">{{ log.nitrate if log.nitrate is not none else '-' }}</td>
                             <td class="py-4 px-6 text-gray-400 italic truncate max-w-xs">{{ log.notes or '' }}</td>
                         </tr>
-                        {% else %}<tr><td colspan="6" class="py-12 text-center text-gray-400">Sem registros.</td></tr>{% endfor %}
+                        {% else %}<tr><td colspan="7" class="py-12 text-center text-gray-400">Sem registros.</td></tr>{% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -300,70 +314,87 @@ function confirmShare(){const e=document.getElementById('communitySelect').value
 
 {% if history_logs|length > 0 %}
 document.addEventListener("DOMContentLoaded",function(){
-    const e=document.getElementById('parametersChart');
+    const e = document.getElementById('parametersChart');
     if(e){
-        new Chart(e,{
-            type:'line',
-            data:{
-                labels:[{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}],
-                datasets:[
+        // Preparando os dados FORA do objeto de configuração para deixar o JS mais limpo
+        const labelsData = [{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}];
+        const phData = [{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}];
+        const ammoniaData = [{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}];
+        const nitriteData = [{% for log in history_logs|reverse %}{{ log.nitrite if log.nitrite is not none else 'null' }},{% endfor %}];
+        const nitrateData = [{% for log in history_logs|reverse %}{{ log.nitrate if log.nitrate is not none else 'null' }},{% endfor %}];
+
+        new Chart(e, {
+            type: 'line',
+            data: {
+                labels: labelsData,
+                datasets: [
                     {
-                        label:'pH',
-                        data:[{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}],
-                        borderColor:'#3B82F6',
-                        backgroundColor:'rgba(59, 130, 246, 0.1)',
-                        borderWidth:3,
-                        tension:.4,
-                        pointRadius:4,
-                        spanGaps: true, // IMPORTANTE: Liga os pontos mesmo se faltar dados
-                        yAxisID:'y'
+                        label: 'pH',
+                        data: phData,
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        spanGaps: true,
+                        yAxisID: 'y'
                     },
                     {
-                        label:'Amônia',
-                        data:[{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}],
-                        borderColor:'#EF4444',
-                        borderWidth:2,
-                        borderDash:[5,5],
-                        tension:.4,
-                        pointRadius:3,
-                        spanGaps: true, // IMPORTANTE
-                        yAxisID:'y1'
+                        label: 'Amônia',
+                        data: ammoniaData,
+                        borderColor: '#EF4444',
+                        borderWidth: 2,
+                        borderDash: [5,5],
+                        tension: 0.4,
+                        pointRadius: 3,
+                        spanGaps: true,
+                        yAxisID: 'y1'
                     },
                     {
-                        label:'Nitrito',
-                        data:[{% for log in history_logs|reverse %}{{ log.nitrite if log.nitrite is not none else 'null' }},{% endfor %}],
-                        borderColor:'#A855F7',
-                        borderWidth:2,
-                        tension:.4,
-                        pointRadius:3,
-                        spanGaps: true, // IMPORTANTE
-                        yAxisID:'y1'
+                        label: 'Nitrito',
+                        data: nitriteData,
+                        borderColor: '#A855F7',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        spanGaps: true,
+                        yAxisID: 'y1'
+                    },
+                    {
+                        label: 'Nitrato',
+                        data: nitrateData,
+                        borderColor: '#F59E0B',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        pointRadius: 3,
+                        spanGaps: true,
+                        yAxisID: 'y1'
                     }
                 ]
             },
-            options:{
-                responsive:!0,
-                maintainAspectRatio:!1,
-                interaction:{mode:'index',intersect:!1},
-                plugins:{legend:{position:'bottom'}},
-                scales:{
-                    x:{grid:{display:!1}},
-                    y:{
-                        type:'linear',display:!0,position:'left',
-                        title:{display:!0,text:'pH'},
-                        suggestedMin: 6.0, // Garante que o gráfico não fique "achatado"
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {legend: {position: 'bottom'}},
+                scales: {
+                    x: {grid: {display: false}},
+                    y: {
+                        type: 'linear', display: true, position: 'left',
+                        title: {display: true, text: 'pH'},
+                        suggestedMin: 6.0,
                         suggestedMax: 8.0
                     },
-                    y1:{
-                        type:'linear',display:!0,position:'right',
-                        title:{display:!0,text:'ppm'},
-                        grid:{display:!1},
-                        suggestedMin: 0, // Garante que 0 apareça na base
+                    y1: {
+                        type: 'linear', display: true, position: 'right',
+                        title: {display: true, text: 'ppm'},
+                        grid: {display: false},
+                        suggestedMin: 0,
                         suggestedMax: 2.0
                     }
                 }
             }
-        })
+        });
     }
 });
 {% endif %}
