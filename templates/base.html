@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -25,30 +24,17 @@
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
-        /* Barra de Progresso */
+        /* Barra de Progresso Azul */
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
             background-color: #2563EB; z-index: 9999; transition: width 0.2s ease-out;
-            opacity: 0;
+            opacity: 0; pointer-events: none;
         }
         
         /* Mostra a barra quando o HTMX trabalha */
         .htmx-request #page-loader {
             width: 70% !important;
             opacity: 1 !important;
-        }
-        
-        /* CORREÇÃO DO LAYOUT DESKTOP E PISCAR (FOUC) */
-        .desktop-flex, .desktop-block { display: none !important; }
-        
-        @media (min-width: 768px) {
-            /* No PC, força o tipo de display correto */
-            .desktop-flex { display: flex !important; }
-            .desktop-block { display: block !important; }
-            
-            #mobile-drawer { display: none !important; }
-            .mobile-bottom-nav { display: none !important; }
-            #mobile-search-bar { display: none !important; }
         }
         
         [x-cloak] { display: none !important; }
@@ -58,7 +44,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
-            // Injeta CSRF em todos os formulários padrão
+            // Injeta CSRF em formulários normais
             document.querySelectorAll('form[method="POST"]').forEach(function(form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
                     var input = document.createElement('input');
@@ -67,16 +53,18 @@
                 }
             });
 
-            // Configura HTMX para usar CSRF
+            // Configura HTMX com CSRF
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 evt.detail.headers['X-CSRFToken'] = csrfToken;
             });
         });
     </script>
 </head>
+
 <body class="bg-gray-100 font-sans pb-16 md:pb-0" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
+
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
@@ -174,23 +162,23 @@
                 </a>
             </div>
             
-            <div class="desktop-block flex-grow max-w-md mx-4 hidden md:block">
+            <div class="flex-grow max-w-md mx-4 hidden md:block">
                 <form action="{{ url_for('search') }}" method="GET" class="relative">
                     <input type="text" name="q" placeholder="Buscar no AquaNet..." class="w-full bg-gray-100 border-transparent focus:bg-white focus:border-blue-300 rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all">
                     <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
                 </form>
             </div>
 
-            <nav class="desktop-flex hidden md:flex items-center">
+            <nav class="hidden md:flex items-center space-x-4">
                 {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 mr-4 transition-colors" title="Notificações">
+                    <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 transition-colors" title="Notificações">
                         <i class="fas fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
                         {% if new_notifs > 0 %}
                             <span class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4">{{ new_notifs }}</span>
                         {% endif %}
                     </a>
-                    <a href="{{ url_for('profile', username=current_user.username) }}" class="flex items-center text-sm font-semibold hover:bg-gray-100 p-2 rounded-xl mr-2 transition-colors">
+                    <a href="{{ url_for('profile', username=current_user.username) }}" class="flex items-center text-sm font-semibold hover:bg-gray-100 p-2 rounded-xl transition-colors">
                         <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover mr-2 border border-gray-300">
                         @{{ current_user.username }}
                     </a>
@@ -198,7 +186,7 @@
                         <i class="fas fa-sign-out-alt text-lg"></i>
                     </a>
                 {% else %}
-                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full mr-2 transition-colors">Entrar</a>
+                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full transition-colors">Entrar</a>
                     <a href="{{ url_for('register') }}" class="font-bold bg-blue-600 text-white hover:bg-blue-700 px-5 py-2 rounded-full transition-colors shadow-md hover:shadow-lg">Criar Conta</a>
                 {% endif %}
             </nav>
@@ -228,12 +216,12 @@
         </form>
     </div>
 
-    <nav class="mobile-bottom-nav md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
-        <a href="{{ url_for('home') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
+    <nav class="md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
+        <a href="{{ url_for('home') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
             <i class="fas fa-home text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Feed</span>
         </a>
-        <a href="{{ url_for('my_aquariums') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
+        <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
             <i class="fas fa-fish text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Aquários</span>
         </a>
@@ -243,18 +231,19 @@
              </div>
             <span class="text-[10px] font-medium mt-1">Buscar</span>
         </button>
-         <a href="{{ url_for('communities_directory') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
+         <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
             <i class="fas fa-users text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Comunidades</span>
         </a>
-        <a href="{{ url_for('create_community') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
+        <a href="{{ url_for('create_community') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
             <i class="fas fa-plus-circle text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Criar</span>
         </a>
     </nav>
 
     <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
-        <aside class="desktop-block md:col-span-3 hidden md:block h-fit sticky top-24">
+        
+        <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Navegação</h3>
                 <ul class="space-y-1">
@@ -303,7 +292,7 @@
             {% block content %}{% endblock %}
         </main>
         
-        <aside class="desktop-block md:col-span-3 hidden md:block h-fit sticky top-24">
+        <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
                 {% if popular_communities %}
@@ -339,7 +328,7 @@
             }
         }
         
-        // FUNÇÃO DE FECHAR O MENU (Importante para o scroll)
+        // Função de Fechar Menu e DESTRAVAR rolagem
         function closeDrawer() {
             const drawer = document.getElementById('mobile-drawer');
             const overlay = document.getElementById('drawer-overlay');
@@ -349,7 +338,7 @@
             }
             if (overlay) overlay.classList.add('hidden');
             
-            // FORÇA A REMOÇÃO DO TRAVAMENTO
+            // CORREÇÃO CRÍTICA DO SCROLL:
             document.body.style.overflow = '';
             document.documentElement.style.overflow = '';
         }
@@ -359,31 +348,34 @@
             const overlay = document.getElementById('drawer-overlay');
             
             if (drawer.classList.contains('drawer-closed')) {
-                // Abrir
                 drawer.classList.remove('drawer-closed');
                 drawer.classList.add('drawer-open');
                 overlay.classList.remove('hidden');
-                document.body.style.overflow = 'hidden'; // Trava
+                document.body.style.overflow = 'hidden'; 
             } else {
-                // Fechar
                 closeDrawer();
             }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
             
-            // CORREÇÃO DOS LIKES: Desativa HTMX apenas para botões de Like/Comentário
-            // O HTMX vai ignorar esses formulários e deixar o script.js (AJAX) cuidar deles.
-            document.querySelectorAll('form').forEach(form => {
-                const action = form.getAttribute('action') || '';
-                if (action.includes('like') || action.includes('comment')) {
-                    form.setAttribute('hx-boost', 'false');
-                }
-            });
+            // CORREÇÃO DO LIKE: Desativa HTMX nos formulários de Like/Comentário automaticamente
+            function disableHtmxOnLikes() {
+                document.querySelectorAll('form').forEach(form => {
+                    const action = form.getAttribute('action') || '';
+                    if (action.includes('like') || action.includes('comment')) {
+                        form.setAttribute('hx-boost', 'false');
+                    }
+                });
+            }
+            // Roda ao carregar a página
+            disableHtmxOnLikes();
+            // Roda sempre que o HTMX troca o conteúdo (infinite scroll, etc)
+            document.body.addEventListener('htmx:load', disableHtmxOnLikes);
 
-            // CORREÇÃO DO SCROLL: Reseta tudo após a troca de página
+            // CORREÇÃO DO SCROLL E LAYOUT: Reseta tudo após a troca de página
             document.body.addEventListener('htmx:afterSwap', function(evt) {
-                closeDrawer(); // Fecha menu e destrava scroll
+                closeDrawer(); // Garante que destrava
                 
                 // Reseta barra de progresso
                 document.getElementById('page-loader').style.width = '100%';
@@ -393,19 +385,18 @@
                 }, 300);
             });
 
-            // Inicia barra de progresso e fecha menu ao clicar
+            // Inicia barra de progresso
             document.body.addEventListener('htmx:beforeRequest', function(evt) {
                 document.getElementById('page-loader').style.width = '30%';
                 document.getElementById('page-loader').style.opacity = '1';
-                closeDrawer(); // Tenta fechar imediatamente para sensação de rapidez
+                closeDrawer(); // Fecha menu imediatamente ao clicar
             });
 
-            // Script Anti-Duplo Clique (Para formulários normais)
+            // Script Anti-Duplo Clique (Mantido para formulários normais)
             const forms = document.querySelectorAll('form');
             forms.forEach(form => {
                 form.addEventListener('submit', function(e) {
                     const action = this.getAttribute('action') || window.location.href;
-                    // Se for like/comentário, deixa o script.js cuidar (não bloqueia aqui)
                     if (action.includes('like') || action.includes('comment')) return;
                     
                     if (this.dataset.submitting === "true") { e.preventDefault(); return; }
