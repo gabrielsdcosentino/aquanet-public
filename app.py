@@ -13,6 +13,7 @@ from itsdangerous import URLSafeTimedSerializer as Serializer
 from better_profanity import profanity
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+import time
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -147,8 +148,19 @@ def load_user(user_id):
     return User.query.get(int(user_id))
 
 # UTILS
+_cache_popular = {'data': [], 'timestamp': 0}
+
 def get_popular_communities():
-    with app.app_context():
+    global _cache_popular
+    current_time = time.time()
+    
+    # 1. Se o cache tem dados e tem menos de 10 minutos (600 segundos), usa ele
+    if _cache_popular['data'] and (current_time - _cache_popular['timestamp'] < 600):
+        return _cache_popular['data']
+
+    # 2. Se o cache está velho ou vazio, consulta o Banco de Dados
+    try:
+        # Nota: Como estamos dentro da aplicação, não precisamos de 'with app.app_context()'
         results = (
             db.session.query(Community, func.count(Post.id).label('post_count'))
             .join(Post, Community.id == Post.community_id, isouter=True)
@@ -157,18 +169,16 @@ def get_popular_communities():
             .limit(5)
             .all()
         )
-    return [c[0] for c in results]
-
-def send_reset_email(user, mail_app):
-    token = user.get_reset_token()
-    sender_address = f"AquaNet <{current_app.config['MAIL_USERNAME']}>" 
-    msg = Message('Redefinição de Senha', sender=sender_address, recipients=[user.email])
-    msg.body = f'''Para redefinir sua senha, clique no link:
-{url_for('reset_token', token=token, _external=True)}
-Ignore se não solicitou.
-'''
-    try: mail_app.send(msg)
-    except Exception as e: print(f"ERRO EMAIL: {e}")
+        # Extrai apenas os objetos Community da tupla
+        data = [c[0] for c in results]
+        
+        # 3. Atualiza o cache com os novos dados e o horário atual
+        _cache_popular = {'data': data, 'timestamp': current_time}
+        return data
+    except Exception as e:
+        print(f"Erro ao buscar comunidades populares: {e}")
+        # Em caso de erro, tenta retornar o cache antigo se existir, ou lista vazia
+        return _cache_popular.get('data', [])
 
 # MODELS
 class User(db.Model, UserMixin):
