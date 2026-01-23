@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -14,27 +15,32 @@
         body { font-family: 'Inter', sans-serif; background-color: #DAE0E6; }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         
+        /* Ajustes de Alertas */
         .flashes { margin-bottom: 1rem; }
         .flash-success { background-color: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         
-        /* Menu Mobile - Transição */
+        /* Transição do Menu */
         #mobile-drawer { transition: transform 0.3s ease-in-out; }
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
-        /* Barra de Progresso Azul */
+        /* Barra de Progresso (Azul no Topo) */
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
             background-color: #2563EB; z-index: 9999; transition: width 0.2s ease-out;
             opacity: 0; pointer-events: none;
         }
-        
-        /* Mostra a barra quando o HTMX trabalha */
         .htmx-request #page-loader {
-            width: 70% !important;
-            opacity: 1 !important;
+            width: 70% !important; opacity: 1 !important;
+        }
+        
+        /* Previne o FOUC (Piscar) em telas grandes */
+        @media (min-width: 768px) {
+            #mobile-drawer { display: none !important; }
+            .mobile-bottom-nav { display: none !important; }
+            #mobile-search-bar { display: none !important; }
         }
         
         [x-cloak] { display: none !important; }
@@ -44,7 +50,7 @@
         document.addEventListener("DOMContentLoaded", function() {
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             
-            // Injeta CSRF em formulários normais
+            // Injeta token em forms normais
             document.querySelectorAll('form[method="POST"]').forEach(function(form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
                     var input = document.createElement('input');
@@ -53,7 +59,7 @@
                 }
             });
 
-            // Configura HTMX com CSRF
+            // Configura HTMX
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 evt.detail.headers['X-CSRFToken'] = csrfToken;
             });
@@ -64,7 +70,6 @@
 <body class="bg-gray-100 font-sans pb-16 md:pb-0" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
-
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
 
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
@@ -169,16 +174,16 @@
                 </form>
             </div>
 
-            <nav class="hidden md:flex items-center space-x-4">
+            <nav class="hidden md:flex items-center">
                 {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 transition-colors" title="Notificações">
+                    <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 mr-4 transition-colors" title="Notificações">
                         <i class="fas fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
                         {% if new_notifs > 0 %}
                             <span class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4">{{ new_notifs }}</span>
                         {% endif %}
                     </a>
-                    <a href="{{ url_for('profile', username=current_user.username) }}" class="flex items-center text-sm font-semibold hover:bg-gray-100 p-2 rounded-xl transition-colors">
+                    <a href="{{ url_for('profile', username=current_user.username) }}" class="flex items-center text-sm font-semibold hover:bg-gray-100 p-2 rounded-xl mr-2 transition-colors">
                         <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover mr-2 border border-gray-300">
                         @{{ current_user.username }}
                     </a>
@@ -186,7 +191,7 @@
                         <i class="fas fa-sign-out-alt text-lg"></i>
                     </a>
                 {% else %}
-                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full transition-colors">Entrar</a>
+                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full mr-2 transition-colors">Entrar</a>
                     <a href="{{ url_for('register') }}" class="font-bold bg-blue-600 text-white hover:bg-blue-700 px-5 py-2 rounded-full transition-colors shadow-md hover:shadow-lg">Criar Conta</a>
                 {% endif %}
             </nav>
@@ -216,12 +221,12 @@
         </form>
     </div>
 
-    <nav class="md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
-        <a href="{{ url_for('home') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
+    <nav class="mobile-bottom-nav md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
+        <a href="{{ url_for('home') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
             <i class="fas fa-home text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Feed</span>
         </a>
-        <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
+        <a href="{{ url_for('my_aquariums') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
             <i class="fas fa-fish text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Aquários</span>
         </a>
@@ -231,11 +236,11 @@
              </div>
             <span class="text-[10px] font-medium mt-1">Buscar</span>
         </button>
-         <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
+         <a href="{{ url_for('communities_directory') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
             <i class="fas fa-users text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Comunidades</span>
         </a>
-        <a href="{{ url_for('create_community') }}" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
+        <a href="{{ url_for('create_community') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
             <i class="fas fa-plus-circle text-xl mb-1"></i>
             <span class="text-[10px] font-medium">Criar</span>
         </a>
@@ -250,7 +255,9 @@
                     <li><a href="{{ url_for('feed') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-user-friends w-6"></i> Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint and 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
                     <li><a href="{{ url_for('home') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'home' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-globe w-6"></i> Feed Global</a></li>
+                    
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
+                    
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'communities_directory' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                     <li><a href="{{ url_for('calculators') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
                 </ul>
@@ -291,7 +298,6 @@
             {% endwith %}
             {% block content %}{% endblock %}
         </main>
-        
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
@@ -328,7 +334,7 @@
             }
         }
         
-        // Função de Fechar Menu e DESTRAVAR rolagem
+        // Função para Fechar e Destravar
         function closeDrawer() {
             const drawer = document.getElementById('mobile-drawer');
             const overlay = document.getElementById('drawer-overlay');
@@ -338,9 +344,9 @@
             }
             if (overlay) overlay.classList.add('hidden');
             
-            // CORREÇÃO CRÍTICA DO SCROLL:
-            document.body.style.overflow = '';
-            document.documentElement.style.overflow = '';
+            // CORREÇÃO CRÍTICA DO SCROLL
+            document.body.style.overflow = 'visible';
+            document.documentElement.style.overflow = 'visible';
         }
 
         function toggleDrawer() {
@@ -359,23 +365,9 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             
-            // CORREÇÃO DO LIKE: Desativa HTMX nos formulários de Like/Comentário automaticamente
-            function disableHtmxOnLikes() {
-                document.querySelectorAll('form').forEach(form => {
-                    const action = form.getAttribute('action') || '';
-                    if (action.includes('like') || action.includes('comment')) {
-                        form.setAttribute('hx-boost', 'false');
-                    }
-                });
-            }
-            // Roda ao carregar a página
-            disableHtmxOnLikes();
-            // Roda sempre que o HTMX troca o conteúdo (infinite scroll, etc)
-            document.body.addEventListener('htmx:load', disableHtmxOnLikes);
-
-            // CORREÇÃO DO SCROLL E LAYOUT: Reseta tudo após a troca de página
+            // --- CORREÇÃO DO SCROLL E MENU ---
             document.body.addEventListener('htmx:afterSwap', function(evt) {
-                closeDrawer(); // Garante que destrava
+                closeDrawer(); // Garante que a tela destrava
                 
                 // Reseta barra de progresso
                 document.getElementById('page-loader').style.width = '100%';
@@ -385,38 +377,105 @@
                 }, 300);
             });
 
-            // Inicia barra de progresso
+            // Mostra barra ao carregar
             document.body.addEventListener('htmx:beforeRequest', function(evt) {
                 document.getElementById('page-loader').style.width = '30%';
                 document.getElementById('page-loader').style.opacity = '1';
-                closeDrawer(); // Fecha menu imediatamente ao clicar
+                closeDrawer(); // Fecha menu instantaneamente
             });
 
-            // Script Anti-Duplo Clique (Mantido para formulários normais)
-            const forms = document.querySelectorAll('form');
-            forms.forEach(form => {
-                form.addEventListener('submit', function(e) {
-                    const action = this.getAttribute('action') || window.location.href;
-                    if (action.includes('like') || action.includes('comment')) return;
+            // --- CORREÇÃO DEFINITIVA DO LIKE (Event Delegation) ---
+            // Este script roda para sempre, mesmo se o HTMX trocar o conteúdo.
+            // Ele intercepta qualquer submit no corpo da página.
+            document.body.addEventListener('submit', function(e) {
+                const form = e.target;
+                const action = form.getAttribute('action') || '';
+
+                // Se for Like ou Comentário, nós assumimos o controle (bypass HTMX)
+                if (action.includes('like') || action.includes('comment')) {
+                    e.preventDefault(); // Impede refresh e impede HTMX (se boost false)
+                    e.stopPropagation();
+
+                    const btn = form.querySelector('button[type="submit"]');
+                    const originalContent = btn ? btn.innerHTML : '';
                     
-                    if (this.dataset.submitting === "true") { e.preventDefault(); return; }
-                    const btn = this.querySelector('button[type="submit"]');
-                    if (btn) {
-                        this.dataset.submitting = "true";
-                        const originalText = btn.innerHTML;
-                        btn.disabled = true;
-                        btn.style.opacity = "0.7";
-                        btn.style.cursor = "not-allowed";
-                        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
-                        setTimeout(() => {
-                            this.dataset.submitting = "false";
-                            btn.disabled = false;
-                            btn.style.opacity = "1";
-                            btn.style.cursor = "pointer";
-                            btn.innerHTML = originalText;
-                        }, 15000);
-                    }
-                });
+                    // Feedback Visual Imediato (Opcional, mas bom)
+                    // ...
+
+                    fetch(action, {
+                        method: 'POST',
+                        headers: {'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')},
+                        body: new FormData(form)
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.liked !== undefined) {
+                            // Atualiza o botão de Like
+                            const icon = form.querySelector('i');
+                            const countSpan = form.querySelector('span') || form.querySelector('div') || btn; 
+                            
+                            // Atualiza Coração
+                            if (icon) {
+                                if (data.liked) {
+                                    icon.classList.remove('far', 'fa-regular', 'text-gray-400', 'text-gray-500');
+                                    icon.classList.add('fas', 'fa-solid', 'text-red-500');
+                                } else {
+                                    icon.classList.remove('fas', 'fa-solid', 'text-red-500');
+                                    icon.classList.add('far', 'fa-regular', 'text-gray-400');
+                                }
+                            }
+                            
+                            // Atualiza Número (Tenta achar onde está o número)
+                            // Procura um nó de texto que seja número
+                            if (btn) {
+                                // Modo Simples: Se o botão tem texto e ícone, atualiza o texto
+                                // Isso depende do seu HTML exato, mas geralmente funciona
+                                // Vamos tentar atualizar o texto que vem depois do ícone
+                                if(btn.lastChild.nodeType === 3) { // Nó de texto
+                                     btn.lastChild.textContent = " " + data.like_count;
+                                } else if (btn.innerText) {
+                                     // Fallback seguro
+                                     // Recria o HTML do botão preservando o ícone
+                                     const i = btn.querySelector('i');
+                                     if(i) {
+                                         btn.innerHTML = '';
+                                         btn.appendChild(i);
+                                         btn.appendChild(document.createTextNode(" " + data.like_count));
+                                     }
+                                }
+                            }
+                        } else if (data.success && data.comment) {
+                            // Se for comentário, recarrega para ver (ou adiciona na lista se quiser avançado)
+                            window.location.reload(); 
+                        }
+                    })
+                    .catch(err => console.error(err));
+                    
+                    return; // Sai da função
+                }
+
+                // --- SCRIPT ANTI-DUPLO CLIQUE (Para outros forms) ---
+                if (form.dataset.submitting === "true") {
+                    e.preventDefault();
+                    return;
+                }
+                
+                const btn = form.querySelector('button[type="submit"]');
+                if (btn) {
+                    form.dataset.submitting = "true";
+                    const originalText = btn.innerHTML;
+                    btn.disabled = true;
+                    btn.style.opacity = "0.7";
+                    btn.style.cursor = "not-allowed";
+                    btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
+                    setTimeout(() => {
+                        form.dataset.submitting = "false";
+                        btn.disabled = false;
+                        btn.style.opacity = "1";
+                        btn.style.cursor = "pointer";
+                        btn.innerHTML = originalText;
+                    }, 15000);
+                }
             });
         });
     </script>
