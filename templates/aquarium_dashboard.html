@@ -67,118 +67,155 @@
 
     <div id="overview" class="tab-content block animate-fade-in">
         
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            
+            {% if latest_log %}
+                {% set status_color = 'green' %}
+                {% set status_title = 'Excelente' %}
+                {% set status_icon = 'fa-check-circle' %}
+                {% set status_msg = 'Ecossistema estável.' %}
+
+                {% if latest_log.ammonia > 0.25 or latest_log.nitrite > 0.5 %}
+                    {% set status_color = 'red' %}
+                    {% set status_title = 'CRÍTICO' %}
+                    {% set status_icon = 'fa-biohazard' %}
+                    {% set status_msg = 'Amônia/Nitrito tóxicos! TPA Urgente.' %}
+                {% elif latest_log.ph > 8.0 or latest_log.ph < 6.4 %}
+                    {% set status_color = 'yellow' %}
+                    {% set status_title = 'Atenção' %}
+                    {% set status_icon = 'fa-exclamation-triangle' %}
+                    {% set status_msg = 'pH fora da faixa ideal.' %}
+                {% endif %}
+
+                <div class="bg-white rounded-3xl shadow-sm border-l-8 border-{{ status_color }}-500 p-6 flex items-center justify-between relative overflow-hidden">
+                    <div class="z-10">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Saúde do Aquário</p>
+                        <h2 class="text-2xl font-black text-{{ status_color }}-600 leading-none mt-1 mb-1">{{ status_title }}</h2>
+                        <div class="inline-flex items-center bg-gray-50 rounded-lg px-2 py-1 mb-2">
+                            <i class="far fa-clock text-xs text-gray-400 mr-1"></i>
+                            <span class="text-xs font-bold text-gray-500">{{ latest_log.date.strftime('%d/%m às %H:%M') }}</span>
+                        </div>
+                        <p class="text-xs font-medium text-gray-600 bg-white/80 backdrop-blur-sm rounded-lg py-1">{{ status_msg }}</p>
+                    </div>
+                    <div class="bg-{{ status_color }}-50 text-{{ status_color }}-500 rounded-full w-16 h-16 flex items-center justify-center flex-shrink-0 shadow-inner">
+                        <i class="fas {{ status_icon }} text-3xl"></i>
+                    </div>
+                </div>
+            {% else %}
+                <div class="bg-white rounded-3xl shadow-sm border-l-8 border-gray-200 p-6 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-xl font-black text-gray-400">Sem Dados</h2>
+                        <p class="text-xs text-gray-400 mt-1">O aquário precisa de uma medição.</p>
+                    </div>
+                    <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:bg-blue-700 hover:scale-110 transition">
+                        <i class="fas fa-plus text-lg"></i>
+                    </a>
+                </div>
+            {% endif %}
+
+            {% set days_since = 0 %}
+            {% if latest_maint and today %}
+                {% set days_since = (today - latest_maint.date).days %}
+            {% else %}
+                {% set days_since = 999 %}
+            {% endif %}
+
+            <div class="bg-white rounded-3xl shadow-sm p-6 border border-gray-100 flex flex-col justify-between relative overflow-hidden">
+                <div class="flex justify-between items-start z-10">
+                    <div>
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Última Limpeza</p>
+                        <div class="flex items-baseline mt-1">
+                            {% if days_since == 999 %}
+                                <span class="text-3xl font-black text-gray-300">--</span>
+                                <span class="text-sm text-gray-400 font-bold ml-1">nunca</span>
+                            {% elif days_since == 0 %}
+                                <span class="text-3xl font-black text-green-500">Hoje</span>
+                            {% else %}
+                                <span class="text-4xl font-black {% if days_since > 15 %}text-red-500{% elif days_since > 7 %}text-yellow-500{% else %}text-gray-800{% endif %}">
+                                    {{ days_since }}
+                                </span>
+                                <span class="text-sm text-gray-400 font-bold ml-1">dias atrás</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <a href="{{ url_for('log_maintenance', aquarium_id=aquarium.id) }}" class="bg-blue-50 hover:bg-blue-600 group p-3 rounded-2xl transition-all cursor-pointer shadow-sm">
+                        <i class="fas fa-broom text-blue-600 group-hover:text-white text-xl transition-colors"></i>
+                    </a>
+                </div>
+
+                <div class="mt-4 z-10">
+                    <div class="flex justify-between text-[10px] text-gray-400 mb-1 font-bold uppercase">
+                        <span>Limpo</span>
+                        <span>Crítico (15d)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden shadow-inner">
+                        {% set width_percent = (days_since / 15) * 100 %}
+                        {% if width_percent > 100 %}{% set width_percent = 100 %}{% endif %}
+                        {% if days_since == 999 %}{% set width_percent = 0 %}{% endif %}
+                        <div class="h-full rounded-full transition-all duration-1000 ease-out {% if days_since > 15 %}bg-red-500{% elif days_since > 7 %}bg-yellow-400{% else %}bg-green-500{% endif %}" style="width: {{ width_percent }}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if latest_log %}
+        <div class="grid grid-cols-4 gap-3 mb-6">
+            <div class="bg-blue-50 rounded-2xl p-3 text-center border border-blue-100 shadow-sm">
+                <span class="block text-[9px] font-bold text-blue-400 uppercase tracking-wider">pH</span>
+                <span class="block text-xl font-black text-blue-600">{{ latest_log.ph if latest_log.ph else '-' }}</span>
+            </div>
+            <div class="bg-orange-50 rounded-2xl p-3 text-center border border-orange-100 shadow-sm">
+                <span class="block text-[9px] font-bold text-orange-400 uppercase tracking-wider">Temp</span>
+                <span class="block text-xl font-black text-orange-600">{{ latest_log.temperature|int if latest_log.temperature else '-' }}°</span>
+            </div>
+            <div class="bg-red-50 rounded-2xl p-3 text-center border border-red-100 shadow-sm">
+                <span class="block text-[9px] font-bold text-red-400 uppercase tracking-wider">Amônia</span>
+                <span class="block text-xl font-black text-red-600">{{ latest_log.ammonia if latest_log.ammonia is not none else '-' }}</span>
+            </div>
+            <div class="bg-purple-50 rounded-2xl p-3 text-center border border-purple-100 shadow-sm">
+                <span class="block text-[9px] font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
+                <span class="block text-xl font-black text-purple-600">{{ latest_log.nitrite if latest_log.nitrite is not none else '-' }}</span>
+            </div>
+        </div>
+        {% endif %}
+
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            <div class="lg:col-span-2 space-y-6">
-                
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div class="lg:col-span-2">
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full">
                     <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-line mr-2 text-blue-500"></i>Evolução dos Parâmetros</h3>
+                        <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-line mr-2 text-blue-500"></i>Evolução</h3>
                         {% if latest_log %}
                         <button onclick="openShareModal()" class="bg-purple-100 text-purple-600 hover:bg-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                            <i class="fas fa-share-alt mr-1"></i> Compartilhar
+                            <i class="fas fa-share-alt mr-1"></i> Postar
                         </button>
                         {% endif %}
                     </div>
                     
                     {% if history_logs|length > 0 %}
-                        <div class="relative h-72 w-full">
+                        <div class="relative h-64 w-full">
                             <canvas id="parametersChart"></canvas>
                         </div>
                     {% else %}
                         <div class="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                            <div class="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mb-3">
-                                <i class="fas fa-chart-area text-gray-400 text-xl"></i>
-                            </div>
-                            <p class="text-gray-500 font-medium">Sem dados suficientes para o gráfico.</p>
-                            <p class="text-xs text-gray-400 mt-1">Faça seu primeiro registro de medição!</p>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                    <h3 class="text-lg font-bold text-gray-800 mb-4"><i class="fas fa-clipboard-check mr-2 text-green-500"></i>Última Manutenção</h3>
-                    
-                    {% if latest_maint %}
-                        <div class="flex items-start p-4 bg-green-50 rounded-2xl border border-green-100">
-                            <div class="bg-green-200 text-green-700 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mr-4">
-                                <i class="fas fa-check"></i>
-                            </div>
-                            <div>
-                                <h4 class="font-bold text-green-900">{{ latest_maint.maintenance_type }}</h4>
-                                <p class="text-sm text-green-700 mt-1">{{ latest_maint.description }}</p>
-                                <p class="text-xs text-green-600 mt-2 font-semibold"><i class="far fa-clock mr-1"></i> {{ latest_maint.date.strftime('%d/%m/%Y às %H:%M') }}</p>
-                            </div>
-                        </div>
-                    {% else %}
-                        <div class="text-center py-6 text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
-                            <p>Nenhuma manutenção registrada ainda.</p>
+                            <p class="text-gray-500 font-medium text-sm">Sem dados para o gráfico.</p>
                         </div>
                     {% endif %}
                 </div>
             </div>
 
-            <div class="space-y-6">
-                
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-lg font-bold text-gray-800">Última Medição</h3>
-                        {% if latest_log %}
-                        <span class="text-xs font-medium text-gray-400">{{ latest_log.date.strftime('%d/%m %H:%M') }}</span>
-                        {% endif %}
-                    </div>
-
-                    {% if latest_log %}
-                        <div class="grid grid-cols-2 gap-2">
-                            <div class="bg-blue-50 p-2.5 rounded-xl border border-blue-100 text-center">
-                                <span class="text-[10px] font-bold text-blue-400 uppercase tracking-wider">pH</span>
-                                <p class="text-xl font-black text-blue-700 mt-0.5">{{ latest_log.ph if latest_log.ph else '--' }}</p>
-                            </div>
-                            <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100 text-center">
-                                <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Temp</span>
-                                <p class="text-xl font-black text-orange-700 mt-0.5">{{ latest_log.temperature if latest_log.temperature else '--' }}<span class="text-sm align-top">°C</span></p>
-                            </div>
-                            <div class="bg-red-50 p-2.5 rounded-xl border border-red-100 text-center">
-                                <span class="text-[10px] font-bold text-red-400 uppercase tracking-wider">Amônia</span>
-                                <p class="text-xl font-black text-red-700 mt-0.5">{{ latest_log.ammonia if latest_log.ammonia is not none else '--' }}</p>
-                                <span class="text-[9px] text-red-400">ppm</span>
-                            </div>
-                            <div class="bg-purple-50 p-2.5 rounded-xl border border-purple-100 text-center">
-                                <span class="text-[10px] font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
-                                <p class="text-xl font-black text-purple-700 mt-0.5">{{ latest_log.nitrite if latest_log.nitrite is not none else '--' }}</p>
-                                <span class="text-[9px] text-purple-400">ppm</span>
-                            </div>
-                            <div class="bg-yellow-50 p-2.5 rounded-xl border border-yellow-100 text-center col-span-2">
-                                <span class="text-[10px] font-bold text-yellow-500 uppercase tracking-wider">Nitrato</span>
-                                <p class="text-xl font-black text-yellow-700 mt-0.5">{{ latest_log.nitrate if latest_log.nitrate is not none else '--' }}</p>
-                                <span class="text-[9px] text-yellow-500">ppm</span>
-                            </div>
-                        </div>
-                        
-                        {% if latest_log.notes %}
-                        <div class="mt-4 p-3 bg-gray-50 rounded-xl text-sm text-gray-600 italic border border-gray-100">
-                            "{{ latest_log.notes }}"
-                        </div>
-                        {% endif %}
-
-                    {% else %}
-                        <div class="text-center py-8">
-                            <p class="text-gray-400 mb-3">Sem dados recentes.</p>
-                            <a href="{{ url_for('log_parameters', aquarium_id=aquarium.id) }}" class="text-blue-600 font-bold hover:underline text-sm">Registrar Agora</a>
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100">
+            <div>
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-bold text-gray-800">Habitantes</h3>
-                        <button onclick="openTab('fauna', document.querySelectorAll('.tab-btn')[3])" class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">Ver Todos</button>
+                        <button onclick="openTab('fauna', document.querySelectorAll('.tab-btn')[3])" class="text-xs font-bold text-blue-500 bg-blue-50 px-2 py-1 rounded-lg hover:bg-blue-100">Ver</button>
                     </div>
                     
                     {% if aquarium.fauna %}
                     <div class="flex flex-wrap gap-2">
                         {% for item in aquarium.fauna[:6] %}
-                        <span class="inline-flex items-center bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg text-xs font-semibold">
+                        <span class="inline-flex items-center bg-gray-50 border border-gray-100 text-gray-700 px-3 py-2 rounded-xl text-xs font-bold">
                             {% if item.fauna_type == 'Peixe' %}🐟{% elif item.fauna_type == 'Planta' %}🌿{% else %}🐌{% endif %}
                             <span class="ml-1">{{ item.name }}</span>
                             <span class="ml-1.5 bg-gray-200 text-gray-600 px-1.5 rounded-md text-[10px]">{{ item.quantity }}</span>
@@ -186,12 +223,13 @@
                         {% endfor %}
                     </div>
                     {% else %}
-                        <div class="text-center py-4">
-                            <p class="text-gray-400 text-sm">Aquário vazio.</p>
+                        <div class="text-center py-10 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                            <i class="fas fa-fish text-2xl text-gray-300 mb-2"></i>
+                            <p class="text-gray-400 text-xs">Tanque vazio.</p>
+                            <a href="{{ url_for('add_fauna', aquarium_id=aquarium.id) }}" class="mt-3 inline-block text-blue-600 text-xs font-bold hover:underline">Adicionar</a>
                         </div>
                     {% endif %}
                 </div>
-
             </div>
         </div>
     </div>
