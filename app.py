@@ -1060,6 +1060,15 @@ Alguém sabe como baixar isso rápido? Não quero perder meus peixes!"""
                            prefilled_content=auto_content,
                            prefilled_title=f"AJUDA URGENTE: {problems}")
 
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory(app.static_folder, 'sw.js')
+
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory(app.static_folder, 'manifest.json')
+
+
 
 if __name__ == '__main__':
     app.run(debug=False)
