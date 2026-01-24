@@ -58,6 +58,22 @@
             });
         });
     </script>
+    <link rel="manifest" href="{{ url_for('manifest') }}">
+    <meta name="theme-color" content="#2563EB">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="AquaNet">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-512.png') }}">
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register("/sw.js")
+                .then(reg => console.log('App registrado!', reg))
+                .catch(err => console.log('Erro ao registrar App:', err));
+            });
+        }
+    </script>
 </head>
 
 <body class="bg-gray-100 font-sans pb-16 md:pb-0" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
