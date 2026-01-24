@@ -1021,5 +1021,45 @@ def wake_up():
     except Exception as e:
         return jsonify({'status': 'error', 'details': str(e)}), 500
 
+@app.route('/aquarium/<int:aquarium_id>/sos')
+@login_required
+def create_post_help(aquarium_id):
+    aqua = Aquarium.query.get_or_404(aquarium_id)
+    if aqua.user_id != current_user.id: return redirect(url_for('home'))
+    
+    # Pega o último log problemático
+    log = ParameterLog.query.filter_by(aquarium_id=aqua.id).order_by(ParameterLog.date.desc()).first()
+    
+    if not log:
+        flash('Sem dados para pedir ajuda.', 'info')
+        return redirect(url_for('aquarium_dashboard', aquarium_id=aqua.id))
+        
+    # Texto automático inteligente
+    problem_list = []
+    if log.ammonia and log.ammonia > 0.25: problem_list.append(f"Amônia: {log.ammonia}ppm")
+    if log.nitrite and log.nitrite > 0.5: problem_list.append(f"Nitrito: {log.nitrite}ppm")
+    if log.ph and (log.ph > 8.0 or log.ph < 6.4): problem_list.append(f"pH: {log.ph}")
+    
+    problems = ", ".join(problem_list)
+    
+    auto_content = f"""SOCORRO! Meus parâmetros estão críticos: {problems}.
+    
+Aquário: {aqua.name} ({aqua.volume}L)
+Fauna: {len(aqua.fauna)} habitantes
+Última TPA: (Insira aqui quando fez)
+
+Alguém sabe como baixar isso rápido? Não quero perder meus peixes!"""
+
+    # Redireciona para a página de criar post (você pode precisar adaptar se sua rota create_post aceitar argumentos, 
+    # mas por enquanto vamos passar via URL e o usuário cola, ou salvar na sessão)
+    # TRUQUE: Vamos renderizar o template de create_post direto já preenchido
+    
+    return render_template('create_post.html', 
+                           communities=Community.query.order_by(Community.name).all(), 
+                           popular_communities=get_popular_communities(),
+                           prefilled_content=auto_content,
+                           prefilled_title=f"AJUDA URGENTE: {problems}")
+
+
 if __name__ == '__main__':
     app.run(debug=False)
