@@ -1,5 +1,5 @@
 // TESTE DE CARREGAMENTO (Se aparecer na tela, o caminho está certo)
-// alert("O Script Carregou!"); 
+alert("O Script Carregou!"); 
 
 document.addEventListener('DOMContentLoaded', function () {
 
