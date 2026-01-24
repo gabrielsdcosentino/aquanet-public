@@ -1,10 +1,12 @@
+// TESTE DE CARREGAMENTO (Se aparecer na tela, o caminho está certo)
+// alert("O Script Carregou!"); 
+
 document.addEventListener('DOMContentLoaded', function () {
 
-    // 1. CONFIGURAÇÃO CSRF (Segurança)
+    // 1. CONFIGURAÇÃO CSRF
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     const tokenValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
-    // Injeta token em todos os forms POST
     document.querySelectorAll('form[method="POST"]').forEach(function(form) {
         if (!form.querySelector('input[name="csrf_token"]')) {
             const input = document.createElement('input');
@@ -13,12 +15,11 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Injeta token no HTMX
     document.body.addEventListener('htmx:configRequest', function(evt) {
         evt.detail.headers['X-CSRFToken'] = tokenValue;
     });
 
-    // 2. LÓGICA DE MOSTRAR/ESCONDER RESPOSTAS (Do seu script antigo)
+    // 2. MOSTRAR/ESCONDER RESPOSTAS
     function updateReplyCounts() {
         document.querySelectorAll('.toggle-replies-btn').forEach(btn => {
             const targetId = btn.dataset.target;
@@ -29,9 +30,8 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
     }
-    updateReplyCounts(); // Roda ao iniciar
+    updateReplyCounts();
 
-    // Listener para o botão "Ver Respostas"
     document.body.addEventListener('click', function(event) {
         const toggleBtn = event.target.closest('.toggle-replies-btn');
         if (toggleBtn) {
@@ -40,15 +40,14 @@ document.addEventListener('DOMContentLoaded', function () {
             if (container) container.classList.toggle('hidden');
         }
 
-        // 3. LÓGICA DO BOTÃO "RESPONDER" (Abre o formzinho)
+        // 3. BOTÃO RESPONDER
         const replyBtn = event.target.closest('.reply-button');
         if (replyBtn) {
             const commentId = replyBtn.dataset.commentId;
             const container = document.getElementById(`comment-${commentId}`);
-            const form = container.querySelector('.reply-form');
+            const form = container ? container.querySelector('.reply-form') : null;
             
             if (form) {
-                // Fecha outros forms para não poluir
                 document.querySelectorAll('.reply-form').forEach(f => {
                     if (f !== form) f.classList.add('hidden');
                 });
@@ -58,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
         
-        // Botão Cancelar Resposta
         const cancelBtn = event.target.closest('.cancel-reply-button');
         if (cancelBtn) {
             const form = cancelBtn.closest('.reply-form');
@@ -66,20 +64,19 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 4. SUPER LISTENER DE FORMULÁRIOS (Likes, Comentários, Anti-Duplo Clique)
-    // Essa é a versão Otimizada que criamos hoje
+    // 4. LIKES E COMENTÁRIOS (Sem Duplo Clique)
     document.body.addEventListener('submit', function(e) {
         const form = e.target;
         const action = form.getAttribute('action') || '';
 
-        // --- A. LIKES (Post e Comentário) ---
+        // --- A. LIKES ---
         if (action.includes('like')) {
             e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
             const btn = form.querySelector('button[type="submit"]');
             const isCommentLike = action.includes('comment');
             
-            // Feedback Visual Otimista
+            // Visual Otimista
             if (isCommentLike) {
                 const textSpan = btn.querySelector('span');
                 if (textSpan) {
@@ -120,7 +117,6 @@ document.addEventListener('DOMContentLoaded', function () {
                         btn.innerHTML = html;
                         btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
                     } else {
-                        // POST LIKE
                         const icon = btn.querySelector('i');
                         if (btn) {
                             Array.from(btn.childNodes).forEach(node => {
@@ -145,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return false;
         }
 
-        // --- B. COMENTÁRIOS NOVOS E RESPOSTAS ---
+        // --- B. COMENTÁRIOS ---
         if (action.includes('comment')) {
             e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
 
@@ -174,14 +170,10 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(data => {
                 if (!data) return;
                 
-                // Verifica se é Resposta ou Comentário Principal
                 const isReply = form.classList.contains('reply-form');
-                
                 if (isReply) {
-                    // Se for resposta, o ideal é recarregar para manter a árvore correta
                     window.location.reload();
                 } else {
-                    // Se for comentário principal, tenta injetar sem reload
                     const commentList = document.getElementById('comment-list');
                     const noCommentsMsg = document.getElementById('no-comments-message');
                     if (noCommentsMsg) noCommentsMsg.remove();
@@ -217,7 +209,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return false; 
         }
 
-        // --- C. OUTROS FORMULÁRIOS ---
+        // --- C. OUTROS FORMS ---
         if (form.dataset.submitting === "true") { e.preventDefault(); return; }
         const btn2 = form.querySelector('button[type="submit"]');
         if (btn2) {
@@ -235,23 +227,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, true);
 
-    // 5. VALIDAÇÃO DE TAMANHO DE ARQUIVO (Do seu script antigo)
+    // 5. VALIDAÇÃO DE ARQUIVO
     var fileInputs = document.querySelectorAll('input[type="file"]');
     fileInputs.forEach(function(input) {
         input.addEventListener('change', function() {
             if (this.files && this.files[0]) {
                 var fileSize = this.files[0].size; 
-                var maxSize = 4.5 * 1024 * 1024; // 4.5MB
-                
+                var maxSize = 4.5 * 1024 * 1024; 
                 if (fileSize > maxSize) {
-                    alert('⚠️ O arquivo é muito grande! O limite é 4.5MB para vídeos e fotos.');
+                    alert('⚠️ O arquivo é muito grande! O limite é 4.5MB.');
                     this.value = ""; 
                 }
             }
         });
     });
 
-    // 6. HTMX Listeners (Visual)
+    // 6. HTMX VISUAL
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         closeDrawer();
         var loader = document.getElementById('page-loader');
@@ -273,7 +264,6 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// FUNÇÕES GLOBAIS (Fora do DOMContentLoaded para onclick funcionar)
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
     if (searchBar.classList.contains('hidden')) {
@@ -299,7 +289,6 @@ function closeDrawer() {
 function toggleDrawer() {
     const drawer = document.getElementById('mobile-drawer');
     const overlay = document.getElementById('drawer-overlay');
-    
     if (drawer.classList.contains('drawer-closed')) {
         drawer.classList.remove('drawer-closed');
         drawer.classList.add('drawer-open');
