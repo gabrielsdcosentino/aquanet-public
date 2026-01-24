@@ -1,12 +1,10 @@
-// TESTE DE CARREGAMENTO (Se aparecer na tela, o caminho está certo)
-alert("O Script Carregou!"); 
-
 document.addEventListener('DOMContentLoaded', function () {
 
-    // 1. CONFIGURAÇÃO CSRF
+    // 1. CONFIGURAÇÃO CSRF (Segurança)
     const csrfMeta = document.querySelector('meta[name="csrf-token"]');
     const tokenValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
+    // Injeta token em todos os forms POST normais
     document.querySelectorAll('form[method="POST"]').forEach(function(form) {
         if (!form.querySelector('input[name="csrf_token"]')) {
             const input = document.createElement('input');
@@ -15,6 +13,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // Injeta token no HTMX
     document.body.addEventListener('htmx:configRequest', function(evt) {
         evt.detail.headers['X-CSRFToken'] = tokenValue;
     });
@@ -32,6 +31,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     updateReplyCounts();
 
+    // LISTENERS DE CLIQUE (Menu, Responder, Cancelar)
     document.body.addEventListener('click', function(event) {
         const toggleBtn = event.target.closest('.toggle-replies-btn');
         if (toggleBtn) {
@@ -40,13 +40,11 @@ document.addEventListener('DOMContentLoaded', function () {
             if (container) container.classList.toggle('hidden');
         }
 
-        // 3. BOTÃO RESPONDER
         const replyBtn = event.target.closest('.reply-button');
         if (replyBtn) {
             const commentId = replyBtn.dataset.commentId;
             const container = document.getElementById(`comment-${commentId}`);
             const form = container ? container.querySelector('.reply-form') : null;
-            
             if (form) {
                 document.querySelectorAll('.reply-form').forEach(f => {
                     if (f !== form) f.classList.add('hidden');
@@ -64,7 +62,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 4. LIKES E COMENTÁRIOS (Sem Duplo Clique)
+    // 3. LIKES E COMENTÁRIOS (O FIX ESTÁ AQUI)
     document.body.addEventListener('submit', function(e) {
         const form = e.target;
         const action = form.getAttribute('action') || '';
@@ -101,7 +99,10 @@ document.addEventListener('DOMContentLoaded', function () {
             
             fetch(action, {
                 method: 'POST',
-                headers: {'X-CSRFToken': tokenValue},
+                headers: {
+                    'X-CSRFToken': tokenValue,
+                    'X-Requested-With': 'XMLHttpRequest' // <--- O INGREDIENTE SECRETO QUE FALTAVA!
+                },
                 body: new FormData(form)
             })
             .then(response => response.json())
@@ -227,7 +228,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }, true);
 
-    // 5. VALIDAÇÃO DE ARQUIVO
+    // 4. VALIDAÇÃO DE ARQUIVO
     var fileInputs = document.querySelectorAll('input[type="file"]');
     fileInputs.forEach(function(input) {
         input.addEventListener('change', function() {
@@ -242,7 +243,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // 6. HTMX VISUAL
+    // 5. HTMX
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         closeDrawer();
         var loader = document.getElementById('page-loader');
@@ -264,6 +265,7 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
+// FUNÇÕES GLOBAIS
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
     if (searchBar.classList.contains('hidden')) {
