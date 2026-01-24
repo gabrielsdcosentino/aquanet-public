@@ -171,7 +171,7 @@
         </div>
 
         {% if latest_log %}
-        <div class="grid grid-cols-4 gap-3 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 mb-6">
             <div class="bg-blue-50 rounded-2xl p-3 text-center border border-blue-100 shadow-sm">
                 <span class="block text-[9px] font-bold text-blue-400 uppercase tracking-wider">pH</span>
                 <span class="block text-xl font-black text-blue-600">{{ latest_log.ph if latest_log.ph else '-' }}</span>
@@ -188,25 +188,42 @@
                 <span class="block text-[9px] font-bold text-purple-400 uppercase tracking-wider">Nitrito</span>
                 <span class="block text-xl font-black text-purple-600">{{ latest_log.nitrite if latest_log.nitrite is not none else '-' }}</span>
             </div>
+             <div class="bg-yellow-50 rounded-2xl p-3 text-center border border-yellow-100 shadow-sm">
+                <span class="block text-[9px] font-bold text-yellow-500 uppercase tracking-wider">Nitrato</span>
+                <span class="block text-xl font-black text-yellow-600">{{ latest_log.nitrate if latest_log.nitrate is not none else '-' }}</span>
+            </div>
         </div>
         {% endif %}
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
             <div class="lg:col-span-2">
-                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-line mr-2 text-blue-500"></i>Evolução</h3>
-                        {% if latest_log %}
-                        <button onclick="openShareModal()" class="bg-purple-100 text-purple-600 hover:bg-purple-200 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors">
-                            <i class="fas fa-share-alt mr-1"></i> Postar
-                        </button>
-                        {% endif %}
+                <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-100 h-full flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-center mb-6 gap-4">
+                        <div class="flex items-center gap-2">
+                             <h3 class="text-lg font-bold text-gray-800"><i class="fas fa-chart-line mr-2 text-blue-500"></i>Evolução</h3>
+                        </div>
+                        
+                        <div class="bg-gray-100 p-1 rounded-xl flex items-center">
+                            <button onclick="changeChartMode('water')" id="btn-water" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all bg-white text-blue-600 shadow-sm">
+                                Qualidade da Água
+                            </button>
+                            <button onclick="changeChartMode('toxins')" id="btn-toxins" class="px-4 py-1.5 rounded-lg text-xs font-bold transition-all text-gray-500 hover:text-gray-700">
+                                Toxinas
+                            </button>
+                        </div>
                     </div>
                     
                     {% if history_logs|length > 0 %}
-                        <div class="relative h-64 w-full">
+                        <div class="relative w-full flex-grow min-h-[300px]">
                             <canvas id="parametersChart"></canvas>
+                        </div>
+                        <div class="mt-4 text-right">
+                             {% if latest_log %}
+                            <button onclick="openShareModal()" class="bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors inline-flex items-center">
+                                <i class="fas fa-share-alt mr-1"></i> Postar Gráfico
+                            </button>
+                            {% endif %}
                         </div>
                     {% else %}
                         <div class="flex flex-col items-center justify-center h-64 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
@@ -364,85 +381,151 @@ function closeShareModal(){document.getElementById('shareModal').classList.add('
 function confirmShare(){const e=document.getElementById('communitySelect').value;return e?void(window.location.href=`/c/${e}?share_text=${encodeURIComponent(shareText)}`):alert("Escolha uma comunidade!")}
 
 {% if history_logs|length > 0 %}
+// Variável Global para o gráfico
+let chartInstance = null;
+let currentMode = 'water'; // 'water' ou 'toxins'
+
+// Dados vindos do Jinja
+const chartLabels = [{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}];
+const dataPh = [{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}];
+const dataAmmonia = [{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}];
+const dataNitrite = [{% for log in history_logs|reverse %}{{ log.nitrite if log.nitrite is not none else 'null' }},{% endfor %}];
+const dataNitrate = [{% for log in history_logs|reverse %}{{ log.nitrate if log.nitrate is not none else 'null' }},{% endfor %}];
+
 document.addEventListener("DOMContentLoaded", function(){
+    initChart('water'); // Inicia com o gráfico de água
+});
+
+function changeChartMode(mode) {
+    // UI dos botões
+    const btnWater = document.getElementById('btn-water');
+    const btnToxins = document.getElementById('btn-toxins');
+    
+    if(mode === 'water') {
+        btnWater.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+        btnWater.classList.remove('text-gray-500');
+        btnToxins.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+        btnToxins.classList.add('text-gray-500');
+    } else {
+        btnToxins.classList.add('bg-white', 'text-blue-600', 'shadow-sm');
+        btnToxins.classList.remove('text-gray-500');
+        btnWater.classList.remove('bg-white', 'text-blue-600', 'shadow-sm');
+        btnWater.classList.add('text-gray-500');
+    }
+    
+    initChart(mode);
+}
+
+function initChart(mode) {
     const ctx = document.getElementById('parametersChart').getContext('2d');
     
-    // --- DEFININDO OS DEGRADÊS (Visual Premium) ---
-    // Degradê Azul (pH) - Suave e moderno
+    // Se já existe gráfico, destrói para criar o novo limpo
+    if (chartInstance) {
+        chartInstance.destroy();
+    }
+
+    let datasets = [];
+    let yScales = {};
+
+    // Configuração de Visual (Degradês)
     let gradPh = ctx.createLinearGradient(0, 0, 0, 400);
-    gradPh.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); 
-    gradPh.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
+    gradPh.addColorStop(0, 'rgba(59, 130, 246, 0.25)');
+    gradPh.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
 
-    // Degradê Vermelho (Amônia) - Alerta sutil
-    let gradAmmonia = ctx.createLinearGradient(0, 0, 0, 400);
-    gradAmmonia.addColorStop(0, 'rgba(239, 68, 68, 0.3)'); 
-    gradAmmonia.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
+    let gradToxins = ctx.createLinearGradient(0, 0, 0, 400);
+    gradToxins.addColorStop(0, 'rgba(239, 68, 68, 0.1)');
+    gradToxins.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
 
-    // Dados
-    const labelsData = [{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}];
-    const phData = [{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}];
-    const ammoniaData = [{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}];
-    const nitriteData = [{% for log in history_logs|reverse %}{{ log.nitrite if log.nitrite is not none else 'null' }},{% endfor %}];
-    const nitrateData = [{% for log in history_logs|reverse %}{{ log.nitrate if log.nitrate is not none else 'null' }},{% endfor %}];
+    if (mode === 'water') {
+        // MODO 1: pH (Qualidade da Água)
+        datasets = [{
+            label: 'pH',
+            data: dataPh,
+            borderColor: '#3B82F6', 
+            backgroundColor: gradPh,
+            borderWidth: 3,
+            tension: 0.4,
+            pointRadius: 0,
+            pointHoverRadius: 6,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#3B82F6',
+            pointBorderWidth: 2,
+            fill: true
+        }];
 
-    Chart.defaults.font.family = "'Inter', sans-serif";
+        yScales = {
+            y: {
+                beginAtZero: false,
+                display: true,
+                grid: { color: '#F3F4F6', borderDash: [5, 5], drawBorder: false },
+                ticks: { color: '#3B82F6', font: {size: 11, weight: '600'} },
+                suggestedMin: 6.0,
+                suggestedMax: 8.0,
+                grace: '10%'
+            }
+        };
 
-    new Chart(ctx, {
+    } else {
+        // MODO 2: Toxinas (Amônia, Nitrito, Nitrato)
+        datasets = [
+            {
+                label: 'Amônia',
+                data: dataAmmonia,
+                borderColor: '#EF4444', 
+                backgroundColor: gradToxins,
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#EF4444',
+                pointBorderColor: '#fff',
+                fill: true
+            },
+            {
+                label: 'Nitrito',
+                data: dataNitrite,
+                borderColor: '#A855F7', 
+                borderWidth: 2,
+                borderDash: [5, 5],
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#A855F7',
+                pointBorderColor: '#fff',
+                fill: false
+            },
+            {
+                label: 'Nitrato',
+                data: dataNitrate,
+                borderColor: '#EAB308', 
+                borderWidth: 2,
+                tension: 0.4,
+                pointRadius: 0,
+                pointHoverRadius: 6,
+                pointBackgroundColor: '#EAB308',
+                pointBorderColor: '#fff',
+                fill: false
+            }
+        ];
+
+        yScales = {
+            y: {
+                beginAtZero: true,
+                display: true,
+                grid: { color: '#F3F4F6', borderDash: [5, 5], drawBorder: false },
+                ticks: { color: '#6B7280', font: {size: 11}, callback: function(val){ return val + ' ppm';} },
+                suggestedMax: 1.0,
+                grace: '10%'
+            }
+        };
+    }
+
+    // Criar o Gráfico
+    chartInstance = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: labelsData,
-            datasets: [
-                {
-                    label: 'pH',
-                    data: phData,
-                    borderColor: '#3B82F6', // Azul vibrante
-                    backgroundColor: gradPh,
-                    borderWidth: 3,
-                    tension: 0.4,
-                    pointRadius: 4,
-                    pointborderWidth: 3,
-                    pointBackgroundColor: '#ffffff',
-                    pointBorderColor: '#3B82F6',
-                    pointHoverRadius: 8,
-                    fill: true,
-                    yAxisID: 'y'
-                },
-                {
-                    label: 'Amônia',
-                    data: ammoniaData,
-                    borderColor: '#EF4444', // Vermelho alerta
-                    borderWidth: 2,
-                    borderDash: [6, 4],
-                    tension: 0.4,
-                    pointRadius: 0, // Sem pontos para limpar o visual
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#EF4444',
-                    fill: false,
-                    yAxisID: 'y1'
-                },
-                {
-                    label: 'Nitrito',
-                    data: nitriteData,
-                    borderColor: '#A855F7', // Roxo
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#A855F7',
-                    fill: false,
-                    yAxisID: 'y1'
-                },
-                {
-                    label: 'Nitrato',
-                    data: nitrateData,
-                    borderColor: '#F59E0B', // Laranja
-                    borderWidth: 2,
-                    tension: 0.4,
-                    pointRadius: 0,
-                    hidden: true,
-                    yAxisID: 'y1'
-                }
-            ]
+            labels: chartLabels,
+            datasets: datasets
         },
         options: {
             responsive: true,
@@ -453,63 +536,33 @@ document.addEventListener("DOMContentLoaded", function(){
             },
             plugins: {
                 legend: {
-                    position: 'top',
-                    align: 'end',
-                    labels: {
-                        usePointStyle: true,
-                        boxWidth: 10,
-                        font: { size: 11, weight: '600' }
-                    }
+                    position: 'bottom',
+                    labels: { usePointStyle: true, boxWidth: 8, padding: 20, font: {family: "'Inter', sans-serif"} }
                 },
                 tooltip: {
                     backgroundColor: 'rgba(255, 255, 255, 0.95)',
-                    titleColor: '#111827',
-                    bodyColor: '#4b5563',
-                    borderColor: '#e5e7eb',
+                    titleColor: '#1F2937',
+                    bodyColor: '#4B5563',
+                    borderColor: '#E5E7EB',
                     borderWidth: 1,
-                    padding: 12,
-                    boxPadding: 6,
+                    padding: 10,
+                    boxPadding: 4,
                     usePointStyle: true,
+                    titleFont: { size: 13, weight: 'bold' },
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
                             if (label) label += ': ';
-                            if (context.parsed.y !== null) {
-                                label += context.parsed.y;
-                                if (context.dataset.yAxisID === 'y1') label += ' ppm';
-                            }
+                            if (context.parsed.y !== null) label += context.parsed.y;
                             return label;
                         }
                     }
                 }
             },
-            scales: {
-                x: {
-                    grid: { display: false, drawBorder: false },
-                    ticks: { maxTicksLimit: 5, font: {size: 10}, color: '#9ca3af' }
-                },
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'left',
-                    grid: { color: '#f3f4f6', borderDash: [8, 8], drawBorder: false },
-                    ticks: { color: '#3B82F6', font: {weight: 'bold'} },
-                    suggestedMin: 6.0,
-                    suggestedMax: 8.0
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                    grid: { display: false, drawBorder: false },
-                    ticks: { color: '#EF4444', font: {weight: 'bold'}, callback: function(value){ return value + ' ppm'; } },
-                    suggestedMin: 0,
-                    suggestedMax: 1.0
-                }
-            }
+            scales: yScales
         }
     });
-});
+}
 {% endif %}
 </script>
 {% endblock %}
