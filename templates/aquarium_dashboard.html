@@ -367,23 +367,25 @@ function confirmShare(){const e=document.getElementById('communitySelect').value
 document.addEventListener("DOMContentLoaded", function(){
     const ctx = document.getElementById('parametersChart').getContext('2d');
     
-    // --- CRIANDO OS DEGRADÊS (Visual Moderno) ---
-    // Degradê Azul (pH)
+    // --- DEFININDO OS DEGRADÊS (Visual Premium) ---
+    // Degradê Azul (pH) - Suave e moderno
     let gradPh = ctx.createLinearGradient(0, 0, 0, 400);
-    gradPh.addColorStop(0, 'rgba(59, 130, 246, 0.5)');   // Azul forte no topo
-    gradPh.addColorStop(1, 'rgba(59, 130, 246, 0.0)');   // Transparente embaixo
+    gradPh.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); 
+    gradPh.addColorStop(1, 'rgba(59, 130, 246, 0.05)');
 
-    // Degradê Vermelho (Amônia)
+    // Degradê Vermelho (Amônia) - Alerta sutil
     let gradAmmonia = ctx.createLinearGradient(0, 0, 0, 400);
-    gradAmmonia.addColorStop(0, 'rgba(239, 68, 68, 0.5)'); 
+    gradAmmonia.addColorStop(0, 'rgba(239, 68, 68, 0.3)'); 
     gradAmmonia.addColorStop(1, 'rgba(239, 68, 68, 0.0)');
 
-    // Dados vindos do Python
+    // Dados
     const labelsData = [{% for log in history_logs|reverse %}"{{ log.date.strftime('%d/%m') }}",{% endfor %}];
     const phData = [{% for log in history_logs|reverse %}{{ log.ph if log.ph else 'null' }},{% endfor %}];
     const ammoniaData = [{% for log in history_logs|reverse %}{{ log.ammonia if log.ammonia is not none else 'null' }},{% endfor %}];
     const nitriteData = [{% for log in history_logs|reverse %}{{ log.nitrite if log.nitrite is not none else 'null' }},{% endfor %}];
     const nitrateData = [{% for log in history_logs|reverse %}{{ log.nitrate if log.nitrate is not none else 'null' }},{% endfor %}];
+
+    Chart.defaults.font.family = "'Inter', sans-serif";
 
     new Chart(ctx, {
         type: 'line',
@@ -393,27 +395,29 @@ document.addEventListener("DOMContentLoaded", function(){
                 {
                     label: 'pH',
                     data: phData,
-                    borderColor: '#3B82F6', // Azul
-                    backgroundColor: gradPh, // Usa o degradê
+                    borderColor: '#3B82F6', // Azul vibrante
+                    backgroundColor: gradPh,
                     borderWidth: 3,
-                    tension: 0.4, // Curva suave
+                    tension: 0.4,
                     pointRadius: 4,
-                    pointBackgroundColor: '#fff',
+                    pointborderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
                     pointBorderColor: '#3B82F6',
-                    pointBorderWidth: 2,
-                    fill: true, // Preencher embaixo da linha
+                    pointHoverRadius: 8,
+                    fill: true,
                     yAxisID: 'y'
                 },
                 {
                     label: 'Amônia',
                     data: ammoniaData,
-                    borderColor: '#EF4444', // Vermelho
-                    backgroundColor: gradAmmonia,
+                    borderColor: '#EF4444', // Vermelho alerta
                     borderWidth: 2,
-                    borderDash: [5,5], // Linha tracejada
+                    borderDash: [6, 4],
                     tension: 0.4,
-                    pointRadius: 3,
-                    fill: true,
+                    pointRadius: 0, // Sem pontos para limpar o visual
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#EF4444',
+                    fill: false,
                     yAxisID: 'y1'
                 },
                 {
@@ -422,8 +426,10 @@ document.addEventListener("DOMContentLoaded", function(){
                     borderColor: '#A855F7', // Roxo
                     borderWidth: 2,
                     tension: 0.4,
-                    pointRadius: 0, // Sem bolinhas (mais limpo)
-                    spanGaps: true,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#A855F7',
+                    fill: false,
                     yAxisID: 'y1'
                 },
                 {
@@ -433,7 +439,7 @@ document.addEventListener("DOMContentLoaded", function(){
                     borderWidth: 2,
                     tension: 0.4,
                     pointRadius: 0,
-                    hidden: true, // Começa oculto para não poluir
+                    hidden: true,
                     yAxisID: 'y1'
                 }
             ]
@@ -451,25 +457,25 @@ document.addEventListener("DOMContentLoaded", function(){
                     align: 'end',
                     labels: {
                         usePointStyle: true,
-                        boxWidth: 8
+                        boxWidth: 10,
+                        font: { size: 11, weight: '600' }
                     }
                 },
                 tooltip: {
-                    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                    titleColor: '#1f2937',
+                    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                    titleColor: '#111827',
                     bodyColor: '#4b5563',
                     borderColor: '#e5e7eb',
                     borderWidth: 1,
-                    padding: 10,
+                    padding: 12,
+                    boxPadding: 6,
+                    usePointStyle: true,
                     callbacks: {
                         label: function(context) {
                             let label = context.dataset.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
+                            if (label) label += ': ';
                             if (context.parsed.y !== null) {
                                 label += context.parsed.y;
-                                // Adiciona a unidade correta
                                 if (context.dataset.yAxisID === 'y1') label += ' ppm';
                             }
                             return label;
@@ -479,15 +485,15 @@ document.addEventListener("DOMContentLoaded", function(){
             },
             scales: {
                 x: {
-                    grid: { display: false },
-                    ticks: { maxTicksLimit: 6, font: {size: 10} }
+                    grid: { display: false, drawBorder: false },
+                    ticks: { maxTicksLimit: 5, font: {size: 10}, color: '#9ca3af' }
                 },
                 y: {
                     type: 'linear',
                     display: true,
                     position: 'left',
-                    title: { display: true, text: 'pH', color: '#3B82F6', font: {size: 10, weight: 'bold'} },
-                    grid: { color: '#f3f4f6' },
+                    grid: { color: '#f3f4f6', borderDash: [8, 8], drawBorder: false },
+                    ticks: { color: '#3B82F6', font: {weight: 'bold'} },
                     suggestedMin: 6.0,
                     suggestedMax: 8.0
                 },
@@ -495,8 +501,8 @@ document.addEventListener("DOMContentLoaded", function(){
                     type: 'linear',
                     display: true,
                     position: 'right',
-                    title: { display: true, text: 'ppm', color: '#EF4444', font: {size: 10, weight: 'bold'} },
-                    grid: { display: false },
+                    grid: { display: false, drawBorder: false },
+                    ticks: { color: '#EF4444', font: {weight: 'bold'}, callback: function(value){ return value + ' ppm'; } },
                     suggestedMin: 0,
                     suggestedMax: 1.0
                 }
@@ -507,4 +513,3 @@ document.addEventListener("DOMContentLoaded", function(){
 {% endif %}
 </script>
 {% endblock %}
-
