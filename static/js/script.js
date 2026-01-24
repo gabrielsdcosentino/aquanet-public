@@ -62,19 +62,22 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 3. LIKES E COMENTÁRIOS (O FIX ESTÁ AQUI)
+    // 3. LIKES E COMENTÁRIOS (INTERCEPTAÇÃO AJAX)
     document.body.addEventListener('submit', function(e) {
         const form = e.target;
         const action = form.getAttribute('action') || '';
 
         // --- A. LIKES ---
         if (action.includes('like')) {
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+            // Importante: Estes comandos impedem o reload e o pulo para o topo
+            e.preventDefault(); 
+            e.stopPropagation(); 
+            e.stopImmediatePropagation();
 
             const btn = form.querySelector('button[type="submit"]');
             const isCommentLike = action.includes('comment');
             
-            // Visual Otimista
+            // Visual Otimista (Muda a cor antes do servidor responder)
             if (isCommentLike) {
                 const textSpan = btn.querySelector('span');
                 if (textSpan) {
@@ -101,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': tokenValue,
-                    'X-Requested-With': 'XMLHttpRequest' // <--- O INGREDIENTE SECRETO QUE FALTAVA!
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: new FormData(form)
             })
@@ -210,7 +213,7 @@ document.addEventListener('DOMContentLoaded', function () {
             return false; 
         }
 
-        // --- C. OUTROS FORMS ---
+        // --- C. OUTROS FORMS (Prevenção de clique duplo) ---
         if (form.dataset.submitting === "true") { e.preventDefault(); return; }
         const btn2 = form.querySelector('button[type="submit"]');
         if (btn2) {
@@ -243,7 +246,7 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // 5. HTMX
+    // 5. HTMX PROGRESS BAR
     document.body.addEventListener('htmx:afterSwap', function(evt) {
         closeDrawer();
         var loader = document.getElementById('page-loader');
@@ -265,14 +268,17 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// FUNÇÕES GLOBAIS
+// --- FUNÇÕES GLOBAIS (FORA DO DOMCONTENTLOADED) ---
+
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
-    if (searchBar.classList.contains('hidden')) {
-        searchBar.classList.remove('hidden');
-        searchBar.querySelector('input').focus();
-    } else {
-        searchBar.classList.add('hidden');
+    if (searchBar) {
+        if (searchBar.classList.contains('hidden')) {
+            searchBar.classList.remove('hidden');
+            searchBar.querySelector('input').focus();
+        } else {
+            searchBar.classList.add('hidden');
+        }
     }
 }
 
@@ -291,12 +297,14 @@ function closeDrawer() {
 function toggleDrawer() {
     const drawer = document.getElementById('mobile-drawer');
     const overlay = document.getElementById('drawer-overlay');
-    if (drawer.classList.contains('drawer-closed')) {
-        drawer.classList.remove('drawer-closed');
-        drawer.classList.add('drawer-open');
-        overlay.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; 
-    } else {
-        closeDrawer();
+    if (drawer) {
+        if (drawer.classList.contains('drawer-closed')) {
+            drawer.classList.remove('drawer-closed');
+            drawer.classList.add('drawer-open');
+            if (overlay) overlay.classList.remove('hidden');
+            document.body.style.overflow = 'hidden'; 
+        } else {
+            closeDrawer();
+        }
     }
-
+}
