@@ -16,6 +16,8 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
 
+# --- mudei pra SP 
+
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
 
