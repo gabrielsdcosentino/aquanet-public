@@ -1068,6 +1068,12 @@ def service_worker():
 def manifest():
     return send_from_directory(app.static_folder, 'manifest.json')
 
+# Adicione esta nova rota junto com as outras no final do app.py
+@app.route('/icon-512.png')
+def app_icon():
+    return send_from_directory(app.static_folder, 'icon-512.png')
+
+
 
 
 if __name__ == '__main__':
