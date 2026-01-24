@@ -609,26 +609,56 @@
         </div>
     </div>
 
-    <script>
+        <script>
         let deferredPrompt;
         const installBanner = document.getElementById('install-banner');
         const menuInstallBtn = document.getElementById('menu-install-btn');
         const btnAction = document.getElementById('btn-install-action');
+        
+        // Detecção de iOS (iPhone/iPad)
+        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
+        // Verifica se já está instalado (Modo Standalone)
+        const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-        // 1. O navegador avisa que o App pode ser instalado
+        // --- LÓGICA ANDROID (Botão Automático) ---
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            console.log("PWA: Evento disparado! App pronto para instalar.");
+            console.log("PWA: Android pronto para instalar.");
 
-            // Mostra o botão no menu lateral (sempre disponível)
+            // Mostra botão no menu
             if(menuInstallBtn) menuInstallBtn.classList.remove('hidden');
 
-            // Mostra o banner flutuante (apenas se não foi fechado hoje)
+            // Mostra banner se não foi dispensado
             if (!localStorage.getItem('installDismissed')) {
                 showBanner();
             }
         });
+
+        // --- LÓGICA iOS (Manual) ---
+        if (isIos && !isInstalled) {
+            // No iOS não existe evento 'beforeinstallprompt', então checamos direto
+            if (!localStorage.getItem('installDismissed')) {
+                // Muda o visual do banner para instrução
+                const iconDiv = installBanner.querySelector('.bg-blue-600'); // O ícone do peixe
+                const textDiv = installBanner.querySelector('div > div:nth-child(2)'); // O texto
+                const actionBtn = document.getElementById('btn-install-action'); // O botão
+                
+                // Ajusta texto para iOS
+                textDiv.innerHTML = `
+                    <h3 class="font-bold text-gray-800 text-sm">Instalar no iPhone</h3>
+                    <p class="text-[10px] text-gray-500 leading-tight">Toque em <i class="fas fa-share-square mx-1"></i> e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
+                `;
+                
+                // Remove o botão de "Instalar" pois não funciona no iOS
+                if(actionBtn) actionBtn.style.display = 'none';
+
+                // Mostra o banner após um pequeno delay para não assustar
+                setTimeout(() => {
+                    showBanner();
+                }, 2000);
+            }
+        }
 
         // 2. Função para mostrar o banner com animação
         function showBanner() {
@@ -640,7 +670,7 @@
             }, 100);
         }
 
-        // 3. Função que chama a instalação (usada pelos botões)
+        // 3. Função que chama a instalação (Android apenas)
         async function triggerInstall() {
             if (!deferredPrompt) return;
             deferredPrompt.prompt();
@@ -661,7 +691,7 @@
             setTimeout(() => { installBanner.classList.add('hidden'); }, 500);
         }
 
-        // Conecta o botão do banner à função
+        // Conecta o botão do banner à função (Android)
         if(btnAction) {
             btnAction.addEventListener('click', triggerInstall);
         }
@@ -673,5 +703,6 @@
             console.log('PWA: App instalado com sucesso!');
         });
     </script>
+
 </body>
 </html>
