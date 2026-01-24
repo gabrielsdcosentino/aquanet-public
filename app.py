@@ -930,9 +930,6 @@ def delete_aquarium(aquarium_id):
 @app.route('/calculators')
 def calculators(): return render_template('calculators.html', popular_communities=get_popular_communities())
 
-@app.route('/script.js')
-def script_js(): 
-    return send_from_directory(os.path.join(base_dir, 'static'), 'script.js')
 
 @app.route('/notifications')
 @login_required
