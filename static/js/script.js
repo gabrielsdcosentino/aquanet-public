@@ -8,7 +8,9 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('form[method="POST"]').forEach(function(form) {
         if (!form.querySelector('input[name="csrf_token"]')) {
             const input = document.createElement('input');
-            input.type = 'hidden'; input.name = 'csrf_token'; input.value = tokenValue;
+            input.type = 'hidden';
+            input.name = 'csrf_token';
+            input.value = tokenValue;
             form.appendChild(input);
         }
     });
@@ -31,8 +33,9 @@ document.addEventListener('DOMContentLoaded', function () {
     }
     updateReplyCounts();
 
-    // LISTENERS DE CLIQUE (Menu, Responder, Cancelar)
+    // LISTENERS GERAIS DE CLIQUE
     document.body.addEventListener('click', function(event) {
+
         const toggleBtn = event.target.closest('.toggle-replies-btn');
         if (toggleBtn) {
             const targetId = toggleBtn.dataset.target;
@@ -51,10 +54,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 });
                 form.classList.remove('hidden');
                 const area = form.querySelector('textarea');
-                if(area) area.focus();
+                if (area) area.focus();
             }
         }
-        
+
         const cancelBtn = event.target.closest('.cancel-reply-button');
         if (cancelBtn) {
             const form = cancelBtn.closest('.reply-form');
@@ -62,19 +65,26 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // 3. LIKES E COMENTÁRIOS (O FIX ESTÁ AQUI)
+    // 3. SUBMIT GLOBAL (LIKES, COMENTÁRIOS, ETC)
     document.body.addEventListener('submit', function(e) {
+
         const form = e.target;
         const action = form.getAttribute('action') || '';
 
-        // --- A. LIKES ---
+        // ======================
+        // A. LIKE (POST / COMMENT)
+        // ======================
         if (action.includes('like')) {
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+
+            // 🔥 FIX DEFINITIVO DO SCROLL
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
 
             const btn = form.querySelector('button[type="submit"]');
             const isCommentLike = action.includes('comment');
-            
-            // Visual Otimista
+
+            // FEEDBACK VISUAL OTIMISTA
             if (isCommentLike) {
                 const textSpan = btn.querySelector('span');
                 if (textSpan) {
@@ -89,70 +99,80 @@ document.addEventListener('DOMContentLoaded', function () {
             } else {
                 const icon = btn.querySelector('i');
                 if (icon) {
-                     if (icon.classList.contains('fas') || icon.classList.contains('fa-solid')) {
+                    if (icon.classList.contains('fas') || icon.classList.contains('fa-solid')) {
                         icon.className = 'far fa-thumbs-up text-lg';
-                     } else {
+                    } else {
                         icon.className = 'fas fa-thumbs-up text-lg text-blue-600';
-                     }
+                    }
                 }
             }
-            
+
             fetch(action, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': tokenValue,
-                    'X-Requested-With': 'XMLHttpRequest' // <--- O INGREDIENTE SECRETO QUE FALTAVA!
+                    'X-Requested-With': 'XMLHttpRequest'
                 },
                 body: new FormData(form)
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success && data.liked !== undefined) {
-                    if (isCommentLike) {
-                        const text = data.liked ? 'Curtido' : 'Curtir';
-                        const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
-                        let html = `<span class="mr-1">${text}</span>`;
-                        if (data.like_count > 0) {
-                            html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i><span class="like-count-text">${data.like_count}</span>`;
-                        }
-                        btn.innerHTML = html;
-                        btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
-                    } else {
-                        const icon = btn.querySelector('i');
-                        if (btn) {
-                            Array.from(btn.childNodes).forEach(node => {
-                                if (node !== icon && node.nodeType === 3) node.remove(); 
-                                if (node.classList && node.classList.contains('like-count-text')) node.remove();
-                            });
-                            const countSpan = document.createElement('span');
-                            countSpan.className = 'like-count-text font-bold ml-1'; 
-                            countSpan.innerText = data.like_count;
-                            btn.appendChild(countSpan);
-                        }
-                        if (icon) {
-                            if (data.liked) icon.className = 'fas fa-thumbs-up text-lg text-blue-600';
-                            else icon.className = 'far fa-thumbs-up text-lg';
-                        }
-                        if (data.liked) btn.classList.add('text-blue-600');
-                        else btn.classList.remove('text-blue-600');
+
+                if (!data.success) return;
+
+                if (isCommentLike) {
+                    const text = data.liked ? 'Curtido' : 'Curtir';
+                    const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
+                    let html = `<span class="mr-1">${text}</span>`;
+
+                    if (data.like_count > 0) {
+                        html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i>`;
+                        html += `<span class="like-count-text">${data.like_count}</span>`;
                     }
+
+                    btn.innerHTML = html;
+                    btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
+
+                } else {
+                    const icon = btn.querySelector('i');
+                    btn.querySelectorAll('.like-count-text').forEach(el => el.remove());
+
+                    const countSpan = document.createElement('span');
+                    countSpan.className = 'like-count-text font-bold ml-1';
+                    countSpan.innerText = data.like_count;
+                    btn.appendChild(countSpan);
+
+                    if (icon) {
+                        icon.className = data.liked
+                            ? 'fas fa-thumbs-up text-lg text-blue-600'
+                            : 'far fa-thumbs-up text-lg';
+                    }
+
+                    btn.classList.toggle('text-blue-600', data.liked);
                 }
             })
             .catch(console.error);
+
             return false;
         }
 
-        // --- B. COMENTÁRIOS ---
+        // ======================
+        // B. COMENTÁRIOS
+        // ======================
         if (action.includes('comment')) {
-            e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
 
             const btn = form.querySelector('button[type="submit"]');
             const textarea = form.querySelector('textarea');
-            
+
             if (btn) {
-                if (btn.disabled || form.dataset.submitting === "true") return; 
+                if (btn.disabled || form.dataset.submitting === "true") return;
                 btn.dataset.originalText = btn.innerHTML;
-                btn.disabled = true; form.dataset.submitting = "true";
+                btn.disabled = true;
+                form.dataset.submitting = "true";
                 btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
             }
 
@@ -164,13 +184,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 },
                 body: new FormData(form)
             })
-            .then(response => {
-                if (response.redirected) { window.location.href = response.url; return null; }
-                return response.text(); 
-            })
+            .then(response => response.redirected ? window.location.href = response.url : response.text())
             .then(data => {
                 if (!data) return;
-                
+
                 const isReply = form.classList.contains('reply-form');
                 if (isReply) {
                     window.location.reload();
@@ -183,120 +200,32 @@ document.addEventListener('DOMContentLoaded', function () {
                         try {
                             const json = JSON.parse(data);
                             if (json.html) commentList.insertAdjacentHTML('afterbegin', json.html);
-                            else if (json.success) window.location.reload();
-                        } catch (e) {
+                            else window.location.reload();
+                        } catch {
                             commentList.insertAdjacentHTML('afterbegin', data);
                         }
                     }
+
                     if (textarea) textarea.value = '';
-                    const countSpan = document.getElementById('post-comment-count');
-                    if (countSpan) {
-                        let current = parseInt(countSpan.innerText) || 0;
-                        countSpan.innerText = current + 1;
-                    }
-                    if (btn) {
-                        btn.disabled = false; form.dataset.submitting = "false";
-                        btn.innerHTML = btn.dataset.originalText;
-                    }
+                }
+
+                if (btn) {
+                    btn.disabled = false;
+                    form.dataset.submitting = "false";
+                    btn.innerHTML = btn.dataset.originalText;
                 }
             })
-            .catch(err => {
-                console.error(err);
+            .catch(() => {
                 if (btn) {
-                    btn.disabled = false; form.dataset.submitting = "false";
+                    btn.disabled = false;
+                    form.dataset.submitting = "false";
                     btn.innerHTML = btn.dataset.originalText;
                 }
             });
-            return false; 
+
+            return false;
         }
 
-        // --- C. OUTROS FORMS ---
-        if (form.dataset.submitting === "true") { e.preventDefault(); return; }
-        const btn2 = form.querySelector('button[type="submit"]');
-        if (btn2) {
-            form.dataset.submitting = "true";
-            const originalText = btn2.innerHTML;
-            btn2.disabled = true;
-            btn2.style.opacity = "0.7";
-            btn2.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
-            setTimeout(() => {
-                form.dataset.submitting = "false";
-                btn2.disabled = false;
-                btn2.style.opacity = "1";
-                btn2.innerHTML = originalText;
-            }, 15000);
-        }
     }, true);
 
-    // 4. VALIDAÇÃO DE ARQUIVO
-    var fileInputs = document.querySelectorAll('input[type="file"]');
-    fileInputs.forEach(function(input) {
-        input.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
-                var fileSize = this.files[0].size; 
-                var maxSize = 4.5 * 1024 * 1024; 
-                if (fileSize > maxSize) {
-                    alert('⚠️ O arquivo é muito grande! O limite é 4.5MB.');
-                    this.value = ""; 
-                }
-            }
-        });
-    });
-
-    // 5. HTMX
-    document.body.addEventListener('htmx:afterSwap', function(evt) {
-        closeDrawer();
-        var loader = document.getElementById('page-loader');
-        if(loader) {
-            loader.style.width = '100%';
-            setTimeout(() => {
-                loader.style.opacity = '0';
-                loader.style.width = '0%';
-            }, 300);
-        }
-    });
-    document.body.addEventListener('htmx:beforeRequest', function(evt) {
-        var loader = document.getElementById('page-loader');
-        if(loader) {
-            loader.style.width = '30%';
-            loader.style.opacity = '1';
-        }
-        closeDrawer();
-    });
 });
-
-// FUNÇÕES GLOBAIS
-function toggleMobileSearch() {
-    const searchBar = document.getElementById('mobile-search-bar');
-    if (searchBar.classList.contains('hidden')) {
-        searchBar.classList.remove('hidden');
-        searchBar.querySelector('input').focus();
-    } else {
-        searchBar.classList.add('hidden');
-    }
-}
-
-function closeDrawer() {
-    const drawer = document.getElementById('mobile-drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    if (drawer) {
-        drawer.classList.remove('drawer-open');
-        drawer.classList.add('drawer-closed');
-    }
-    if (overlay) overlay.classList.add('hidden');
-    document.body.style.overflow = 'visible';
-    document.documentElement.style.overflow = 'visible';
-}
-
-function toggleDrawer() {
-    const drawer = document.getElementById('mobile-drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    if (drawer.classList.contains('drawer-closed')) {
-        drawer.classList.remove('drawer-closed');
-        drawer.classList.add('drawer-open');
-        overlay.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; 
-    } else {
-        closeDrawer();
-    }
-}
