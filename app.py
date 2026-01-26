@@ -512,7 +512,8 @@ def community_feed(community_slug):
         img_url = None; img_id = None
         if pic and app.config['CLOUDINARY_API_KEY']:
             try:
-                uploaded = cloudinary.uploader.upload(pic, folder="aquanet_posts", resource_type="auto", transformation=[{'quality': 'auto', 'fetch_format': 'auto'}])
+                # --- OTIMIZAÇÃO APLICADA AQUI: WIDTH 600px + CROP LIMIT ---
+                uploaded = cloudinary.uploader.upload(pic, folder="aquanet_posts", resource_type="auto", transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}])
                 img_url = uploaded['secure_url']; img_id = uploaded['public_id']
             except: pass
         new_post = Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)
@@ -602,7 +603,7 @@ def edit_profile():
             if app.config['CLOUDINARY_API_KEY']:
                 try:
                     # OTIMIZAÇÃO APLICADA AQUI (PERFIL)
-                    uploaded = cloudinary.uploader.upload(pic, folder="profile_pics", transformation=[{'width': 150, 'height': 150, 'crop': 'fill', 'gravity': 'face', 'quality': 'auto', 'fetch_format': 'auto'}])
+                    uploaded = cloudinary.uploader.upload(pic, folder="profile_pics", transformation=[{'width': 150, 'height': 150, 'crop': 'fill', 'gravity': 'face', 'quality': 'auto:good', 'fetch_format': 'auto'}])
                     current_user.profile_pic_url = uploaded['secure_url']; changes_made = True; flash('Foto atualizada!', 'success')
                 except Exception as e:
                     flash(f'Erro imagem: {e}', 'danger'); db.session.rollback(); db.session.commit(); return redirect(url_for('edit_profile'))
@@ -785,8 +786,8 @@ def create_entry():
         img_url = None
         if pic and app.config['CLOUDINARY_API_KEY']:
             try: 
-                # OTIMIZAÇÃO APLICADA AQUI (WIKI CREATE)
-                uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'quality': 'auto', 'fetch_format': 'auto'}])
+                # OTIMIZAÇÃO APLICADA AQUI (WIKI CREATE - 800px)
+                uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}])
                 img_url = uploaded['secure_url']
             except: pass
         entry = EncyclopediaEntry(title=title, slug=slug, category=category, content=content, image_file=img_url, last_editor=current_user)
@@ -809,8 +810,8 @@ def edit_entry(slug):
         entry.content = new_content; pic = request.files.get('image')
         if pic and app.config['CLOUDINARY_API_KEY']:
             try: 
-                # OTIMIZAÇÃO APLICADA AQUI (WIKI EDIT)
-                uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'quality': 'auto', 'fetch_format': 'auto'}])
+                # OTIMIZAÇÃO APLICADA AQUI (WIKI EDIT - 800px)
+                uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}])
                 entry.image_file = uploaded['secure_url']
             except: pass
         entry.last_editor = current_user; db.session.commit()
@@ -1068,13 +1069,9 @@ def service_worker():
 def manifest():
     return send_from_directory(app.static_folder, 'manifest.json')
 
-# Adicione esta nova rota junto com as outras no final do app.py
 @app.route('/icon-512.png')
 def app_icon():
     return send_from_directory(app.static_folder, 'icon-512.png')
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=False)
