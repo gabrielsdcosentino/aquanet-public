@@ -6,7 +6,9 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
-import secrets, os, datetime, unicodedata, re, threading
+from markupsafe import Markup
+from flask import escape
+import secrets, os, datetime, unicodedata, re
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -24,6 +26,14 @@ def now_br():
     return datetime.datetime.utcnow() - datetime.timedelta(hours=3)
 
 app = Flask(__name__)
+
+# --- FILTRO PARA TORNAR @MENTIONS CLICÁVEIS ---
+@app.template_filter('link_mentions')
+def link_mentions(text):
+    if not text: return ""
+    escaped_text = str(escape(text))
+    # Regex ajustado para capturar @nome e criar link
+    return Markup(re.sub(r'@([a-zA-Z0-9_]+)', r'<a href="/profile/\1" class="text-blue-600 hover:text-blue-800 hover:underline font-bold transition-colors">@\1</a>', escaped_text))
 
 # --- CONFIG ---
 app.config['GOOGLE_CLIENT_ID'] = os.environ.get('GOOGLE_CLIENT_ID', '601074892036-k72kp3f9rj9q129qhgbua1g56rm8r9um.apps.googleusercontent.com')
@@ -45,7 +55,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,
 }
 
-# MAIL CONFIG
+# MAIL CONFIG (Pega das variáveis de ambiente da Vercel)
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True') == 'True'
@@ -172,24 +182,23 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- SISTEMA DE EMAIL ASSINCRONO ---
-def send_async_email(app, msg):
-    with app.app_context():
-        try: mail.send(msg)
-        except Exception as e: print(f"Erro Email Async: {e}")
-
+# --- SISTEMA DE EMAIL SÍNCRONO (IGUAL AO RESET DE SENHA) ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
-    sender = f"AquaNet <{current_app.config['MAIL_USERNAME']}>"
+    sender = f"AquaNet <{app.config.get('MAIL_USERNAME', 'noreply@aquanet.app')}>" # Garante um sender mesmo se config falhar
     msg = Message(subject, sender=sender, recipients=[to_email], html=html_body)
-    # Threading para não travar o site enquanto envia o email
-    threading.Thread(target=send_async_email, args=(current_app._get_current_object(), msg)).start()
+    try:
+        # Envia diretamente, travando a execução até terminar (garante envio na Vercel)
+        mail.send(msg)
+    except Exception as e:
+        # Loga o erro mas não derruba o site
+        print(f"ERRO CRÍTICO AO ENVIAR EMAIL: {e}")
 
 def send_reset_email(user, mail_app):
     token = user.get_reset_token()
     sender_address = f"AquaNet <{current_app.config['MAIL_USERNAME']}>" 
     msg = Message('Redefinição de Senha', sender=sender_address, recipients=[user.email])
-    msg.body = f'Para redefinir sua senha: {url_for('reset_token', token=token, _external=True)}'
+    msg.body = f'Para redefinir sua senha, clique no link: {url_for('reset_token', token=token, _external=True)}'
     try: mail_app.send(msg)
     except Exception as e: print(f"ERRO EMAIL: {e}")
 
@@ -326,14 +335,14 @@ class EncyclopediaEntry(db.Model):
     last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     last_editor = db.relationship('User', backref='wiki_edits')
 
-# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL ---
+# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL SÍNCRONO ---
 def create_notification(recipient, action, sender=None, post=None, comment=None):
     if sender and recipient == sender: return
     recipient_id = recipient.id if recipient else None
     sender_id = sender.id if sender else None
     if not recipient_id: return
     
-    # Busca duplicada no banco
+    # 1. Cria/Atualiza notificação no banco
     existing = Notification.query.filter_by(
         recipient_id=recipient_id, sender_id=sender_id, action=action,
         post_id=post.id if post else None, comment_id=comment.id if comment else None, is_read=False
@@ -341,38 +350,51 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
     
     if existing: 
         existing.timestamp = now_br(); existing.count += 1; db.session.commit()
-        # Se for menção, queremos email mesmo se já existir notificação
-        if action != 'mention': return
+        if action != 'mention': return # Se já existe e não é menção, não manda email de novo
 
-    notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
-    db.session.add(notif); db.session.commit()
+    if not existing:
+        notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
+        db.session.add(notif); db.session.commit()
 
-    # --- LÓGICA DE EMAIL ---
+    # 2. Envia o E-mail (Síncrono - Vercel Friendly)
     try:
         if action in ['mention', 'comment', 'reply'] and recipient.email:
-            subject = "Nova notificação no AquaNet"
+            subject_map = {
+                'mention': f"Você foi marcado por @{sender.username}",
+                'reply': f"@{sender.username} respondeu seu comentário",
+                'comment': f"@{sender.username} comentou no seu post"
+            }
+            subject = subject_map.get(action, "Nova notificação no AquaNet")
+            
             link = url_for('post_detail', post_id=post.id, _external=True) if post else url_for('home', _external=True)
             
-            msg_body = f"<p>Olá <b>{recipient.username}</b>,</p>"
-            if action == 'mention':
-                msg_body += f"<p><b>@{sender.username}</b> marcou você em uma publicação.</p>"
-            elif action == 'reply':
-                msg_body += f"<p><b>@{sender.username}</b> respondeu seu comentário.</p>"
-            elif action == 'comment':
-                msg_body += f"<p><b>@{sender.username}</b> comentou no seu post.</p>"
-            
-            msg_body += f"<p><a href='{link}' style='padding:10px 20px; background:#2563EB; color:white; text-decoration:none; border-radius:5px;'>Ver Agora</a></p>"
-            msg_body += "<p><small>AquaNet - Rede de Aquarismo</small></p>"
+            # HTML mais bonito e limpo
+            msg_body = f"""
+            <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #2563EB; margin-bottom: 20px;">Olá {recipient.username},</h2>
+                <p style="font-size: 16px; line-height: 1.5;">
+                    <b>@{sender.username}</b> interagiu com você no AquaNet:
+                </p>
+                <div style="background-color: #f9fafb; padding: 15px; border-left: 4px solid #2563EB; margin: 20px 0; font-style: italic; color: #555;">
+                    "{comment.text if comment else post.content if post else '...'}"
+                </div>
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="{link}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">Ver Publicação</a>
+                </div>
+                <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #aaa;">
+                    AquaNet - A Rede Social do Aquarismo<br>
+                    <a href="{url_for('home', _external=True)}" style="color: #aaa; text-decoration: none;">aquanet.app.br</a>
+                </p>
+            </div>
+            """
             
             send_email_notification(recipient.email, subject, msg_body)
     except Exception as e:
         print(f"Erro ao enviar email de notificação: {e}")
 
-# --- PROCESSADOR DE MENÇÕES (@usuario) ---
+# --- PROCESSADOR DE MENÇÕES ---
 def process_mentions(content, sender, post, comment=None):
-    # Regex para achar @usuario
     usernames = set(re.findall(r'@([a-zA-Z0-9_]+)', content))
-    
     for username in usernames:
         user = User.query.filter_by(username=username).first()
         if user and user != sender:
@@ -381,7 +403,7 @@ def process_mentions(content, sender, post, comment=None):
 with app.app_context():
     db.create_all()
 
-# --- ROTAS DE AUTH e BASE ---
+# --- ROTAS ---
 @app.route('/login/google')
 def login_google():
     if current_user.is_authenticated: return redirect(url_for('home'))
@@ -504,7 +526,7 @@ def community_feed(community_slug):
         new_post = Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)
         db.session.add(new_post); db.session.commit()
         
-        # --- PROCESSAR MENÇÕES NO POST ---
+        # MENÇÕES (Sincronamente agora)
         process_mentions(content, current_user, post=new_post)
         
         return redirect(url_for('community_feed', community_slug=community.slug))
@@ -628,10 +650,9 @@ def api_add_comment(post_id):
     new_comment = Comment(text=text.strip(), comment_author=current_user, parent_post=post, parent=parent_comment)
     db.session.add(new_comment); db.session.commit()
     
+    # Notificações e Emails
     create_notification(post.author, 'comment', current_user, post=post, comment=new_comment)
     if parent_comment: create_notification(parent_comment.comment_author, 'reply', current_user, post=post, comment=new_comment)
-    
-    # --- PROCESSAR MENÇÕES NO COMENTÁRIO ---
     process_mentions(text, current_user, post=post, comment=new_comment)
     
     if is_ajax: return jsonify({'success': True, 'comment': {'id': new_comment.id, 'text': new_comment.text, 'author_username': new_comment.comment_author.username, 'author_profile_url': url_for('profile', username=new_comment.comment_author.username)}, 'total_comments': Comment.query.filter_by(post_id=post.id).count()})
