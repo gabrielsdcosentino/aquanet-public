@@ -6,7 +6,7 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
-import secrets, os, datetime
+import secrets, os, datetime, unicodedata
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -234,15 +234,33 @@ class User(db.Model, UserMixin):
     def leave_community(self,community):
         if self.is_member(community): self.joined_communities.remove(community); db.session.commit()
     def is_member(self,community): return community in self.joined_communities
+    
 class Community(db.Model):
     id = db.Column(db.Integer, primary_key=True); slug = db.Column(db.String(100), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False); description = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=now_br) 
     creator_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
     posts = db.relationship('Post', backref='community', lazy=True)
+    
     @staticmethod
     def generate_slug(name):
-        slug = name.lower().replace(' ', '-'); slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+        # 1. Normaliza para remover acentos (Ex: 'Ação' vira 'Acao')
+        nfkd_form = unicodedata.normalize('NFKD', name)
+        slug = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+        
+        # 2. Deixa minúsculo e troca espaços por hífens
+        slug = slug.lower().strip().replace(' ', '-')
+        
+        # 3. Mantém apenas letras, números e hífens
+        slug = ''.join(c for c in slug if c.isalnum() or c == '-')
+        
+        # 4. Remove hífens duplicados (Ex: 'peixe--betta' vira 'peixe-betta')
+        while '--' in slug:
+            slug = slug.replace('--', '-')
+            
+        # 5. Remove hífens do começo ou fim
+        slug = slug.strip('-')
+        
         return slug
 
 class Post(db.Model):
@@ -541,8 +559,20 @@ def create_community():
         description = request.form.get('description')
         if contains_bad_words(name) or contains_bad_words(description):
             flash('Conteúdo impróprio.', 'danger'); return redirect(url_for('create_community'))
+        
+        # --- GERA O SLUG DE FORMA SEGURA ---
         slug = Community.generate_slug(name)
-        if Community.query.filter_by(slug=slug).first(): flash('Já existe.', 'danger'); return redirect(url_for('create_community'))
+        
+        # Verifica se o slug ficou vazio (ex: nome era só caracteres especiais)
+        if not slug:
+            flash('Nome inválido (use letras e números).', 'danger')
+            return redirect(url_for('create_community'))
+
+        # Verifica duplicidade
+        if Community.query.filter_by(slug=slug).first(): 
+            flash('Já existe uma comunidade com este nome.', 'danger')
+            return redirect(url_for('create_community'))
+            
         new_comm = Community(name=name, slug=slug, description=description, creator=current_user)
         db.session.add(new_comm); current_user.joined_communities.append(new_comm); db.session.commit()
         return redirect(url_for('community_feed', community_slug=slug))
