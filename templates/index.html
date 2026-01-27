@@ -122,14 +122,25 @@
             }
         });
 
-        // --- Swipe Logic (Index) ---
+        // --- SWIPE GLOBAL -> SEGUINDO ---
         {% if not current_community %}
         let touchStartX = 0; let touchStartY = 0;
-        document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, {passive: true});
-        document.addEventListener('touchend', e => {
-            let xDiff = e.changedTouches[0].screenX - touchStartX;
-            let yDiff = e.changedTouches[0].screenY - touchStartY;
-            if (xDiff < -60 && Math.abs(yDiff) < 50) { document.getElementById('tab-feed').click(); }
+        document.body.addEventListener('touchstart', e => { 
+            touchStartX = e.changedTouches[0].screenX; 
+            touchStartY = e.changedTouches[0].screenY; 
+        }, {passive: true});
+        
+        document.body.addEventListener('touchend', e => {
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            let xDiff = touchEndX - touchStartX;
+            let yDiff = touchEndY - touchStartY;
+            
+            // Se deslizou para a ESQUERDA (indo para Seguindo)
+            if (xDiff < -60 && Math.abs(yDiff) < 50) { 
+                const tabFeed = document.getElementById('tab-feed');
+                if(tabFeed) tabFeed.click(); 
+            }
         }, {passive: true});
         {% endif %}
     });
