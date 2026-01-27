@@ -1,16 +1,15 @@
 // 1. CONFIGURAÇÃO GLOBAL E CSRF
-// Usamos uma função para pegar o token sempre atualizado
 const getCsrfToken = () => {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
 };
 
-// Injeta token no HTMX (Persiste mesmo após trocas de página)
+// Injeta token no HTMX
 document.addEventListener('htmx:configRequest', function(evt) {
     evt.detail.headers['X-CSRFToken'] = getCsrfToken();
 });
 
-// 2. LISTENERS GLOBAIS (Usando 'document' para não perder os eventos com HTMX)
+// 2. LISTENERS GLOBAIS
 document.addEventListener('click', function(event) {
     // Botão de Mostrar/Esconder Respostas
     const toggleBtn = event.target.closest('.toggle-replies-btn');
@@ -44,18 +43,14 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// 3. INTERCEPTAÇÃO DE LIKES E COMENTÁRIOS (Evita o pulo para o topo)
+// 3. INTERCEPTAÇÃO DE LIKES E COMENTÁRIOS
 document.addEventListener('submit', function(e) {
     const form = e.target;
     const action = form.getAttribute('action') || '';
 
     // --- A. LIKES ---
     if (action.includes('like')) {
-        // Bloqueia o comportamento padrão do navegador e do HTMX
-        e.preventDefault(); 
-        e.stopPropagation(); 
-        e.stopImmediatePropagation();
-
+        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const btn = form.querySelector('button[type="submit"]');
         const isCommentLike = action.includes('comment');
         const token = getCsrfToken();
@@ -85,10 +80,7 @@ document.addEventListener('submit', function(e) {
         
         fetch(action, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': token,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
             body: new FormData(form)
         })
         .then(response => response.json())
@@ -123,15 +115,13 @@ document.addEventListener('submit', function(e) {
                     else btn.classList.remove('text-blue-600');
                 }
             }
-        })
-        .catch(console.error);
+        }).catch(console.error);
         return false;
     }
 
     // --- B. COMENTÁRIOS ---
     if (action.includes('comment')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
-
         const btn = form.querySelector('button[type="submit"]');
         const textarea = form.querySelector('textarea');
         const token = getCsrfToken();
@@ -145,10 +135,7 @@ document.addEventListener('submit', function(e) {
 
         fetch(action, {
             method: 'POST',
-            headers: {
-                'X-CSRFToken': token,
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
             body: new FormData(form)
         })
         .then(response => {
@@ -199,7 +186,6 @@ document.addEventListener('change', function(e) {
         }
     }
 });
-
 document.addEventListener('htmx:afterSwap', function(evt) {
     closeDrawer();
     const loader = document.getElementById('page-loader');
@@ -208,14 +194,13 @@ document.addEventListener('htmx:afterSwap', function(evt) {
         setTimeout(() => { loader.style.opacity = '0'; loader.style.width = '0%'; }, 300);
     }
 });
-
 document.addEventListener('htmx:beforeRequest', function(evt) {
     const loader = document.getElementById('page-loader');
     if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
     closeDrawer();
 });
 
-// 5. FUNÇÕES GLOBAIS (MENU)
+// 5. FUNÇÕES DE MENU
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
     if (searchBar) {
@@ -223,7 +208,6 @@ function toggleMobileSearch() {
         if (!searchBar.classList.contains('hidden')) searchBar.querySelector('input').focus();
     }
 }
-
 function closeDrawer() {
     const drawer = document.getElementById('mobile-drawer');
     const overlay = document.getElementById('drawer-overlay');
@@ -234,12 +218,10 @@ function closeDrawer() {
     if (overlay) overlay.classList.add('hidden');
     document.body.style.overflow = 'visible';
 }
-
 function toggleDrawer() {
     const drawer = document.getElementById('mobile-drawer');
     const overlay = document.getElementById('drawer-overlay');
     if (!drawer) return;
-
     if (drawer.classList.contains('drawer-closed')) {
         drawer.classList.remove('drawer-closed');
         drawer.classList.add('drawer-open');
@@ -247,5 +229,66 @@ function toggleDrawer() {
         document.body.style.overflow = 'hidden'; 
     } else {
         closeDrawer();
+    }
+}
+
+// ==========================================
+// 6. PWA & PUSH NOTIFICATIONS (NOVO)
+// ==========================================
+
+const PUBLIC_KEY = 'BPE4vWcVzbYPXhmR_vdVWf2pLySfcC5DpuKrBmLRllLWjYLEbHr2t70ns5vxQHR45rI1NwOof-fAyb-OHRyuXqQ';
+
+// Função utilitária para converter a chave
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+// Registra o Service Worker ao carregar a página
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+        navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker registrado!', reg))
+        .catch(err => console.error('Erro no SW:', err));
+    });
+}
+
+// Função para ser chamada pelo botão "Ativar Notificações"
+async function subscribeUser() {
+    if (!('serviceWorker' in navigator)) {
+        alert('Seu navegador não suporta notificações.');
+        return;
+    }
+    
+    try {
+        const registration = await navigator.serviceWorker.ready;
+        
+        // Pede permissão e assina
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
+        });
+
+        // Envia para o Backend (com CSRF Token para segurança)
+        await fetch('/api/save-subscription', {
+            method: 'POST',
+            body: JSON.stringify(subscription),
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken() // Usa sua função existente
+            }
+        });
+
+        alert('Notificações ativadas com sucesso!');
+        
+    } catch (error) {
+        console.error('Erro ao assinar notificações:', error);
+        alert('Não foi possível ativar as notificações. Verifique as permissões.');
     }
 }
