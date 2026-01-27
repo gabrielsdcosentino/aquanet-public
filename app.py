@@ -484,17 +484,14 @@ def home():
 def feed():
     page = request.args.get('page', 1, type=int)
     
-    # Monta a query complexa
+    # BUSCA: Posts de quem você segue
     followed = Post.query.join(followers_table, (Post.user_id == followers_table.c.followed_id)).filter(followers_table.c.follower_id == current_user.id)
+    # BUSCA: Seus próprios posts
     own = Post.query.filter(Post.user_id == current_user.id)
     
-    # Pega IDs das comunidades para evitar query lenta dentro do IN
-    community_ids = [c.id for c in current_user.joined_communities]
-    community_posts = Post.query.filter(Post.community_id.in_(community_ids))
-    
-    # OTIMIZAÇÃO: Aplica o joinedload na união final
-    # Atenção: Union e Eager Loading as vezes brigam, então ordenamos primeiro
-    query = followed.union(own).union(community_posts).order_by(Post.timestamp.desc())
+    # CORREÇÃO: Removemos a parte das comunidades para o feed "Seguindo" ficar puro
+    # Query final = Seguidos + Meus posts
+    query = followed.union(own).order_by(Post.timestamp.desc())
     
     # Pagina com otimização
     posts = query.options(
