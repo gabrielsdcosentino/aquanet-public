@@ -10,6 +10,7 @@
     <div class="md:hidden bg-white/95 backdrop-blur-sm sticky top-16 z-30 border-b border-gray-100 py-3 px-4 shadow-sm transition-all duration-300">
         <div class="relative bg-slate-100 rounded-xl p-1 flex h-10 w-full">
             <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out translate-x-0"></div>
+            
             <a href="{{ url_for('home') }}" id="tab-global" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-blue-600">Global</a>
             <a href="{{ url_for('feed') }}" id="tab-feed" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-gray-500 hover:text-gray-700">Seguindo</a>
         </div>
@@ -109,7 +110,7 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- Infinite Scroll ---
+        // Infinite Scroll
         document.body.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'load-more-btn') {
                 const btn = e.target;
@@ -122,21 +123,21 @@
             }
         });
 
-        // --- SWIPE GLOBAL -> SEGUINDO ---
+        // SWIPE LOGIC (DESLIZAR PARA A ESQUERDA -> IR PARA SEGUINDO)
         {% if not current_community %}
         let touchStartX = 0; let touchStartY = 0;
-        document.body.addEventListener('touchstart', e => { 
+        document.addEventListener('touchstart', e => { 
             touchStartX = e.changedTouches[0].screenX; 
             touchStartY = e.changedTouches[0].screenY; 
         }, {passive: true});
         
-        document.body.addEventListener('touchend', e => {
+        document.addEventListener('touchend', e => {
             let touchEndX = e.changedTouches[0].screenX;
             let touchEndY = e.changedTouches[0].screenY;
             let xDiff = touchEndX - touchStartX;
             let yDiff = touchEndY - touchStartY;
             
-            // Se deslizou para a ESQUERDA (indo para Seguindo)
+            // Deslizar para ESQUERDA (<-) vai para a aba da DIREITA (Seguindo)
             if (xDiff < -60 && Math.abs(yDiff) < 50) { 
                 const tabFeed = document.getElementById('tab-feed');
                 if(tabFeed) tabFeed.click(); 
