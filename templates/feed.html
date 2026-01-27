@@ -49,7 +49,6 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Lógica do Carregar Mais
         document.body.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'load-more-btn') {
                 const btn = e.target;
@@ -61,30 +60,6 @@
                 .then(html => { container.remove(); document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html); });
             }
         });
-
-        // --- LÓGICA DE SWIPE (ARRASTAR) ---
-        // Aqui estamos na aba DIREITA (Feed). Queremos arrastar para a ESQUERDA (Voltar p/ Global)
-        let touchStartX = 0;
-        let touchStartY = 0;
-        
-        document.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: true});
-
-        document.addEventListener('touchend', e => {
-            let touchEndX = e.changedTouches[0].screenX;
-            let touchEndY = e.changedTouches[0].screenY;
-            let xDiff = touchEndX - touchStartX;
-            let yDiff = touchEndY - touchStartY;
-            
-            // Se arrastar para a DIREITA (xDiff > 60) -> Vai para Global
-            if (xDiff > 60 && Math.abs(yDiff) < 50) {
-                // TRUQUE DE FLUIDEZ: Em vez de window.location, clicamos no link.
-                // Como o base.html tem hx-boost="true", o HTMX fará a transição suave.
-                document.getElementById('tab-global').click();
-            }
-        }, {passive: true});
     });
 </script>
 {% endblock %}

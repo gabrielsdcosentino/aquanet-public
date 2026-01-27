@@ -118,32 +118,6 @@
                 .then(html => { container.remove(); document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html); });
             }
         });
-
-        // -------------------------------------------------------------------------
-        // LÓGICA DE SWIPE (ARRASTAR) - GLOBAL
-        // -------------------------------------------------------------------------
-        {% if not current_community %}
-        let touchStartX = 0;
-        let touchStartY = 0;
-        
-        document.addEventListener('touchstart', e => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: true});
-
-        document.addEventListener('touchend', e => {
-            let touchEndX = e.changedTouches[0].screenX;
-            let touchEndY = e.changedTouches[0].screenY;
-            let xDiff = touchEndX - touchStartX;
-            let yDiff = touchEndY - touchStartY;
-            
-            // Arrastar para ESQUERDA (xDiff < -60) -> Vai para Seguindo
-            if (xDiff < -60 && Math.abs(yDiff) < 50) {
-                // USA .click() PARA APROVEITAR O HTMX (Mais fluido)
-                document.getElementById('tab-feed').click();
-            }
-        }, {passive: true});
-        {% endif %}
     });
 </script>
 {% endblock %}
