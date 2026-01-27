@@ -9,15 +9,14 @@
     {% if not current_community %}
     <div class="md:hidden bg-white/95 backdrop-blur-sm sticky top-16 z-30 border-b border-gray-100 py-3 px-4 shadow-sm transition-all duration-300">
         <div class="relative bg-slate-100 rounded-xl p-1 flex h-10 w-full">
-            <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out
-                {% if request.endpoint == 'feed' %} translate-x-full {% else %} translate-x-0 {% endif %}">
+            <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out translate-x-0">
             </div>
 
-            <a href="{{ url_for('home') }}" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 {% if request.endpoint == 'home' %} text-blue-600 {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
+            <a href="{{ url_for('home') }}" id="tab-global" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-blue-600">
                 Global
             </a>
             
-            <a href="{{ url_for('feed') }}" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 {% if request.endpoint == 'feed' %} text-blue-600 {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
+            <a href="{{ url_for('feed') }}" id="tab-feed" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-gray-500 hover:text-gray-700">
                 Seguindo
             </a>
         </div>
@@ -41,25 +40,18 @@
                     {% if current_user.is_member(current_community) %}
                         <form action="{{ url_for('leave_community', community_slug=current_community.slug) }}" method="POST">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="text-xs font-bold border border-gray-200 text-gray-400 px-3 py-1 rounded-lg hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all">
-                                Sair
-                            </button>
+                            <button type="submit" class="text-xs font-bold border border-gray-200 text-gray-400 px-3 py-1 rounded-lg hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-all">Sair</button>
                         </form>
                     {% else %}
                         <form action="{{ url_for('join_community', community_slug=current_community.slug) }}" method="POST">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="text-xs font-bold bg-blue-600 text-white px-5 py-1.5 rounded-full hover:bg-blue-700 transition shadow-md shadow-blue-200">
-                                Entrar
-                            </button>
+                            <button type="submit" class="text-xs font-bold bg-blue-600 text-white px-5 py-1.5 rounded-full hover:bg-blue-700 transition shadow-md shadow-blue-200">Entrar</button>
                         </form>
                     {% endif %}
-
                     {% if current_community.creator_id == current_user.id or current_user.username == 'bielcosen14' %}
-                        <form action="{{ url_for('delete_community', community_slug=current_community.slug) }}" method="POST" onsubmit="return confirm('ATENÇÃO: Isso apagará a comunidade e TODOS os posts dela. Tem certeza?')">
+                        <form action="{{ url_for('delete_community', community_slug=current_community.slug) }}" method="POST" onsubmit="return confirm('Tem certeza?')">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="text-[10px] font-bold text-gray-300 hover:text-red-600 transition-colors mt-1">
-                                <i class="fas fa-trash-alt mr-1"></i> Excluir
-                            </button>
+                            <button type="submit" class="text-[10px] font-bold text-gray-300 hover:text-red-600 transition-colors mt-1"><i class="fas fa-trash-alt mr-1"></i> Excluir</button>
                         </form>
                     {% endif %}
                 </div>
@@ -68,23 +60,16 @@
             {% if current_user.is_member(current_community) %}
                 <form method="POST" action="{{ url_for('community_feed', community_slug=current_community.slug) }}" enctype="multipart/form-data" class="border-t border-gray-100 pt-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    
                     <div class="flex gap-3 items-start">
                         <img src="{{ current_user.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm hidden md:block">
-                        
                         <div class="flex-1 min-w-0 bg-gray-50 p-3 rounded-2xl focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white transition-all shadow-inner">
-                            <textarea id="post-content" name="content" placeholder="No que você está pensando, {{ current_user.username }}?" 
-                            class="w-full bg-transparent border-0 focus:ring-0 text-gray-700 placeholder-gray-400 text-sm resize-none min-h-[60px]" rows="2" maxlength="2500">{{ request.args.get('auto_content', '') }}</textarea>
-                            
+                            <textarea id="post-content" name="content" placeholder="No que você está pensando, {{ current_user.username }}?" class="w-full bg-transparent border-0 focus:ring-0 text-gray-700 placeholder-gray-400 text-sm resize-none min-h-[60px]" rows="2" maxlength="2500">{{ request.args.get('auto_content', '') }}</textarea>
                             <div class="flex justify-between items-center mt-2 px-1 border-t border-gray-200/50 pt-2">
-                                 <label class="cursor-pointer text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50 group" title="Adicionar mídia">
+                                 <label class="cursor-pointer text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50 group">
                                      <i class="fas fa-image text-lg group-hover:scale-110 transition-transform"></i>
                                      <input type="file" name="image" accept="image/*,video/mp4,video/mov,video/webm" class="hidden">
                                  </label>
-                                 
-                                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-5 rounded-full text-xs shadow-md shadow-blue-200 transform active:scale-95 transition-all">
-                                     Publicar
-                                 </button>
+                                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-5 rounded-full text-xs shadow-md shadow-blue-200 transform active:scale-95 transition-all">Publicar</button>
                             </div>
                         </div>
                     </div>
@@ -95,13 +80,10 @@
                     <p class="text-gray-700 font-medium mb-3 text-sm">Entre na comunidade para participar das discussões!</p>
                     <form action="{{ url_for('join_community', community_slug=current_community.slug) }}" method="POST">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-700 transition transform hover:-translate-y-0.5 active:scale-95 text-sm">
-                            Entrar na Comunidade
-                        </button>
+                        <button type="submit" class="bg-blue-600 text-white px-8 py-2.5 rounded-full font-bold shadow-lg hover:bg-blue-700 transition transform hover:-translate-y-0.5 active:scale-95 text-sm">Entrar na Comunidade</button>
                     </form>
                 </div>
             {% endif %}
-
         </div>
     {% endif %}
 
@@ -125,70 +107,43 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Lógica do Carregar Mais
         document.body.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'load-more-btn') {
                 const btn = e.target;
                 const container = document.getElementById('next-page-trigger');
                 const nextPage = container.dataset.nextPage;
-                
-                btn.textContent = 'Carregando...';
-                btn.disabled = true;
-
-                fetch(`${window.location.pathname}?page=${nextPage}`, {
-                    headers: {'X-Requested-With': 'XMLHttpRequest'}
-                })
+                btn.textContent = 'Carregando...'; btn.disabled = true;
+                fetch(`${window.location.pathname}?page=${nextPage}`, { headers: {'X-Requested-With': 'XMLHttpRequest'} })
                 .then(response => response.text())
-                .then(html => {
-                    container.remove();
-                    document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html);
-                });
+                .then(html => { container.remove(); document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html); });
             }
         });
 
         // -------------------------------------------------------------------------
-        // LÓGICA DE SWIPE (ARRASTAR) ENTRE ABAS NO MOBILE
+        // LÓGICA DE SWIPE (ARRASTAR) - GLOBAL
         // -------------------------------------------------------------------------
         {% if not current_community %}
         let touchStartX = 0;
         let touchStartY = 0;
         
-        // Pega o ponto inicial do toque
         document.addEventListener('touchstart', e => {
             touchStartX = e.changedTouches[0].screenX;
             touchStartY = e.changedTouches[0].screenY;
         }, {passive: true});
 
-        // Pega o ponto final e calcula a direção
         document.addEventListener('touchend', e => {
             let touchEndX = e.changedTouches[0].screenX;
             let touchEndY = e.changedTouches[0].screenY;
-            
             let xDiff = touchEndX - touchStartX;
             let yDiff = touchEndY - touchStartY;
             
-            // Só ativa se o movimento for horizontal (> 60px) e pouco vertical (< 50px)
-            // Isso evita que o swipe ative enquanto você está rolando a tela para baixo
-            if (Math.abs(xDiff) > 60 && Math.abs(yDiff) < 50) {
-                
-                // Swipe para ESQUERDA (Dedo vai da direita p/ esquerda <---)
-                // Ação: Ir para a aba da DIREITA (Seguindo)
-                if (xDiff < 0 && "{{ request.endpoint }}" === 'home') {
-                    // Adiciona feedback visual simples (opcional)
-                    document.body.style.opacity = '0.5';
-                    window.location.href = "{{ url_for('feed') }}";
-                }
-                
-                // Swipe para DIREITA (Dedo vai da esquerda p/ direita --->)
-                // Ação: Ir para a aba da ESQUERDA (Global)
-                if (xDiff > 0 && "{{ request.endpoint }}" === 'feed') {
-                    document.body.style.opacity = '0.5';
-                    window.location.href = "{{ url_for('home') }}";
-                }
+            // Arrastar para ESQUERDA (xDiff < -60) -> Vai para Seguindo
+            if (xDiff < -60 && Math.abs(yDiff) < 50) {
+                // USA .click() PARA APROVEITAR O HTMX (Mais fluido)
+                document.getElementById('tab-feed').click();
             }
         }, {passive: true});
         {% endif %}
-        // -------------------------------------------------------------------------
     });
 </script>
 {% endblock %}
