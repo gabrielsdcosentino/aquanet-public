@@ -7,17 +7,17 @@
 {% block content %}
 
     {% if not current_community %}
-    <div class="md:hidden bg-white/95 backdrop-blur-sm sticky top-14 z-30 border-b border-gray-100 py-3 px-4 shadow-sm">
-        <div class="relative bg-slate-100 rounded-xl p-1 flex h-10">
-            <div class="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm transition-all duration-300 ease-out border border-slate-200/50
-                {% if request.endpoint == 'feed' %} left-[50%] ml-0.5 {% else %} left-1 {% endif %}">
+    <div class="md:hidden bg-white/95 backdrop-blur-sm sticky top-16 z-30 border-b border-gray-100 py-3 px-4 shadow-sm transition-all duration-300">
+        <div class="relative bg-slate-100 rounded-xl p-1 flex h-10 w-full">
+            <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out
+                {% if request.endpoint == 'feed' %} translate-x-full {% else %} translate-x-0 {% endif %}">
             </div>
 
-            <a href="{{ url_for('home') }}" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 {% if request.endpoint == 'home' %} text-blue-600 {% else %} text-gray-500 {% endif %}">
+            <a href="{{ url_for('home') }}" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 {% if request.endpoint == 'home' %} text-blue-600 {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
                 Global
             </a>
             
-            <a href="{{ url_for('feed') }}" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 {% if request.endpoint == 'feed' %} text-blue-600 {% else %} text-gray-500 {% endif %}">
+            <a href="{{ url_for('feed') }}" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 {% if request.endpoint == 'feed' %} text-blue-600 {% else %} text-gray-500 hover:text-gray-700 {% endif %}">
                 Seguindo
             </a>
         </div>
@@ -124,24 +124,71 @@
 {% block scripts %}
 {{ super() }}
 <script>
-    document.body.addEventListener('click', function(e) {
-        if (e.target && e.target.id === 'load-more-btn') {
-            const btn = e.target;
-            const container = document.getElementById('next-page-trigger');
-            const nextPage = container.dataset.nextPage;
-            
-            btn.textContent = 'Carregando...';
-            btn.disabled = true;
+    document.addEventListener('DOMContentLoaded', function() {
+        // Lógica do Carregar Mais
+        document.body.addEventListener('click', function(e) {
+            if (e.target && e.target.id === 'load-more-btn') {
+                const btn = e.target;
+                const container = document.getElementById('next-page-trigger');
+                const nextPage = container.dataset.nextPage;
+                
+                btn.textContent = 'Carregando...';
+                btn.disabled = true;
 
-            fetch(`${window.location.pathname}?page=${nextPage}`, {
-                headers: {'X-Requested-With': 'XMLHttpRequest'}
-            })
-            .then(response => response.text())
-            .then(html => {
-                container.remove();
-                document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html);
-            });
-        }
+                fetch(`${window.location.pathname}?page=${nextPage}`, {
+                    headers: {'X-Requested-With': 'XMLHttpRequest'}
+                })
+                .then(response => response.text())
+                .then(html => {
+                    container.remove();
+                    document.getElementById('feed-posts-container').insertAdjacentHTML('beforeend', html);
+                });
+            }
+        });
+
+        // -------------------------------------------------------------------------
+        // LÓGICA DE SWIPE (ARRASTAR) ENTRE ABAS NO MOBILE
+        // -------------------------------------------------------------------------
+        {% if not current_community %}
+        let touchStartX = 0;
+        let touchStartY = 0;
+        
+        // Pega o ponto inicial do toque
+        document.addEventListener('touchstart', e => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: true});
+
+        // Pega o ponto final e calcula a direção
+        document.addEventListener('touchend', e => {
+            let touchEndX = e.changedTouches[0].screenX;
+            let touchEndY = e.changedTouches[0].screenY;
+            
+            let xDiff = touchEndX - touchStartX;
+            let yDiff = touchEndY - touchStartY;
+            
+            // Só ativa se o movimento for horizontal (> 60px) e pouco vertical (< 50px)
+            // Isso evita que o swipe ative enquanto você está rolando a tela para baixo
+            if (Math.abs(xDiff) > 60 && Math.abs(yDiff) < 50) {
+                
+                // Swipe para ESQUERDA (Dedo vai da direita p/ esquerda <---)
+                // Ação: Ir para a aba da DIREITA (Seguindo)
+                if (xDiff < 0 && "{{ request.endpoint }}" === 'home') {
+                    // Adiciona feedback visual simples (opcional)
+                    document.body.style.opacity = '0.5';
+                    window.location.href = "{{ url_for('feed') }}";
+                }
+                
+                // Swipe para DIREITA (Dedo vai da esquerda p/ direita --->)
+                // Ação: Ir para a aba da ESQUERDA (Global)
+                if (xDiff > 0 && "{{ request.endpoint }}" === 'feed') {
+                    document.body.style.opacity = '0.5';
+                    window.location.href = "{{ url_for('home') }}";
+                }
+            }
+        }, {passive: true});
+        {% endif %}
+        // -------------------------------------------------------------------------
     });
 </script>
 {% endblock %}
