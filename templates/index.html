@@ -9,16 +9,9 @@
     {% if not current_community %}
     <div class="md:hidden bg-white/95 backdrop-blur-sm sticky top-16 z-30 border-b border-gray-100 py-3 px-4 shadow-sm transition-all duration-300">
         <div class="relative bg-slate-100 rounded-xl p-1 flex h-10 w-full">
-            <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out translate-x-0">
-            </div>
-
-            <a href="{{ url_for('home') }}" id="tab-global" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-blue-600">
-                Global
-            </a>
-            
-            <a href="{{ url_for('feed') }}" id="tab-feed" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-gray-500 hover:text-gray-700">
-                Seguindo
-            </a>
+            <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out translate-x-0"></div>
+            <a href="{{ url_for('home') }}" id="tab-global" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-blue-600">Global</a>
+            <a href="{{ url_for('feed') }}" id="tab-feed" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-gray-500 hover:text-gray-700">Seguindo</a>
         </div>
     </div>
     {% endif %}
@@ -60,16 +53,25 @@
             {% if current_user.is_member(current_community) %}
                 <form method="POST" action="{{ url_for('community_feed', community_slug=current_community.slug) }}" enctype="multipart/form-data" class="border-t border-gray-100 pt-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
                     <div class="flex gap-3 items-start">
                         <img src="{{ current_user.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border-2 border-white shadow-sm hidden md:block">
-                        <div class="flex-1 min-w-0 bg-gray-50 p-3 rounded-2xl focus-within:ring-2 focus-within:ring-blue-100 focus-within:bg-white transition-all shadow-inner">
-                            <textarea id="post-content" name="content" placeholder="No que você está pensando, {{ current_user.username }}?" class="w-full bg-transparent border-0 focus:ring-0 text-gray-700 placeholder-gray-400 text-sm resize-none min-h-[60px]" rows="2" maxlength="2500">{{ request.args.get('auto_content', '') }}</textarea>
-                            <div class="flex justify-between items-center mt-2 px-1 border-t border-gray-200/50 pt-2">
-                                 <label class="cursor-pointer text-gray-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50 group">
+                        
+                        <div class="flex-1 min-w-0 bg-slate-50 p-3 rounded-2xl transition-all shadow-inner border border-transparent focus-within:border-blue-200 focus-within:bg-white focus-within:ring-4 focus-within:ring-blue-50">
+                            <textarea id="post-content" name="content" 
+                            placeholder="Como está seu aquário hoje, {{ current_user.username }}?" 
+                            class="w-full bg-transparent border-0 focus:ring-0 text-slate-700 placeholder-slate-400 text-sm resize-none min-h-[60px]" 
+                            rows="2" maxlength="2500">{{ request.args.get('auto_content', '') }}</textarea>
+                            
+                            <div class="flex justify-between items-center mt-2 px-1 border-t border-slate-200/50 pt-2">
+                                 <label class="cursor-pointer text-slate-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50 group" title="Adicionar mídia">
                                      <i class="fas fa-image text-lg group-hover:scale-110 transition-transform"></i>
                                      <input type="file" name="image" accept="image/*,video/mp4,video/mov,video/webm" class="hidden">
                                  </label>
-                                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-5 rounded-full text-xs shadow-md shadow-blue-200 transform active:scale-95 transition-all">Publicar</button>
+                                 
+                                 <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-5 rounded-full text-xs shadow-md shadow-blue-200 transform active:scale-95 transition-all">
+                                     Publicar
+                                 </button>
                             </div>
                         </div>
                     </div>
