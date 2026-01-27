@@ -513,6 +513,12 @@ def community_feed(community_slug):
     community = Community.query.filter_by(slug=community_slug).first_or_404()
     
     if request.method == 'POST':
+        # --- SEGURANÇA: Bloqueia quem não é membro ---
+        if not current_user.is_member(community):
+            flash('Você precisa participar da comunidade para publicar!', 'warning')
+            return redirect(url_for('community_feed', community_slug=community.slug))
+        # ---------------------------------------------
+
         content = request.form.get('content'); pic = request.files.get('image')
         if not content or not content.strip():
             flash('Post não pode ser vazio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
