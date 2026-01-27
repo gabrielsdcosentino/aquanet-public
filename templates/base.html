@@ -104,6 +104,9 @@
                         <a href="{{ url_for('profile', username=current_user.username) }}" class="text-xs font-bold text-blue-600 uppercase tracking-wide">Ver Perfil</a>
                     </div>
                 </div>
+                <a href="{{ url_for('create_community') }}" class="block mt-4 w-full bg-slate-900 text-white font-bold py-3 rounded-xl text-center shadow-md active:scale-95 transition-transform">
+                    <i class="fas fa-plus-circle mr-2"></i> Criar Comunidade
+                </a>
             </div>
             {% endif %}
 
@@ -113,6 +116,7 @@
                 <a href="{{ url_for('feed') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-rss w-8 text-lg"></i> Seguindo</a>
                 <a href="{{ url_for('my_aquariums') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-fish w-8 text-lg"></i> Aquários</a>
                 <a href="{{ url_for('encyclopedia') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-book w-8 text-lg"></i> Enciclopédia</a>
+                <a href="{{ url_for('calculators') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-calculator w-8 text-lg"></i> Ferramentas</a>
                 <a href="{{ url_for('communities_directory') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-users w-8 text-lg"></i> Comunidades</a>
             </div>
             
@@ -123,6 +127,18 @@
                     <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center p-2 rounded-lg text-slate-600 hover:text-blue-600">
                         <div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>
                         <span class="truncate text-sm font-medium">{{ comm.name }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% if popular_communities %}
+            <div class="space-y-1 pt-4 border-t border-slate-100">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Populares</p>
+                {% for community in popular_communities %}
+                    <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center p-2 rounded-lg text-slate-600 hover:text-blue-600">
+                        <span class="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 w-5 text-center">{{ loop.index }}</span>
+                        <span class="truncate text-sm font-medium">{{ community.name }}</span>
                     </a>
                 {% endfor %}
             </div>
@@ -216,7 +232,7 @@
 
             <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
                 <i class="fas fa-users text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold">Grupos</span>
+                <span class="text-[10px] font-bold">Comunidades</span>
             </a>
             
             {% if current_user.is_authenticated %}
@@ -242,6 +258,7 @@
                     <li><a href="{{ url_for('feed') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-rss w-6"></i> Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
+                    <li><a href="{{ url_for('calculators') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'communit' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                 </ul>
                 
@@ -302,7 +319,7 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // Lógica de CSRF (Segurança)
+            // CSRF
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
             const tokenValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
@@ -317,7 +334,7 @@
                 evt.detail.headers['X-CSRFToken'] = tokenValue;
             });
 
-            // Lógica de Comentários e Likes (AJAX)
+            // Lógica de Comentários e Likes
             function updateReplyCounts() {
                 document.querySelectorAll('.toggle-replies-btn').forEach(btn => {
                     const targetId = btn.dataset.target;
@@ -330,16 +347,13 @@
             }
             updateReplyCounts();
 
-            // Delegação de Eventos para botões dinâmicos
             document.body.addEventListener('click', function(event) {
-                // Alternar Respostas
                 const toggleBtn = event.target.closest('.toggle-replies-btn');
                 if (toggleBtn) {
                     const targetId = toggleBtn.dataset.target;
                     const container = document.getElementById(targetId);
                     if (container) container.classList.toggle('hidden');
                 }
-                // Botão Responder
                 const replyBtn = event.target.closest('.reply-button');
                 if (replyBtn) {
                     const commentId = replyBtn.dataset.commentId;
@@ -354,7 +368,6 @@
                         if(area) area.focus();
                     }
                 }
-                // Botão Cancelar
                 const cancelBtn = event.target.closest('.cancel-reply-button');
                 if (cancelBtn) {
                     const form = cancelBtn.closest('.reply-form');
@@ -362,7 +375,6 @@
                 }
             });
 
-            // Interceptar Submits para Like e Comentário (Sem Recarregar)
             document.body.addEventListener('submit', function(e) {
                 const form = e.target;
                 const action = form.getAttribute('action') || '';
@@ -381,7 +393,6 @@
                     .then(data => {
                         if (data.success && data.liked !== undefined) {
                             if (isCommentLike) {
-                                // Lógica visual like comentário
                                 const text = data.liked ? 'Curtido' : 'Curtir';
                                 const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
                                 let html = `<span class="mr-1">${text}</span>`;
@@ -389,9 +400,7 @@
                                 btn.innerHTML = html;
                                 btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
                             } else {
-                                // Lógica visual like post
                                 const icon = btn.querySelector('i');
-                                // Remove textos antigos
                                 Array.from(btn.childNodes).forEach(node => {
                                     if (node !== icon && node.nodeType === 3) node.remove(); 
                                     if (node.classList && node.classList.contains('like-count-text')) node.remove();
@@ -400,33 +409,27 @@
                                 countSpan.className = 'like-count-text font-bold ml-1'; 
                                 countSpan.innerText = data.like_count;
                                 btn.appendChild(countSpan);
-                                
-                                if (icon) {
-                                    icon.className = data.liked ? 'fas fa-heart text-lg text-red-500' : 'far fa-heart text-lg';
-                                }
-                                if (data.liked) btn.classList.add('text-red-500');
-                                else btn.classList.remove('text-red-500');
+                                if (icon) icon.className = data.liked ? 'fas fa-heart text-lg text-red-500' : 'far fa-heart text-lg';
+                                if (data.liked) btn.classList.add('text-red-500'); else btn.classList.remove('text-red-500');
                             }
                         }
                     });
                     return false;
                 }
                 
-                // Animação de Loading nos botões
                 if (!action.includes('like')) {
                      const btn = form.querySelector('button[type="submit"]');
                      if (btn && !form.dataset.submitting) {
                          form.dataset.submitting = "true";
                          const w = btn.offsetWidth;
-                         btn.style.width = w + 'px'; // Mantém largura
+                         btn.style.width = w + 'px';
                          btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
                          btn.disabled = true;
-                         setTimeout(() => { form.dataset.submitting = ""; btn.disabled=false; }, 5000); // Timeout de segurança
+                         setTimeout(() => { form.dataset.submitting = ""; btn.disabled=false; }, 5000);
                      }
                 }
             }, true);
 
-            // Loader HTMX
             document.body.addEventListener('htmx:afterSwap', function(evt) {
                 closeDrawer();
                 var loader = document.getElementById('page-loader');
@@ -442,11 +445,8 @@
         function toggleMobileSearch() {
             const searchBar = document.getElementById('mobile-search-bar');
             if (searchBar.classList.contains('hidden')) {
-                searchBar.classList.remove('hidden');
-                searchBar.querySelector('input').focus();
-            } else {
-                searchBar.classList.add('hidden');
-            }
+                searchBar.classList.remove('hidden'); searchBar.querySelector('input').focus();
+            } else { searchBar.classList.add('hidden'); }
         }
 
         function closeDrawer() {
@@ -462,8 +462,7 @@
             const overlay = document.getElementById('drawer-overlay');
             if (drawer.classList.contains('drawer-closed')) {
                 drawer.classList.remove('drawer-closed'); drawer.classList.add('drawer-open');
-                overlay.classList.remove('hidden'); 
-                setTimeout(()=>overlay.classList.add('opacity-100'), 10);
+                overlay.classList.remove('hidden'); setTimeout(()=>overlay.classList.add('opacity-100'), 10);
                 document.body.style.overflow = 'hidden'; 
             } else { closeDrawer(); }
         }
@@ -490,7 +489,6 @@
     </div>
     
     <script>
-        // Lógica PWA (Mantida igual ao original para garantir funcionamento)
         let deferredPrompt; const installBanner = document.getElementById('install-banner'); const menuInstallBtn = document.getElementById('menu-install-btn'); const btnAction = document.getElementById('btn-install-action');
         const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
