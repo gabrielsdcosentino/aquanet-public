@@ -945,5 +945,33 @@ def manifest(): return send_from_directory(app.static_folder, 'manifest.json')
 @app.route('/icon-512.png')
 def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 
+@app.route('/debug/push')
+@login_required
+def debug_push():
+    # Pega as inscrições do usuário logado
+    subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
+    results = []
+    
+    private_key = os.environ.get('VAPID_PRIVATE_KEY')
+    if not private_key: return "Erro: VAPID_PRIVATE_KEY não encontrada na Vercel"
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
+                },
+                data=json.dumps({"title": "Teste AquaNet", "body": "Se você leu isso, funcionou!", "url": "/"}),
+                vapid_private_key=private_key,
+                vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
+            )
+            results.append(f"Sucesso para ID {sub.id}")
+        except Exception as ex:
+            results.append(f"Erro no ID {sub.id}: {str(ex)}")
+            
+    return jsonify(results)
+
+
 if __name__ == '__main__':
     app.run(debug=False)
