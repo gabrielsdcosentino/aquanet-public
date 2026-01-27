@@ -212,6 +212,11 @@
                         <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover">
                         <span class="text-sm font-bold text-slate-700">{{ current_user.username }}</span>
                     </a>
+
+                    <a href="{{ url_for('logout') }}" class="hidden md:flex w-9 h-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all ml-1" title="Sair">
+                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    </a>
+
                 {% else %}
                     <a href="{{ url_for('login') }}" class="text-sm font-bold text-slate-600 hover:text-blue-600 px-3">Entrar</a>
                     <a href="{{ url_for('register') }}" class="hidden md:block bg-slate-900 text-white text-sm font-bold px-5 py-2.5 rounded-full hover:bg-black transition-transform active:scale-95">Criar Conta</a>
@@ -439,14 +444,8 @@
                                 countSpan.className = 'like-count-text font-bold ml-1'; 
                                 countSpan.innerText = data.like_count;
                                 btn.appendChild(countSpan);
-                                
-                                // --- CORREÇÃO AQUI: DE HEART PARA THUMBS-UP ---
-                                if (icon) icon.className = data.liked ? 'fas fa-thumbs-up text-lg text-blue-600' : 'far fa-thumbs-up text-lg';
-                                
-                                // Muda para azul ao invés de vermelho
-                                if (data.liked) btn.classList.add('text-blue-600'); else btn.classList.remove('text-blue-600');
-                                // Remove qualquer resquício de vermelho
-                                btn.classList.remove('text-red-500');
+                                if (icon) icon.className = data.liked ? 'fas fa-heart text-lg text-red-500' : 'far fa-heart text-lg';
+                                if (data.liked) btn.classList.add('text-red-500'); else btn.classList.remove('text-red-500');
                             }
                         }
                     });
