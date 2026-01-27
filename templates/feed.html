@@ -14,6 +14,7 @@
     <div class="md:hidden bg-white/95 backdrop-blur-sm sticky top-16 z-30 border-b border-gray-100 py-3 px-4 shadow-sm transition-all duration-300">
         <div class="relative bg-slate-100 rounded-xl p-1 flex h-10 w-full">
             <div class="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] bg-white rounded-lg shadow-sm border border-slate-200/50 transition-transform duration-300 ease-out translate-x-full"></div>
+            
             <a href="{{ url_for('home') }}" id="tab-global" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-gray-500 hover:text-gray-700">Global</a>
             <a href="{{ url_for('feed') }}" id="tab-feed" class="relative z-10 flex-1 flex items-center justify-center text-sm font-bold transition-colors duration-300 text-blue-600">Seguindo</a>
         </div>
@@ -83,25 +84,21 @@
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // --- 1. Contador de Caracteres ---
+        // Contador de Caracteres
         const postContent = document.getElementById('post-content');
         const charCounter = document.getElementById('char-counter');
-       
         if (postContent && charCounter) {
             const maxLength = postContent.getAttribute('maxlength');
             function updateCounter() {
                 const currentLength = postContent.value.length;
                 charCounter.textContent = `${currentLength} / ${maxLength}`;
-                if (currentLength >= maxLength) {
-                    charCounter.classList.add('text-red-600', 'font-bold');
-                } else {
-                    charCounter.classList.remove('text-red-600', 'font-bold');
-                }
+                if (currentLength >= maxLength) charCounter.classList.add('text-red-600', 'font-bold');
+                else charCounter.classList.remove('text-red-600', 'font-bold');
             }
             postContent.addEventListener('input', updateCounter);
         }
 
-        // --- 2. Infinite Scroll ---
+        // Infinite Scroll
         document.body.addEventListener('click', function(e) {
             if (e.target && e.target.id === 'load-more-btn') {
                 const btn = e.target;
@@ -114,21 +111,21 @@
             }
         });
 
-        // --- SWIPE SEGUINDO -> GLOBAL ---
+        // SWIPE LOGIC (DESLIZAR PARA A DIREITA -> IR PARA GLOBAL)
         {% if not current_community %}
         let touchStartX = 0; let touchStartY = 0;
-        document.body.addEventListener('touchstart', e => { 
+        document.addEventListener('touchstart', e => { 
             touchStartX = e.changedTouches[0].screenX; 
             touchStartY = e.changedTouches[0].screenY; 
         }, {passive: true});
         
-        document.body.addEventListener('touchend', e => {
+        document.addEventListener('touchend', e => {
             let touchEndX = e.changedTouches[0].screenX;
             let touchEndY = e.changedTouches[0].screenY;
             let xDiff = touchEndX - touchStartX;
             let yDiff = touchEndY - touchStartY;
             
-            // Se deslizou para a DIREITA (voltando para Global)
+            // Deslizar para DIREITA (->) vai para a aba da ESQUERDA (Global)
             if (xDiff > 60 && Math.abs(yDiff) < 50) { 
                 const tabGlobal = document.getElementById('tab-global');
                 if(tabGlobal) tabGlobal.click(); 
