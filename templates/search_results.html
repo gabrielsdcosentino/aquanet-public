@@ -71,10 +71,9 @@
     <section class="mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-800 ml-1">Posts Encontrados</h3>
         {% for post in posts_results %}
-            <article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition relative">
-                
+            <div class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition">
                 <div class="p-4">
-                    <div class="text-xs text-gray-600 mb-2 relative z-10">
+                    <div class="text-xs text-gray-600 mb-2">
                         <span>Postado por <a href="{{ url_for('profile', username=post.author.username) }}" class="font-semibold text-black hover:underline">@{{ post.author.username }}</a></span>
                         em <a href="{{ url_for('community_feed', community_slug=post.community.slug) }}" class="font-semibold text-blue-700 hover:underline">{{ post.community.name }}</a>
                     </div>
@@ -100,7 +99,7 @@
                         <i class="far fa-thumbs-up mr-1"></i> {{ post.likes|length }}
                     </div>
                 </div>
-            </article>
+            </div>
         {% endfor %}
     </section>
     {% endif %}
