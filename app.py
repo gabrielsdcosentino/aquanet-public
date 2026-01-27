@@ -6,7 +6,7 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
-import secrets, os, datetime, unicodedata
+import secrets, os, datetime, unicodedata, re, threading
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -172,14 +172,24 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
+# --- SISTEMA DE EMAIL ASSINCRONO ---
+def send_async_email(app, msg):
+    with app.app_context():
+        try: mail.send(msg)
+        except Exception as e: print(f"Erro Email Async: {e}")
+
+def send_email_notification(to_email, subject, html_body):
+    if not to_email: return
+    sender = f"AquaNet <{current_app.config['MAIL_USERNAME']}>"
+    msg = Message(subject, sender=sender, recipients=[to_email], html=html_body)
+    # Threading para não travar o site enquanto envia o email
+    threading.Thread(target=send_async_email, args=(current_app._get_current_object(), msg)).start()
+
 def send_reset_email(user, mail_app):
     token = user.get_reset_token()
     sender_address = f"AquaNet <{current_app.config['MAIL_USERNAME']}>" 
     msg = Message('Redefinição de Senha', sender=sender_address, recipients=[user.email])
-    msg.body = f'''Para redefinir sua senha, clique no link:
-{url_for('reset_token', token=token, _external=True)}
-Ignore se não solicitou.
-'''
+    msg.body = f'Para redefinir sua senha: {url_for('reset_token', token=token, _external=True)}'
     try: mail_app.send(msg)
     except Exception as e: print(f"ERRO EMAIL: {e}")
 
@@ -316,18 +326,57 @@ class EncyclopediaEntry(db.Model):
     last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     last_editor = db.relationship('User', backref='wiki_edits')
 
+# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL ---
 def create_notification(recipient, action, sender=None, post=None, comment=None):
     if sender and recipient == sender: return
     recipient_id = recipient.id if recipient else None
     sender_id = sender.id if sender else None
     if not recipient_id: return
+    
+    # Busca duplicada no banco
     existing = Notification.query.filter_by(
         recipient_id=recipient_id, sender_id=sender_id, action=action,
         post_id=post.id if post else None, comment_id=comment.id if comment else None, is_read=False
     ).first()
-    if existing: existing.timestamp = now_br(); existing.count += 1; db.session.commit(); return
+    
+    if existing: 
+        existing.timestamp = now_br(); existing.count += 1; db.session.commit()
+        # Se for menção, queremos email mesmo se já existir notificação
+        if action != 'mention': return
+
     notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
     db.session.add(notif); db.session.commit()
+
+    # --- LÓGICA DE EMAIL ---
+    try:
+        if action in ['mention', 'comment', 'reply'] and recipient.email:
+            subject = "Nova notificação no AquaNet"
+            link = url_for('post_detail', post_id=post.id, _external=True) if post else url_for('home', _external=True)
+            
+            msg_body = f"<p>Olá <b>{recipient.username}</b>,</p>"
+            if action == 'mention':
+                msg_body += f"<p><b>@{sender.username}</b> marcou você em uma publicação.</p>"
+            elif action == 'reply':
+                msg_body += f"<p><b>@{sender.username}</b> respondeu seu comentário.</p>"
+            elif action == 'comment':
+                msg_body += f"<p><b>@{sender.username}</b> comentou no seu post.</p>"
+            
+            msg_body += f"<p><a href='{link}' style='padding:10px 20px; background:#2563EB; color:white; text-decoration:none; border-radius:5px;'>Ver Agora</a></p>"
+            msg_body += "<p><small>AquaNet - Rede de Aquarismo</small></p>"
+            
+            send_email_notification(recipient.email, subject, msg_body)
+    except Exception as e:
+        print(f"Erro ao enviar email de notificação: {e}")
+
+# --- PROCESSADOR DE MENÇÕES (@usuario) ---
+def process_mentions(content, sender, post, comment=None):
+    # Regex para achar @usuario
+    usernames = set(re.findall(r'@([a-zA-Z0-9_]+)', content))
+    
+    for username in usernames:
+        user = User.query.filter_by(username=username).first()
+        if user and user != sender:
+            create_notification(user, 'mention', sender, post, comment)
 
 with app.app_context():
     db.create_all()
@@ -451,7 +500,13 @@ def community_feed(community_slug):
         if pic and app.config['CLOUDINARY_API_KEY']:
             try: uploaded = cloudinary.uploader.upload(pic, folder="aquanet_posts", resource_type="auto", transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]); img_url = uploaded['secure_url']; img_id = uploaded['public_id']
             except: pass
-        db.session.add(Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)); db.session.commit()
+        
+        new_post = Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)
+        db.session.add(new_post); db.session.commit()
+        
+        # --- PROCESSAR MENÇÕES NO POST ---
+        process_mentions(content, current_user, post=new_post)
+        
         return redirect(url_for('community_feed', community_slug=community.slug))
     page = request.args.get('page', 1, type=int)
     posts = Post.query.filter_by(community=community).options(joinedload(Post.author), joinedload(Post.community)).order_by(Post.timestamp.desc()).paginate(page=page, per_page=10)
@@ -572,8 +627,12 @@ def api_add_comment(post_id):
     parent_comment = Comment.query.get(parent_id) if parent_id else None
     new_comment = Comment(text=text.strip(), comment_author=current_user, parent_post=post, parent=parent_comment)
     db.session.add(new_comment); db.session.commit()
+    
     create_notification(post.author, 'comment', current_user, post=post, comment=new_comment)
     if parent_comment: create_notification(parent_comment.comment_author, 'reply', current_user, post=post, comment=new_comment)
+    
+    # --- PROCESSAR MENÇÕES NO COMENTÁRIO ---
+    process_mentions(text, current_user, post=post, comment=new_comment)
     
     if is_ajax: return jsonify({'success': True, 'comment': {'id': new_comment.id, 'text': new_comment.text, 'author_username': new_comment.comment_author.username, 'author_profile_url': url_for('profile', username=new_comment.comment_author.username)}, 'total_comments': Comment.query.filter_by(post_id=post.id).count()})
     return redirect(url_for('post_detail', post_id=post.id))
@@ -613,7 +672,6 @@ def encyclopedia():
 @app.route('/encyclopedia/<category_slug>')
 def encyclopedia_category(category_slug):
     if category_slug not in CATEGORIES_WIKI: return redirect(url_for('encyclopedia'))
-    # CORREÇÃO: Busca pelo slug exato (ex: 'aquarios') que está no banco
     entries = EncyclopediaEntry.query.filter_by(category=category_slug).order_by(EncyclopediaEntry.title).all()
     return render_template('encyclopedia_category.html', category=CATEGORIES_WIKI[category_slug], entries=entries, popular_communities=get_popular_communities())
 
@@ -629,7 +687,6 @@ def create_entry():
         if pic and app.config['CLOUDINARY_API_KEY']:
             try: uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]); img_url = uploaded['secure_url']
             except: pass
-        # Salva o slug da categoria (ex: 'aquarios') no banco
         db.session.add(EncyclopediaEntry(title=title, slug=slug, category=category, content=content, image_file=img_url, last_editor=current_user))
         db.session.commit(); return redirect(url_for('view_entry', slug=slug))
     return render_template('encyclopedia_form.html', categories=CATEGORIES_WIKI, legend="Criar Tópico")
