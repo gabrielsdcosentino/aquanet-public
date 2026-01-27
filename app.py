@@ -8,7 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from markupsafe import Markup
 from flask import escape
-import secrets, os, datetime, unicodedata, re
+import secrets, os, datetime, unicodedata, re, json
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -17,6 +17,7 @@ from better_profanity import profanity
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
+from pywebpush import webpush, WebPushException
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -185,13 +186,11 @@ def get_popular_communities():
 # --- SISTEMA DE EMAIL SÍNCRONO (IGUAL AO RESET DE SENHA) ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
-    sender = f"AquaNet <{app.config.get('MAIL_USERNAME', 'noreply@aquanet.app')}>" # Garante um sender mesmo se config falhar
+    sender = f"AquaNet <{app.config.get('MAIL_USERNAME', 'noreply@aquanet.app')}>" 
     msg = Message(subject, sender=sender, recipients=[to_email], html=html_body)
     try:
-        # Envia diretamente, travando a execução até terminar (garante envio na Vercel)
         mail.send(msg)
     except Exception as e:
-        # Loga o erro mas não derruba o site
         print(f"ERRO CRÍTICO AO ENVIAR EMAIL: {e}")
 
 def send_reset_email(user, mail_app):
@@ -297,6 +296,14 @@ class Notification(db.Model):
     count = db.Column(db.Integer, default=1)
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_notifications')
 
+# --- NOVO MODELO PARA PUSH NOTIFICATIONS ---
+class PushSubscription(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    endpoint = db.Column(db.Text, nullable=False)
+    p256dh = db.Column(db.String(200), nullable=False)
+    auth = db.Column(db.String(200), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+
 class Aquarium(db.Model):
     id = db.Column(db.Integer, primary_key=True); name = db.Column(db.String(100), nullable=False)
     aquarium_type = db.Column(db.String(50), nullable=True); volume = db.Column(db.Float, nullable=True)
@@ -335,7 +342,34 @@ class EncyclopediaEntry(db.Model):
     last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     last_editor = db.relationship('User', backref='wiki_edits')
 
-# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL SÍNCRONO ---
+# --- FUNÇÃO AUXILIAR PARA ENVIAR PUSH ---
+def send_push_notification(user, title, body, url='/'):
+    # Envia para TODOS os dispositivos daquele usuário
+    subs = PushSubscription.query.filter_by(user_id=user.id).all()
+    if not subs: return
+    
+    private_key = os.environ.get('VAPID_PRIVATE_KEY')
+    if not private_key: return
+
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
+                },
+                data=json.dumps({"title": title, "body": body, "url": url}),
+                vapid_private_key=private_key,
+                vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
+            )
+        except WebPushException as ex:
+            # Se a inscrição expirou (ex: usuário limpou dados), remove do banco
+            if ex.response and ex.response.status_code == 410:
+                db.session.delete(sub)
+                db.session.commit()
+            print(f"Erro Push: {ex}")
+
+# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL E PUSH ---
 def create_notification(recipient, action, sender=None, post=None, comment=None):
     if sender and recipient == sender: return
     recipient_id = recipient.id if recipient else None
@@ -350,25 +384,35 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
     
     if existing: 
         existing.timestamp = now_br(); existing.count += 1; db.session.commit()
-        if action != 'mention': return # Se já existe e não é menção, não manda email de novo
+        if action != 'mention': return # Se já existe e não é menção, evita spam
 
     if not existing:
         notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
         db.session.add(notif); db.session.commit()
 
-    # 2. Envia o E-mail (Síncrono - Vercel Friendly)
+    # Define Textos para Email e Push
+    msg_text = f"@{sender.username} interagiu com você"
+    if action == 'mention': msg_text = f"@{sender.username} te marcou em um post"
+    elif action == 'comment': msg_text = f"@{sender.username} comentou no seu post"
+    elif action == 'reply': msg_text = f"@{sender.username} respondeu seu comentário"
+    elif action == 'follow': msg_text = f"@{sender.username} começou a te seguir"
+    elif action == 'like_post': msg_text = f"@{sender.username} curtiu seu post"
+    elif action == 'like_comment': msg_text = f"@{sender.username} curtiu seu comentário"
+
+    target_url = url_for('post_detail', post_id=post.id, _external=True) if post else url_for('profile', username=sender.username, _external=True)
+
+    # 2. Tenta enviar PUSH NOTIFICATION
+    try:
+        send_push_notification(recipient, "AquaNet", msg_text, target_url)
+    except Exception as e:
+        print(f"Erro ao disparar push: {e}")
+
+    # 3. Envia o E-mail (Apenas para interações importantes)
     try:
         if action in ['mention', 'comment', 'reply'] and recipient.email:
-            subject_map = {
-                'mention': f"Você foi marcado por @{sender.username}",
-                'reply': f"@{sender.username} respondeu seu comentário",
-                'comment': f"@{sender.username} comentou no seu post"
-            }
-            subject = subject_map.get(action, "Nova notificação no AquaNet")
+            subject = f"Nova notificação no AquaNet: {msg_text}"
             
-            link = url_for('post_detail', post_id=post.id, _external=True) if post else url_for('home', _external=True)
-            
-            # HTML mais bonito e limpo
+            # HTML do Email
             msg_body = f"""
             <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                 <h2 style="color: #2563EB; margin-bottom: 20px;">Olá {recipient.username},</h2>
@@ -379,7 +423,7 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
                     "{comment.text if comment else post.content if post else '...'}"
                 </div>
                 <div style="text-align: center; margin-top: 30px;">
-                    <a href="{link}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">Ver Publicação</a>
+                    <a href="{target_url}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">Ver Publicação</a>
                 </div>
                 <p style="text-align: center; margin-top: 30px; font-size: 12px; color: #aaa;">
                     AquaNet - A Rede Social do Aquarismo<br>
@@ -387,7 +431,6 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
                 </p>
             </div>
             """
-            
             send_email_notification(recipient.email, subject, msg_body)
     except Exception as e:
         print(f"Erro ao enviar email de notificação: {e}")
@@ -669,6 +712,26 @@ def api_like_comment(comment_id):
     db.session.commit()
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest': return jsonify({'success': True, 'liked': liked, 'like_count': len(comment.likes)})
     return redirect(request.referrer)
+
+@app.route('/api/save-subscription', methods=['POST'])
+@login_required
+def save_subscription():
+    data = request.json
+    if not data: return jsonify({'success': False})
+    
+    # Verifica se já existe para não duplicar
+    exists = PushSubscription.query.filter_by(endpoint=data['endpoint']).first()
+    if not exists:
+        sub = PushSubscription(
+            endpoint=data['endpoint'],
+            p256dh=data['keys']['p256dh'],
+            auth=data['keys']['auth'],
+            user_id=current_user.id
+        )
+        db.session.add(sub)
+        db.session.commit()
+    
+    return jsonify({'success': True})
 
 @app.route('/search')
 @login_required
