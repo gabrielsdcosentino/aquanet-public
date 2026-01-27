@@ -7,19 +7,18 @@
         <h2 class="text-2xl font-semibold mb-4">Resultados da Busca por: <span class="text-blue-600">{{ query }}</span></h2>
     </div>
 
+    {% if encyclopedia_results %}
     <section class="bg-white rounded-lg shadow mb-6">
         <div class="p-4">
             <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center">
                 <i class="fas fa-book text-blue-500 mr-2"></i> Enciclopédia
             </h3>
             
-            <div class="space-y-1">
+            <div class="space-y-2">
                 {% for entry in encyclopedia_results %}
-                    <div class="relative py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50 transition p-3 rounded-lg group cursor-pointer">
+                    <a href="{{ url_for('view_entry', slug=entry.slug) }}" class="block relative py-3 border-b border-gray-100 last:border-0 hover:bg-blue-50 transition p-3 rounded-lg group">
                         
-                        <a href="{{ url_for('view_entry', slug=entry.slug) }}" class="absolute inset-0 z-0" aria-label="Ver {{ entry.title }}"></a>
-
-                        <div class="flex justify-between items-start relative z-10 pointer-events-none">
+                        <div class="flex justify-between items-start">
                             <div>
                                 <span class="text-lg font-bold text-blue-600 group-hover:underline">
                                     {{ entry.title }}
@@ -31,35 +30,28 @@
                             <i class="fas fa-chevron-right text-gray-300 group-hover:text-blue-500 transition"></i>
                         </div>
                         
-                        <p class="text-sm text-gray-600 mt-1 line-clamp-2 relative z-10 pointer-events-none">
+                        <p class="text-sm text-gray-600 mt-1 line-clamp-2">
                             {{ entry.content[:200] }}...
                         </p>
-                    </div>
-                {% else %}
-                    <div class="text-center py-4">
-                        <p class="text-sm text-gray-500 italic mb-2">Nenhum tópico de enciclopédia encontrado.</p>
-                        <a href="{{ url_for('create_entry') }}" class="inline-block text-xs font-bold bg-blue-100 text-blue-600 px-3 py-1 rounded-full hover:bg-blue-200 transition">
-                            <i class="fas fa-plus mr-1"></i> Criar agora
-                        </a>
-                    </div>
+                    </a>
                 {% endfor %}
             </div>
         </div>
     </section>
+    {% endif %}
 
+    {% if communities_results %}
     <section class="bg-white rounded-lg shadow mb-6">
         <div class="p-4">
             <h3 class="text-xl font-semibold text-gray-800 mb-4 border-b pb-2 flex items-center">
                 <i class="fas fa-users text-green-500 mr-2"></i> Comunidades
             </h3>
             
-            <div class="space-y-1">
+            <div class="space-y-2">
                 {% for community in communities_results %}
-                    <div class="relative py-3 border-b border-gray-100 last:border-0 hover:bg-green-50 transition p-3 rounded-lg group cursor-pointer">
+                    <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="block relative py-3 border-b border-gray-100 last:border-0 hover:bg-green-50 transition p-3 rounded-lg group">
                         
-                        <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="absolute inset-0 z-0"></a>
-
-                        <div class="flex items-center justify-between relative z-10 pointer-events-none">
+                        <div class="flex items-center justify-between">
                             <div>
                                 <span class="text-lg font-semibold text-blue-600 group-hover:underline">{{ community.name }}</span>
                                 <p class="text-sm text-gray-600 mt-0.5">{{ community.description or "Sem descrição." }}</p>
@@ -68,36 +60,38 @@
                                 {{ community.posts|length }} post(s)
                             </span>
                         </div>
-                    </div>
-                {% else %}
-                    <p class="text-sm text-gray-500 italic p-2 text-center">Nenhuma comunidade encontrada com este termo.</p>
+                    </a>
                 {% endfor %}
             </div>
         </div>
     </section>
+    {% endif %}
 
+    {% if posts_results %}
     <section class="mb-6">
         <h3 class="text-xl font-semibold mb-4 text-gray-800 ml-1">Posts Encontrados</h3>
         {% for post in posts_results %}
-            <article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition cursor-pointer relative">
+            <article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition relative">
                 
-                <a href="{{ url_for('post_detail', post_id=post.id) }}" class="absolute inset-0 z-0"></a>
-
                 <div class="p-4">
-                    <div class="text-xs text-gray-600 mb-2">
-                        <span class="relative z-10">Postado por <a href="{{ url_for('profile', username=post.author.username) }}" class="font-semibold text-black hover:underline">@{{ post.author.username }}</a></span>
-                        em <a href="{{ url_for('community_feed', community_slug=post.community.slug) }}" class="font-semibold text-blue-700 hover:underline relative z-10">{{ post.community.name }}</a>
+                    <div class="text-xs text-gray-600 mb-2 relative z-10">
+                        <span>Postado por <a href="{{ url_for('profile', username=post.author.username) }}" class="font-semibold text-black hover:underline">@{{ post.author.username }}</a></span>
+                        em <a href="{{ url_for('community_feed', community_slug=post.community.slug) }}" class="font-semibold text-blue-700 hover:underline">{{ post.community.name }}</a>
                     </div>
                     
-                    <p class="text-gray-800 text-base mb-3 pointer-events-none">{{ post.content }}</p>
+                    <a href="{{ url_for('post_detail', post_id=post.id) }}" class="block mt-2">
+                        <p class="text-gray-800 text-base mb-3">{{ post.content }}</p>
+                    </a>
                 </div>
+                
                 {% if post.image_file %}
-                    <div class="bg-gray-100 flex justify-center">
+                    <a href="{{ url_for('post_detail', post_id=post.id) }}" class="block bg-gray-100 flex justify-center">
                         <img src="{{ post.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
-                    </div>
+                    </a>
                 {% endif %}
-                <div class="p-4 flex items-center text-sm text-gray-600 font-semibold border-t border-gray-100 relative z-10">
-                     <a href="{{ url_for('post_detail', post_id=post.id) }}" class="flex items-center hover:bg-gray-100 p-2 rounded-md mr-3 relative z-10">
+
+                <div class="p-4 flex items-center text-sm text-gray-600 font-semibold border-t border-gray-100 bg-gray-50">
+                     <a href="{{ url_for('post_detail', post_id=post.id) }}" class="flex items-center hover:text-blue-600 mr-4 transition">
                         <i class="far fa-comment-alt mr-1"></i>
                         {{ post.comments|length }} Comentário(s)
                     </a>
@@ -105,39 +99,17 @@
                     <div class="flex items-center text-gray-500 mr-auto">
                         <i class="far fa-thumbs-up mr-1"></i> {{ post.likes|length }}
                     </div>
-
-                    {% if post.user_id == current_user.id %}
-                        <a href="{{ url_for('delete_post', post_id=post.id) }}" class="text-xs text-red-600 hover:underline ml-3 relative z-10">(Excluir)</a>
-                    {% endif %}
                 </div>
             </article>
-        {% else %}
-            <p class="text-sm text-gray-500 italic bg-white p-4 rounded-lg shadow text-center">Nenhum post encontrado com este termo.</p>
         {% endfor %}
     </section>
+    {% endif %}
     
-    <section class="mb-6">
-        <h3 class="text-xl font-semibold mb-4 text-gray-800 ml-1">Comentários Encontrados</h3>
-        {% for comment in comments_results %}
-            <article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:shadow-md transition cursor-pointer relative">
-                
-                <a href="{{ url_for('post_detail', post_id=comment.parent_post.id) }}" class="absolute inset-0 z-0"></a>
-
-                <div class="p-4">
-                    <p class="text-xs text-gray-600 mb-2">
-                        <span class="relative z-10">Comentário de <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="font-semibold text-black hover:underline">@{{ comment.comment_author.username }}</a></span>
-                    </p>
-                    <p class="text-gray-800 text-base mb-3 italic pointer-events-none">"{{ comment.text }}"</p>
-                </div>
-                <div class="p-4 flex items-center text-sm text-gray-600 font-semibold border-t border-gray-100 bg-gray-50">
-                     <span class="text-blue-600 flex items-center">
-                        <i class="fas fa-external-link-alt mr-2"></i>
-                        Ver no post original ({{ comment.parent_post.community.name }})
-                    </span>
-                </div>
-            </article>
-        {% else %}
-            <p class="text-sm text-gray-500 italic bg-white p-4 rounded-lg shadow text-center">Nenhum comentário encontrado com este termo.</p>
-        {% endfor %}
-    </section>
+    {% if not encyclopedia_results and not communities_results and not posts_results %}
+        <div class="text-center py-12">
+            <div class="text-6xl text-gray-200 mb-4"><i class="fas fa-search"></i></div>
+            <p class="text-lg text-gray-500 font-medium">Nenhum resultado encontrado para "{{ query }}".</p>
+            <p class="text-sm text-gray-400 mt-2">Tente palavras diferentes ou navegue pelas categorias.</p>
+        </div>
+    {% endif %}
 {% endblock %}

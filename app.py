@@ -154,12 +154,8 @@ _cache_popular = {'data': [], 'timestamp': 0}
 def get_popular_communities():
     global _cache_popular
     current_time = time.time()
-    
-    # 1. Se o cache tem dados e tem menos de 10 minutos (600 segundos), usa ele
     if _cache_popular['data'] and (current_time - _cache_popular['timestamp'] < 600):
         return _cache_popular['data']
-
-    # 2. Se o cache está velho ou vazio, consulta o Banco de Dados
     try:
         results = (
             db.session.query(Community, func.count(Post.id).label('post_count'))
@@ -170,8 +166,6 @@ def get_popular_communities():
             .all()
         )
         data = [c[0] for c in results]
-        
-        # 3. Atualiza o cache
         _cache_popular = {'data': data, 'timestamp': current_time}
         return data
     except Exception as e:
@@ -244,23 +238,13 @@ class Community(db.Model):
     
     @staticmethod
     def generate_slug(name):
-        # 1. Normaliza para remover acentos (Ex: 'Ação' vira 'Acao')
         nfkd_form = unicodedata.normalize('NFKD', name)
         slug = "".join([c for c in nfkd_form if not unicodedata.combining(c)])
-        
-        # 2. Deixa minúsculo e troca espaços por hífens
         slug = slug.lower().strip().replace(' ', '-')
-        
-        # 3. Mantém apenas letras, números e hífens
         slug = ''.join(c for c in slug if c.isalnum() or c == '-')
-        
-        # 4. Remove hífens duplicados (Ex: 'peixe--betta' vira 'peixe-betta')
         while '--' in slug:
             slug = slug.replace('--', '-')
-            
-        # 5. Remove hífens do começo ou fim
         slug = slug.strip('-')
-        
         return slug
 
 class Post(db.Model):
@@ -332,34 +316,22 @@ class EncyclopediaEntry(db.Model):
     last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     last_editor = db.relationship('User', backref='wiki_edits')
 
-# --- FUNÇÃO CREATE_NOTIFICATION CORRIGIDA ---
 def create_notification(recipient, action, sender=None, post=None, comment=None):
     if sender and recipient == sender: return
     recipient_id = recipient.id if recipient else None
     sender_id = sender.id if sender else None
     if not recipient_id: return
-
-    # VERIFICA SE JÁ EXISTE UMA NOTIFICAÇÃO NÃO LIDA IGUAL
     existing = Notification.query.filter_by(
-        recipient_id=recipient_id,
-        sender_id=sender_id,
-        action=action,
-        post_id=post.id if post else None,
-        comment_id=comment.id if comment else None,
-        is_read=False
+        recipient_id=recipient_id, sender_id=sender_id, action=action,
+        post_id=post.id if post else None, comment_id=comment.id if comment else None, is_read=False
     ).first()
-
-    if existing:
-        existing.timestamp = now_br()
-        existing.count += 1
-        db.session.commit()
-        return
-
+    if existing: existing.timestamp = now_br(); existing.count += 1; db.session.commit(); return
     notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
     db.session.add(notif); db.session.commit()
 
 with app.app_context():
     db.create_all()
+
 # --- ROTAS DE AUTH e BASE ---
 @app.route('/login/google')
 def login_google():
@@ -399,26 +371,14 @@ def auth_google():
 def register():
     if current_user.is_authenticated: return redirect(url_for('home'))
     if request.method == 'POST':
-        username = request.form.get('username')
-        email = request.form.get('email')
-        password = request.form.get('password')
-
-        if contains_bad_words(username): flash('Nome de usuário impróprio.', 'danger'); return redirect(url_for('register'))
-        if ' ' in username: flash('Nome não pode conter espaços.', 'danger'); return redirect(url_for('register'))
+        username = request.form.get('username'); email = request.form.get('email'); password = request.form.get('password')
+        if contains_bad_words(username): flash('Nome impróprio.', 'danger'); return redirect(url_for('register'))
+        if ' ' in username: flash('Nome sem espaços.', 'danger'); return redirect(url_for('register'))
         if User.query.filter_by(username=username).first(): flash('Nome em uso.', 'danger'); return redirect(url_for('register'))
-        if User.query.filter_by(email=email).first(): flash('Email já cadastrado.', 'danger'); return redirect(url_for('register'))
-        
-        avatar_url = f"https://ui-avatars.com/api/?name={username}&background=random&color=fff&size=150"
-        
-        new_user = User(username=username, email=email, profile_pic_url=avatar_url)
-        new_user.set_password(password)
-        
-        db.session.add(new_user)
-        db.session.commit()
-        
-        flash('Conta criada com sucesso!', 'success')
-        return redirect(url_for('login'))
-        
+        if User.query.filter_by(email=email).first(): flash('Email em uso.', 'danger'); return redirect(url_for('register'))
+        new_user = User(username=username, email=email, profile_pic_url=f"https://ui-avatars.com/api/?name={username}&background=random&color=fff&size=150")
+        new_user.set_password(password); db.session.add(new_user); db.session.commit()
+        flash('Conta criada!', 'success'); return redirect(url_for('login'))
     return render_template("register.html")
 
 @app.route('/reset_password', methods=['GET', 'POST'])
@@ -427,20 +387,21 @@ def reset_request():
     if request.method == 'POST':
         email = request.form.get('email'); user = User.query.filter_by(email=email).first()
         if user: send_reset_email(user, mail)
-        flash('Se o email existir, enviamos instruções.', 'info'); return redirect(url_for('login'))
-    return render_template('reset_request.html', title='Solicitar Redefinição')
+        flash('Verifique seu email.', 'info'); return redirect(url_for('login'))
+    return render_template('reset_request.html', title='Redefinir Senha')
 
 @app.route("/reset_password/<token>", methods=['GET', 'POST'])
 def reset_token(token):
     if current_user.is_authenticated: return redirect(url_for('home'))
     user = User.verify_reset_token(token)
-    if user is None: flash('Token inválido ou expirado.', 'danger'); return redirect(url_for('reset_request'))
+    if user is None: flash('Token inválido.', 'danger'); return redirect(url_for('reset_request'))
     if request.method == 'POST':
         password = request.form.get('password'); confirm = request.form.get('confirm_password')
-        if password != confirm: flash('As senhas não coincidem.', 'danger'); return render_template('reset_token.html', token=token)
+        if password != confirm: flash('Senhas não conferem.', 'danger'); return render_template('reset_token.html', token=token)
         user.set_password(password); db.session.commit()
-        flash('Senha redefinida!', 'success'); return redirect(url_for('login'))
+        flash('Senha alterada!', 'success'); return redirect(url_for('login'))
     return render_template('reset_token.html', token=token)
+
 @app.route("/login", methods=['GET', 'POST'])
 def login():
     if current_user.is_authenticated: return redirect(url_for('home'))
@@ -454,138 +415,69 @@ def login():
 @app.route("/logout")
 def logout():
     logout_user(); flash('Tchau!', 'info'); return redirect(url_for('login'))
+
 @app.route("/")
 @login_required
 def home():
     page = request.args.get('page', 1, type=int)
-    
-    # OTIMIZAÇÃO: joinedload pega o Autor e a Comunidade junto com o Post
-    # Evita ir no banco de dados 30 vezes
-    posts = Post.query.options(
-        joinedload(Post.author),
-        joinedload(Post.community)
-    ).order_by(Post.timestamp.desc()).paginate(page=page, per_page=10)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template('post_list.html', posts=posts, current_community=None)
-
-    # Cache simples para comunidades (já existia)
-    popular = get_popular_communities()
-    
-    # Otimização na lista de comunidades laterais
-    subscribed = []
-    if current_user.is_authenticated:
-        subscribed = current_user.joined_communities[:5]
-
-    return render_template('index.html', posts=posts, communities=Community.query.all(), popular_communities=popular, subscribed_communities=subscribed)
+    posts = Post.query.options(joinedload(Post.author), joinedload(Post.community)).order_by(Post.timestamp.desc()).paginate(page=page, per_page=10)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest': return render_template('post_list.html', posts=posts, current_community=None)
+    subscribed = current_user.joined_communities[:5] if current_user.is_authenticated else []
+    return render_template('index.html', posts=posts, communities=Community.query.all(), popular_communities=get_popular_communities(), subscribed_communities=subscribed)
 
 @app.route("/feed")
 @login_required
 def feed():
     page = request.args.get('page', 1, type=int)
-    
-    # BUSCA: Posts de quem você segue
     followed = Post.query.join(followers_table, (Post.user_id == followers_table.c.followed_id)).filter(followers_table.c.follower_id == current_user.id)
-    # BUSCA: Seus próprios posts
     own = Post.query.filter(Post.user_id == current_user.id)
-    
-    # CORREÇÃO: Removemos a parte das comunidades para o feed "Seguindo" ficar puro
-    # Query final = Seguidos + Meus posts
-    query = followed.union(own).order_by(Post.timestamp.desc())
-    
-    # Pagina com otimização
-    posts = query.options(
-        joinedload(Post.author),
-        joinedload(Post.community)
-    ).paginate(page=page, per_page=10)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template('post_list.html', posts=posts, current_community=None)
-    
+    posts = followed.union(own).order_by(Post.timestamp.desc()).options(joinedload(Post.author), joinedload(Post.community)).paginate(page=page, per_page=10)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest': return render_template('post_list.html', posts=posts, current_community=None)
     return render_template('feed.html', posts=posts, communities=Community.query.all(), popular_communities=get_popular_communities())
+
 @app.route('/c/<community_slug>', methods=['GET', 'POST'])
 @login_required
 @limiter.limit("5 per minute", methods=['POST'])
 def community_feed(community_slug):
     community = Community.query.filter_by(slug=community_slug).first_or_404()
-    
     if request.method == 'POST':
-        # --- SEGURANÇA: Bloqueia quem não é membro ---
-        if not current_user.is_member(community):
-            flash('Você precisa participar da comunidade para publicar!', 'warning')
-            return redirect(url_for('community_feed', community_slug=community.slug))
-        # ---------------------------------------------
-
+        if not current_user.is_member(community): flash('Entre na comunidade para postar.', 'warning'); return redirect(url_for('community_feed', community_slug=community.slug))
         content = request.form.get('content'); pic = request.files.get('image')
-        if not content or not content.strip():
-            flash('Post não pode ser vazio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
-        if contains_bad_words(content):
-            flash('Conteúdo impróprio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
-
-        # Proteção Duplicidade
+        if not content or not content.strip(): flash('Vazio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
+        if contains_bad_words(content): flash('Impróprio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
         last_post = Post.query.filter_by(author=current_user).order_by(Post.timestamp.desc()).first()
-        if last_post and last_post.content == content:
-             time_diff = (now_br() - last_post.timestamp).total_seconds()
-             if time_diff < 30:
-                 flash('Você já publicou isso agora pouco!', 'warning')
-                 return redirect(url_for('community_feed', community_slug=community.slug))
-
+        if last_post and last_post.content == content and (now_br() - last_post.timestamp).total_seconds() < 30: flash('Duplicado.', 'warning'); return redirect(url_for('community_feed', community_slug=community.slug))
         img_url = None; img_id = None
         if pic and app.config['CLOUDINARY_API_KEY']:
-            try:
-                # --- OTIMIZAÇÃO APLICADA AQUI: WIDTH 600px + CROP LIMIT ---
-                uploaded = cloudinary.uploader.upload(pic, folder="aquanet_posts", resource_type="auto", transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}])
-                img_url = uploaded['secure_url']; img_id = uploaded['public_id']
+            try: uploaded = cloudinary.uploader.upload(pic, folder="aquanet_posts", resource_type="auto", transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]); img_url = uploaded['secure_url']; img_id = uploaded['public_id']
             except: pass
-        new_post = Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)
-        db.session.add(new_post); db.session.commit()
+        db.session.add(Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)); db.session.commit()
         return redirect(url_for('community_feed', community_slug=community.slug))
-    
     page = request.args.get('page', 1, type=int)
-    
-    # OTIMIZAÇÃO AQUI TAMBÉM
-    posts = Post.query.filter_by(community=community).options(
-        joinedload(Post.author),
-        joinedload(Post.community)
-    ).order_by(Post.timestamp.desc()).paginate(page=page, per_page=10)
-    
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return render_template('post_list.html', posts=posts, current_community=community)
-    
+    posts = Post.query.filter_by(community=community).options(joinedload(Post.author), joinedload(Post.community)).order_by(Post.timestamp.desc()).paginate(page=page, per_page=10)
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest': return render_template('post_list.html', posts=posts, current_community=community)
     return render_template('index.html', posts=posts, current_community=community, communities=Community.query.all(), popular_communities=get_popular_communities())
 
 @app.route('/create_community', methods=['GET', 'POST'])
 @login_required
 def create_community():
     if request.method == 'POST':
-        name = request.form.get('name')
-        description = request.form.get('description')
-        if contains_bad_words(name) or contains_bad_words(description):
-            flash('Conteúdo impróprio.', 'danger'); return redirect(url_for('create_community'))
-        
-        # --- GERA O SLUG DE FORMA SEGURA ---
+        name = request.form.get('name'); description = request.form.get('description')
+        if contains_bad_words(name): flash('Nome impróprio.', 'danger'); return redirect(url_for('create_community'))
         slug = Community.generate_slug(name)
-        
-        # Verifica se o slug ficou vazio (ex: nome era só caracteres especiais)
-        if not slug:
-            flash('Nome inválido (use letras e números).', 'danger')
-            return redirect(url_for('create_community'))
-
-        # Verifica duplicidade
-        if Community.query.filter_by(slug=slug).first(): 
-            flash('Já existe uma comunidade com este nome.', 'danger')
-            return redirect(url_for('create_community'))
-            
+        if not slug: flash('Nome inválido.', 'danger'); return redirect(url_for('create_community'))
+        if Community.query.filter_by(slug=slug).first(): flash('Já existe.', 'danger'); return redirect(url_for('create_community'))
         new_comm = Community(name=name, slug=slug, description=description, creator=current_user)
         db.session.add(new_comm); current_user.joined_communities.append(new_comm); db.session.commit()
         return redirect(url_for('community_feed', community_slug=slug))
     return render_template('create_community.html')
+
 @app.route('/c/<community_slug>/join', methods=['POST'])
 @login_required
 def join_community(community_slug):
     community = Community.query.filter_by(slug=community_slug).first_or_404()
     current_user.join_community(community)
-    flash(f'Você entrou na comunidade {community.name}!', 'success')
+    flash(f'Bem-vindo à {community.name}!', 'success')
     return redirect(url_for('community_feed', community_slug=community_slug))
 
 @app.route('/c/<community_slug>/leave', methods=['POST'])
@@ -593,29 +485,23 @@ def join_community(community_slug):
 def leave_community(community_slug):
     community = Community.query.filter_by(slug=community_slug).first_or_404()
     current_user.leave_community(community)
-    flash(f'Você saiu de {community.name}.', 'info')
+    flash(f'Saiu de {community.name}.', 'info')
     return redirect(url_for('community_feed', community_slug=community_slug))
 
 @app.route('/c/<community_slug>/delete', methods=['POST'])
 @login_required
 def delete_community(community_slug):
     community = Community.query.filter_by(slug=community_slug).first_or_404()
-    if community.creator_id != current_user.id and current_user.username != 'bielcosen14':
-        flash('Permissão negada.', 'danger'); return redirect(url_for('community_feed', community_slug=community_slug))
-    try:
-        db.session.delete(community); db.session.commit()
-        flash('Comunidade excluída.', 'success'); return redirect(url_for('communities_directory'))
-    except:
-        db.session.rollback(); flash('Erro ao excluir.', 'danger'); return redirect(url_for('community_feed', community_slug=community_slug))
+    if community.creator_id != current_user.id and current_user.username != 'bielcosen14': flash('Negado.', 'danger'); return redirect(url_for('community_feed', community_slug=community_slug))
+    db.session.delete(community); db.session.commit()
+    flash('Comunidade apagada.', 'success'); return redirect(url_for('communities_directory'))
 
 @app.route('/profile/<username>')
 @login_required
 def profile(username):
     user = User.query.filter_by(username=username).first_or_404()
     posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
-    return render_template(
-        'profile.html', user=user, posts=posts, popular_communities=get_popular_communities()
-    )
+    return render_template('profile.html', user=user, posts=posts, popular_communities=get_popular_communities())
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
@@ -623,59 +509,40 @@ def edit_profile():
     if request.method == 'POST':
         username = request.form.get('username'); email = request.form.get('email'); pic = request.files.get('profile_pic')
         if contains_bad_words(username): flash('Nome impróprio.', 'danger'); return redirect(url_for('edit_profile'))
-        changes_made = False
-        if current_user.username != username and username:
-            if User.query.filter_by(username=username).first() and User.query.filter_by(username=username).first().id != current_user.id:
-                flash('Nome em uso.', 'danger'); return redirect(url_for('edit_profile'))
-            current_user.username = username; changes_made = True
-        if current_user.email != email and email:
-            if User.query.filter_by(email=email).first() and User.query.filter_by(email=email).first().id != current_user.id:
-                flash('Email em uso.', 'danger'); return redirect(url_for('edit_profile'))
-            current_user.email = email; changes_made = True
+        if current_user.username != username:
+            if User.query.filter_by(username=username).first(): flash('Nome em uso.', 'danger'); return redirect(url_for('edit_profile'))
+            current_user.username = username
+        if current_user.email != email:
+            if User.query.filter_by(email=email).first(): flash('Email em uso.', 'danger'); return redirect(url_for('edit_profile'))
+            current_user.email = email
         if pic and pic.filename != '':
             if app.config['CLOUDINARY_API_KEY']:
-                try:
-                    # OTIMIZAÇÃO APLICADA AQUI (PERFIL)
-                    uploaded = cloudinary.uploader.upload(pic, folder="profile_pics", transformation=[{'width': 150, 'height': 150, 'crop': 'fill', 'gravity': 'face', 'quality': 'auto:good', 'fetch_format': 'auto'}])
-                    current_user.profile_pic_url = uploaded['secure_url']; changes_made = True; flash('Foto atualizada!', 'success')
-                except Exception as e:
-                    flash(f'Erro imagem: {e}', 'danger'); db.session.rollback(); db.session.commit(); return redirect(url_for('edit_profile'))
-        if changes_made: db.session.commit(); flash('Perfil atualizado!', 'success')
-        return redirect(url_for('profile', username=current_user.username))
+                try: uploaded = cloudinary.uploader.upload(pic, folder="profile_pics", transformation=[{'width': 150, 'height': 150, 'crop': 'fill', 'gravity': 'face', 'quality': 'auto:good', 'fetch_format': 'auto'}]); current_user.profile_pic_url = uploaded['secure_url']
+                except: pass
+        db.session.commit(); flash('Atualizado!', 'success'); return redirect(url_for('profile', username=current_user.username))
     return render_template('edit_profile.html')
+
 @app.route('/post/<int:post_id>')
 @login_required
 def post_detail(post_id):
     post = Post.query.get_or_404(post_id)
     top_level_comments = Comment.query.filter_by(post_id=post.id, parent_id=None).order_by(Comment.timestamp.asc()).all()
-    return render_template(
-        'post_detail.html', post=post, top_level_comments=top_level_comments, popular_communities=get_popular_communities()
-    )
+    return render_template('post_detail.html', post=post, top_level_comments=top_level_comments, popular_communities=get_popular_communities())
 
 @app.route('/delete_post/<int:post_id>')
 @login_required
 def delete_post(post_id):
-    post = Post.query.get_or_404(post_id)
-    community_slug = post.community.slug
-    if post.user_id != current_user.id and not (post.community.creator_id == current_user.id):
-        flash('Proibido.', 'danger'); return redirect(url_for('home'))
-    try:
-        if post.image_public_id and app.config['CLOUDINARY_API_KEY']: cloudinary.uploader.destroy(post.image_public_id)
-        db.session.delete(post); db.session.commit()
-        flash('Post excluído.', 'success')
-    except:
-        db.session.rollback(); flash('Erro.', 'danger')
-    return redirect(url_for('community_feed', community_slug=community_slug))
+    post = Post.query.get_or_404(post_id); slug = post.community.slug
+    if post.user_id != current_user.id and not (post.community.creator_id == current_user.id): flash('Negado.', 'danger'); return redirect(url_for('home'))
+    if post.image_public_id and app.config['CLOUDINARY_API_KEY']: cloudinary.uploader.destroy(post.image_public_id)
+    db.session.delete(post); db.session.commit(); flash('Apagado.', 'success'); return redirect(url_for('community_feed', community_slug=slug))
 
 @app.route('/delete_comment/<int:comment_id>')
 @login_required
 def delete_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
-    if comment.user_id != current_user.id and not (comment.parent_post.community.creator_id == current_user.id) and current_user.username != 'bielcosen14':
-        flash('Proibido.', 'danger'); return redirect(request.referrer or url_for('home'))
-    db.session.delete(comment); db.session.commit()
-    flash('Deletado.', 'success')
-    return redirect(request.referrer or url_for('home'))
+    if comment.user_id != current_user.id and not (comment.parent_post.community.creator_id == current_user.id) and current_user.username != 'bielcosen14': flash('Negado.', 'danger'); return redirect(request.referrer)
+    db.session.delete(comment); db.session.commit(); flash('Apagado.', 'success'); return redirect(request.referrer)
 
 @app.route('/api/like_post/<int:post_id>', methods=['POST'])
 @login_required
@@ -683,62 +550,32 @@ def delete_comment(comment_id):
 def api_like_post(post_id):
     post = Post.query.get_or_404(post_id)
     liked = False
-    if current_user.has_liked_post(post):
-        current_user.liked_posts.remove(post)
-    else:
-        current_user.liked_posts.append(post)
-        liked = True
-        create_notification(post.author, 'like_post', current_user, post=post)
+    if current_user.has_liked_post(post): current_user.liked_posts.remove(post)
+    else: current_user.liked_posts.append(post); liked = True; create_notification(post.author, 'like_post', current_user, post=post)
     db.session.commit()
-    
-    # --- CORREÇÃO AQUI ---
-    # Se o pedido veio do JavaScript (AJAX), retorna JSON (tela não pisca)
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True, 'liked': liked, 'like_count': len(post.likes)})
-    
-    # Se veio do navegador direto (Sem JS), recarrega a página (evita tela branca)
-    return redirect(request.referrer or url_for('post_detail', post_id=post.id))
-
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest': return jsonify({'success': True, 'liked': liked, 'like_count': len(post.likes)})
+    return redirect(request.referrer)
 
 @app.route('/api/post/<int:post_id>/comment', methods=['POST'])
 @login_required
 @limiter.limit("10 per minute")
 def api_add_comment(post_id):
     post = Post.query.get_or_404(post_id)
-    if request.is_json:
-        data = request.get_json(); text = data.get('comment_text'); parent_id = data.get('parent_id'); is_ajax = True
-    elif request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        text = request.form.get('comment_text'); parent_id = request.form.get('parent_id'); is_ajax = True
-    else:
-        text = request.form.get('comment_text'); parent_id = request.form.get('parent_id'); is_ajax = False
-
-    # CHECK: Vazio e Palavrões
-    if not text or not text.strip():
-        if is_ajax: return jsonify({'success': False, 'error': 'Vazio.'})
-        flash('Vazio.', 'danger'); return redirect(url_for('post_detail', post_id=post.id))
-    if contains_bad_words(text):
-        if is_ajax: return jsonify({'success': False, 'error': 'Impróprio.'})
-        flash('Impróprio.', 'danger'); return redirect(url_for('post_detail', post_id=post.id))
-
-    parent_comment = None
-    if parent_id: parent_comment = Comment.query.get(parent_id)
-
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' or request.is_json
+    text = request.get_json().get('comment_text') if request.is_json else request.form.get('comment_text')
+    parent_id = request.get_json().get('parent_id') if request.is_json else request.form.get('parent_id')
+    
+    if not text or not text.strip() or contains_bad_words(text):
+        if is_ajax: return jsonify({'success': False, 'error': 'Inválido.'})
+        flash('Texto inválido.', 'danger'); return redirect(url_for('post_detail', post_id=post.id))
+        
+    parent_comment = Comment.query.get(parent_id) if parent_id else None
     new_comment = Comment(text=text.strip(), comment_author=current_user, parent_post=post, parent=parent_comment)
     db.session.add(new_comment); db.session.commit()
-    
     create_notification(post.author, 'comment', current_user, post=post, comment=new_comment)
     if parent_comment: create_notification(parent_comment.comment_author, 'reply', current_user, post=post, comment=new_comment)
-
-    if is_ajax:
-        return jsonify({
-            'success': True,
-            'comment': {
-                'id': new_comment.id, 'text': new_comment.text,
-                'author_username': new_comment.comment_author.username,
-                'author_profile_url': url_for('profile', username=new_comment.comment_author.username)
-            },
-            'total_comments': Comment.query.filter_by(post_id=post.id).count()
-        })
+    
+    if is_ajax: return jsonify({'success': True, 'comment': {'id': new_comment.id, 'text': new_comment.text, 'author_username': new_comment.comment_author.username, 'author_profile_url': url_for('profile', username=new_comment.comment_author.username)}, 'total_comments': Comment.query.filter_by(post_id=post.id).count()})
     return redirect(url_for('post_detail', post_id=post.id))
 
 @app.route('/api/like_comment/<int:comment_id>', methods=['POST'])
@@ -747,19 +584,11 @@ def api_add_comment(post_id):
 def api_like_comment(comment_id):
     comment = Comment.query.get_or_404(comment_id)
     liked = False
-    if current_user.has_liked_comment(comment):
-        current_user.liked_comments.remove(comment)
-    else:
-        current_user.liked_comments.append(comment)
-        liked = True
-        create_notification(comment.comment_author, 'like_comment', current_user, post=comment.parent_post, comment=comment)
+    if current_user.has_liked_comment(comment): current_user.liked_comments.remove(comment)
+    else: current_user.liked_comments.append(comment); liked = True; create_notification(comment.comment_author, 'like_comment', current_user, post=comment.parent_post, comment=comment)
     db.session.commit()
-
-    # --- CORREÇÃO AQUI ---
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({'success': True, 'liked': liked, 'like_count': len(comment.likes)})
-    
-    return redirect(request.referrer or url_for('post_detail', post_id=comment.parent_post.id))
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest': return jsonify({'success': True, 'liked': liked, 'like_count': len(comment.likes)})
+    return redirect(request.referrer)
 
 @app.route('/search')
 @login_required
@@ -773,60 +602,37 @@ def search():
         comments_results=Comment.query.filter(Comment.text.ilike(s)).order_by(Comment.timestamp.desc()).all(),
         popular_communities=get_popular_communities()
     )
-# --- ROTAS DA ENCICLOPÉDIA ---
-CATEGORIES_WIKI = {
-    'peixes': 'Peixes',
-    'plantas': 'Plantas',
-    'invertebrados': 'Invertebrados',
-    'aquarios': 'Aquários',
-    'equipamentos': 'Equipamentos',
-    'doencas': 'Doenças',
-    'alimentos': 'Alimentos',
-    'quimica-da-agua': 'Química da Água'
-}
+
+# --- ENCICLOPÉDIA ---
+CATEGORIES_WIKI = {'peixes': 'Peixes', 'plantas': 'Plantas', 'invertebrados': 'Invertebrados', 'aquarios': 'Aquários', 'equipamentos': 'Equipamentos', 'doencas': 'Doenças', 'alimentos': 'Alimentos', 'quimica-da-agua': 'Química da Água'}
+
 @app.route('/encyclopedia')
 def encyclopedia():
     return render_template('encyclopedia.html', categories=CATEGORIES_WIKI, popular_communities=get_popular_communities())
 
 @app.route('/encyclopedia/<category_slug>')
 def encyclopedia_category(category_slug):
-    if category_slug not in CATEGORIES_WIKI:
-        return redirect(url_for('encyclopedia'))
-
-    category_name = CATEGORIES_WIKI[category_slug]
-
-    entries = EncyclopediaEntry.query.filter_by(
-        category=category_name
-    ).order_by(EncyclopediaEntry.title).all()
-
-    return render_template(
-        'encyclopedia_category.html',
-        category=category_name,
-        entries=entries,
-        popular_communities=get_popular_communities()
-    )
+    if category_slug not in CATEGORIES_WIKI: return redirect(url_for('encyclopedia'))
+    # CORREÇÃO: Busca pelo slug exato (ex: 'aquarios') que está no banco
+    entries = EncyclopediaEntry.query.filter_by(category=category_slug).order_by(EncyclopediaEntry.title).all()
+    return render_template('encyclopedia_category.html', category=CATEGORIES_WIKI[category_slug], entries=entries, popular_communities=get_popular_communities())
 
 @app.route('/encyclopedia/create', methods=['GET', 'POST'])
 @login_required
 def create_entry():
     if request.method == 'POST':
-        title = request.form.get('title').strip() 
-        category = request.form.get('category'); content = request.form.get('content'); pic = request.files.get('image')
-        if contains_bad_words(title) or contains_bad_words(content):
-            flash('Conteúdo impróprio.', 'danger'); return render_template('encyclopedia_form.html', categories=CATEGORIES_WIKI, selected_category=category)
-        slug = Community.generate_slug(title) 
+        title = request.form.get('title').strip(); category = request.form.get('category'); content = request.form.get('content'); pic = request.files.get('image')
+        if contains_bad_words(title) or contains_bad_words(content): flash('Impróprio.', 'danger'); return redirect(url_for('create_entry'))
+        slug = Community.generate_slug(title)
         if EncyclopediaEntry.query.filter_by(slug=slug).first(): return redirect(url_for('edit_entry', slug=slug))
         img_url = None
         if pic and app.config['CLOUDINARY_API_KEY']:
-            try: 
-                # OTIMIZAÇÃO APLICADA AQUI (WIKI CREATE - 800px)
-                uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}])
-                img_url = uploaded['secure_url']
+            try: uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]); img_url = uploaded['secure_url']
             except: pass
-        entry = EncyclopediaEntry(title=title, slug=slug, category=category, content=content, image_file=img_url, last_editor=current_user)
-        db.session.add(entry); db.session.commit()
-        return redirect(url_for('view_entry', slug=slug))
-    return render_template('encyclopedia_form.html', categories=CATEGORIES_WIKI, selected_category=request.args.get('category', ''), legend="Criar Tópico")
+        # Salva o slug da categoria (ex: 'aquarios') no banco
+        db.session.add(EncyclopediaEntry(title=title, slug=slug, category=category, content=content, image_file=img_url, last_editor=current_user))
+        db.session.commit(); return redirect(url_for('view_entry', slug=slug))
+    return render_template('encyclopedia_form.html', categories=CATEGORIES_WIKI, legend="Criar Tópico")
 
 @app.route('/encyclopedia/topic/<slug>')
 def view_entry(slug):
@@ -838,14 +644,11 @@ def view_entry(slug):
 def edit_entry(slug):
     entry = EncyclopediaEntry.query.filter_by(slug=slug).first_or_404()
     if request.method == 'POST':
-        new_content = request.form.get('content')
-        if contains_bad_words(new_content): return redirect(url_for('edit_entry', slug=entry.slug))
-        entry.content = new_content; pic = request.files.get('image')
+        entry.content = request.form.get('content')
+        if contains_bad_words(entry.content): flash('Impróprio.', 'danger'); return redirect(url_for('edit_entry', slug=slug))
+        pic = request.files.get('image')
         if pic and app.config['CLOUDINARY_API_KEY']:
-            try: 
-                # OTIMIZAÇÃO APLICADA AQUI (WIKI EDIT - 800px)
-                uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}])
-                entry.image_file = uploaded['secure_url']
+            try: uploaded = cloudinary.uploader.upload(pic, folder="wiki_images", transformation=[{'width': 800, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]); entry.image_file = uploaded['secure_url']
             except: pass
         entry.last_editor = current_user; db.session.commit()
         return redirect(url_for('view_entry', slug=entry.slug))
@@ -855,11 +658,11 @@ def edit_entry(slug):
 @login_required
 def delete_entry(slug):
     if current_user.username != 'bielcosen14': return redirect(url_for('view_entry', slug=slug))
-    entry = EncyclopediaEntry.query.filter_by(slug=slug).first_or_404()
-    cat = entry.category; db.session.delete(entry); db.session.commit()
-    return redirect(url_for('encyclopedia_category', category=cat))
+    entry = EncyclopediaEntry.query.filter_by(slug=slug).first_or_404(); cat = entry.category
+    db.session.delete(entry); db.session.commit()
+    return redirect(url_for('encyclopedia_category', category_slug=cat))
 
-# --- ROTAS AQUÁRIO (RESUMIDAS) ---
+# --- OUTRAS ROTAS ---
 @app.route('/my_aquariums')
 @login_required
 def my_aquariums(): return render_template('my_aquariums.html', aquariums=current_user.aquariums, popular_communities=get_popular_communities())
@@ -870,16 +673,8 @@ def my_aquariums(): return render_template('my_aquariums.html', aquariums=curren
 def create_aquarium():
     if request.method == 'POST':
         name = request.form.get('name')
-        
-        # --- PROTEÇÃO BACKEND CONTRA DUPLICIDADE DE AQUÁRIOS ---
         last_aqua = Aquarium.query.filter_by(owner=current_user, name=name).order_by(Aquarium.created_at.desc()).first()
-        if last_aqua:
-            time_diff = (now_br() - last_aqua.created_at).total_seconds()
-            if time_diff < 30: # 30 segundos
-                flash('Você já criou este aquário agora pouco!', 'warning')
-                return redirect(url_for('my_aquariums'))
-        # --------------------------------------------------------
-
+        if last_aqua and (now_br() - last_aqua.created_at).total_seconds() < 30: flash('Duplicado.', 'warning'); return redirect(url_for('my_aquariums'))
         dt = datetime.datetime.strptime(request.form.get('setup_date'), '%Y-%m-%d').date() if request.form.get('setup_date') else None
         db.session.add(Aquarium(name=name, aquarium_type=request.form.get('aquarium_type'), volume=float(request.form.get('volume') or 0), description=request.form.get('description'), setup_date=dt, owner=current_user))
         db.session.commit(); return redirect(url_for('my_aquariums'))
@@ -889,99 +684,40 @@ def create_aquarium():
 @login_required
 def edit_aquarium(aquarium_id):
     aqua = Aquarium.query.get_or_404(aquarium_id)
-    if aqua.user_id != current_user.id:
-        flash('Você não tem permissão.', 'danger')
-        return redirect(url_for('my_aquariums'))
-
+    if aqua.user_id != current_user.id: flash('Negado.', 'danger'); return redirect(url_for('my_aquariums'))
     if request.method == 'POST':
-        aqua.name = request.form.get('name')
-        aqua.aquarium_type = request.form.get('aquarium_type')
-        aqua.description = request.form.get('description')
+        aqua.name = request.form.get('name'); aqua.aquarium_type = request.form.get('aquarium_type'); aqua.description = request.form.get('description')
         try: aqua.volume = float(request.form.get('volume') or 0)
         except: pass
-        dt = request.form.get('setup_date')
-        if dt:
-            try: aqua.setup_date = datetime.datetime.strptime(dt, '%Y-%m-%d').date()
-            except: pass
-        db.session.commit()
-        flash('Aquário atualizado!', 'success')
-        return redirect(url_for('my_aquariums'))
-
-    return render_template('create_aquarium.html', aquarium=aqua, legend="Editar Aquário")
+        if request.form.get('setup_date'): aqua.setup_date = datetime.datetime.strptime(request.form.get('setup_date'), '%Y-%m-%d').date()
+        db.session.commit(); flash('Atualizado!', 'success'); return redirect(url_for('my_aquariums'))
+    return render_template('create_aquarium.html', aquarium=aqua, legend="Editar")
 
 @app.route('/aquarium/<int:aquarium_id>')
 @login_required
 def aquarium_dashboard(aquarium_id):
     aqua = Aquarium.query.get_or_404(aquarium_id)
     if aqua.user_id != current_user.id: return redirect(url_for('my_aquariums'))
-    
     return render_template(
-        'aquarium_dashboard.html', 
-        aquarium=aqua, 
+        'aquarium_dashboard.html', aquarium=aqua, 
         latest_log=ParameterLog.query.filter_by(aquarium_id=aqua.id).order_by(ParameterLog.date.desc()).first(), 
         latest_maint=MaintenanceLog.query.filter_by(aquarium_id=aqua.id).order_by(MaintenanceLog.date.desc()).first(), 
         history_logs=ParameterLog.query.filter_by(aquarium_id=aqua.id).order_by(ParameterLog.date.desc()).all(), 
         history_maint=MaintenanceLog.query.filter_by(aquarium_id=aqua.id).order_by(MaintenanceLog.date.desc()).all(), 
-        share_text="📊 Atualização: " + aqua.name, 
-        all_communities=Community.query.order_by(Community.name).all(), 
-        popular_communities=get_popular_communities(),
-        today=now_br()
+        share_text="📊 Atualização: " + aqua.name, all_communities=Community.query.order_by(Community.name).all(), popular_communities=get_popular_communities(), today=now_br()
     )
 
 @app.route('/aquarium/<int:aquarium_id>/log_parameters', methods=['GET', 'POST'])
 @login_required
 def log_parameters(aquarium_id):
     if request.method == 'POST':
-        ph = float(request.form.get('ph') or 0)
-        ammonia = float(request.form.get('ammonia') or 0)
-        nitrite = float(request.form.get('nitrite') or 0)
-        nitrate = float(request.form.get('nitrate') or 0)
-        temp = float(request.form.get('temperature') or 0)
-        notes = request.form.get('notes')
-
-        # --- MOTOR DE DIAGNÓSTICO ATUALIZADO ---
-        has_critical = False
-        has_warning = False
-        
-        # 1. Checagem de Perigo (Vermelho)
-        if ammonia > 0.25 or nitrite > 0.5:
-            flash(f"🚨 PERIGO! Níveis letais (Amônia: {ammonia} / Nitrito: {nitrite}). Seus peixes correm risco! Faça uma TPA de 50% agora!", 'danger')
-            has_critical = True
-        
-        # 2. Checagem de Aviso (Amarelo)
-        if ph > 8.5:
-            flash(f"⚠️ Atenção: Seu pH ({ph}) está muito alto para a maioria dos peixes.", 'warning')
-            has_warning = True
-        elif ph < 6.4 and ph > 0:
-            flash(f"⚠️ Atenção: pH ({ph}) muito ácido. Verifique a estabilidade do sistema.", 'warning')
-            has_warning = True
-
-        # 3. Checagem de Sucesso (Verde)
-        # Se não é crítico e os níveis de nitrogênio estão baixos/zerados
-        if not has_critical and not has_warning:
-            flash("✅ Tudo perfeito! Seus parâmetros estão excelentes e o ecossistema está saudável.", 'success')
-        elif not has_critical:
-            # Se teve aviso de pH, mas a amônia está ok, ainda confirmamos o salvamento
-            flash("✅ Parâmetros registrados com sucesso.", 'success')
-
-        # Salva no banco de dados Neon
-        try:
-            new_log = ParameterLog(
-                aquarium_id=aquarium_id, 
-                ph=ph, ammonia=ammonia, nitrite=nitrite, nitrate=nitrate,
-                temperature=temp, notes=notes
-            )
-            db.session.add(new_log)
-            db.session.commit()
-        except Exception as e:
-            db.session.rollback()
-            flash(f"Erro ao salvar: {str(e)}", 'danger')
-
-        return redirect(url_for('aquarium_dashboard', aquarium_id=aquarium_id))
-    
+        ph = float(request.form.get('ph') or 0); ammonia = float(request.form.get('ammonia') or 0); nitrite = float(request.form.get('nitrite') or 0)
+        if ammonia > 0.25 or nitrite > 0.5: flash('🚨 PERIGO! Parâmetros letais. Faça TPA!', 'danger')
+        elif ph > 8.5 or (ph < 6.4 and ph > 0): flash('⚠️ Atenção ao pH.', 'warning')
+        else: flash('✅ Parâmetros ótimos!', 'success')
+        db.session.add(ParameterLog(aquarium_id=aquarium_id, ph=ph, ammonia=ammonia, nitrite=nitrite, nitrate=float(request.form.get('nitrate') or 0), temperature=float(request.form.get('temperature') or 0), notes=request.form.get('notes')))
+        db.session.commit(); return redirect(url_for('aquarium_dashboard', aquarium_id=aquarium_id))
     return render_template('log_parameters.html', aquarium=Aquarium.query.get(aquarium_id))
-
-
 
 @app.route('/aquarium/<int:aquarium_id>/log_maintenance', methods=['GET', 'POST'])
 @login_required
@@ -1008,19 +744,17 @@ def delete_fauna(fauna_id):
 @app.route('/aquarium/<int:aquarium_id>/delete', methods=['POST'])
 @login_required
 def delete_aquarium(aquarium_id):
-    db.session.delete(Aquarium.query.get_or_404(aquarium_id)); db.session.commit()
-    return redirect(url_for('my_aquariums'))
+    db.session.delete(Aquarium.query.get_or_404(aquarium_id)); db.session.commit(); return redirect(url_for('my_aquariums'))
 
 @app.route('/calculators')
 def calculators(): return render_template('calculators.html', popular_communities=get_popular_communities())
-
 
 @app.route('/notifications')
 @login_required
 def notifications():
     notifs = current_user.notifications.order_by(Notification.timestamp.desc()).all()
-    for n in notifs: n.is_read = True; db.session.commit()
-    return render_template('notifications.html', notifications=notifs, popular_communities=get_popular_communities())
+    for n in notifs: n.is_read = True
+    db.session.commit(); return render_template('notifications.html', notifications=notifs, popular_communities=get_popular_communities())
 
 @app.route('/communities')
 @login_required
@@ -1040,71 +774,35 @@ def follow(username):
 @app.route('/unfollow/<username>', methods=['POST'])
 @login_required
 def unfollow(username):
-    user = User.query.filter_by(username=username).first_or_404()
-    current_user.unfollow_user(user); return redirect(url_for('profile', username=username))
+    user = User.query.filter_by(username=username).first_or_404(); current_user.unfollow_user(user); return redirect(url_for('profile', username=username))
 
-# --- ROTA PARA MANTER O BANCO ACORDADO ---
-# Configure o Cron Job para acessar: https://seusite.com/api/wake_up
 @app.route('/api/wake_up')
 def wake_up():
-    try:
-        # Faz uma consulta real para "tocar o ombro" do banco de dados
-        # Isso impede que o Neon entre em suspensão profunda
-        User.query.first() 
-        return jsonify({'status': 'awake', 'timestamp': datetime.datetime.utcnow()})
-    except Exception as e:
-        return jsonify({'status': 'error', 'details': str(e)}), 500
+    try: User.query.first(); return jsonify({'status': 'awake'})
+    except Exception as e: return jsonify({'status': 'error', 'details': str(e)}), 500
 
 @app.route('/aquarium/<int:aquarium_id>/sos')
 @login_required
 def create_post_help(aquarium_id):
     aqua = Aquarium.query.get_or_404(aquarium_id)
     if aqua.user_id != current_user.id: return redirect(url_for('home'))
-    
-    # Pega o último log problemático
     log = ParameterLog.query.filter_by(aquarium_id=aqua.id).order_by(ParameterLog.date.desc()).first()
-    
-    if not log:
-        flash('Sem dados para pedir ajuda.', 'info')
-        return redirect(url_for('aquarium_dashboard', aquarium_id=aqua.id))
-        
-    # Texto automático inteligente
-    problem_list = []
-    if log.ammonia and log.ammonia > 0.25: problem_list.append(f"Amônia: {log.ammonia}ppm")
-    if log.nitrite and log.nitrite > 0.5: problem_list.append(f"Nitrito: {log.nitrite}ppm")
-    if log.ph and (log.ph > 8.0 or log.ph < 6.4): problem_list.append(f"pH: {log.ph}")
-    
-    problems = ", ".join(problem_list)
-    
-    auto_content = f"""SOCORRO! Meus parâmetros estão críticos: {problems}.
-    
-Aquário: {aqua.name} ({aqua.volume}L)
-Fauna: {len(aqua.fauna)} habitantes
-Última TPA: (Insira aqui quando fez)
-
-Alguém sabe como baixar isso rápido? Não quero perder meus peixes!"""
-
-    # Redireciona para a página de criar post (você pode precisar adaptar se sua rota create_post aceitar argumentos, 
-    # mas por enquanto vamos passar via URL e o usuário cola, ou salvar na sessão)
-    # TRUQUE: Vamos renderizar o template de create_post direto já preenchido
-    
-    return render_template('create_post.html', 
-                           communities=Community.query.order_by(Community.name).all(), 
-                           popular_communities=get_popular_communities(),
-                           prefilled_content=auto_content,
-                           prefilled_title=f"AJUDA URGENTE: {problems}")
+    if not log: flash('Sem dados.', 'info'); return redirect(url_for('aquarium_dashboard', aquarium_id=aqua.id))
+    problems = []
+    if log.ammonia and log.ammonia > 0.25: problems.append(f"Amônia: {log.ammonia}")
+    if log.nitrite and log.nitrite > 0.5: problems.append(f"Nitrito: {log.nitrite}")
+    if log.ph and (log.ph > 8.0 or log.ph < 6.4): problems.append(f"pH: {log.ph}")
+    content = f"SOCORRO! {', '.join(problems)}. Aquário: {aqua.name} ({aqua.volume}L). Ajuda!"
+    return render_template('create_post.html', communities=Community.query.order_by(Community.name).all(), popular_communities=get_popular_communities(), prefilled_content=content)
 
 @app.route('/sw.js')
-def service_worker():
-    return send_from_directory(app.static_folder, 'sw.js')
+def service_worker(): return send_from_directory(app.static_folder, 'sw.js')
 
 @app.route('/manifest.json')
-def manifest():
-    return send_from_directory(app.static_folder, 'manifest.json')
+def manifest(): return send_from_directory(app.static_folder, 'manifest.json')
 
 @app.route('/icon-512.png')
-def app_icon():
-    return send_from_directory(app.static_folder, 'icon-512.png')
+def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 
 if __name__ == '__main__':
     app.run(debug=False)
