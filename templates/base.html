@@ -437,7 +437,7 @@
                                 countSpan.className = 'like-count-text font-bold ml-1'; 
                                 countSpan.innerText = data.like_count;
                                 btn.appendChild(countSpan);
-                                if (icon) icon.className = data.liked ? 'fas fa-heart text-lg text-red-500' : 'far fa-heart text-lg';
+                                if (icon) icon.className = data.liked ? 'fas fa-thumbs-up text-lg text-blue-600' : 'far fa-heart text-lg';
                                 if (data.liked) btn.classList.add('text-red-500'); else btn.classList.remove('text-red-500');
                             }
                         }
