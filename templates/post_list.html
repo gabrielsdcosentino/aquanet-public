@@ -16,7 +16,9 @@
             <span>{{ post.timestamp.strftime('%d/%m') }}</span>
         </div>
         
-        <p class="text-gray-800 text-base mb-3 whitespace-pre-line leading-relaxed">{{ post.content }}</p>
+        <div class="text-gray-800 text-base mb-3 whitespace-pre-line leading-relaxed relative z-10 pointer-events-none-if-link">
+            {{ post.content | link_mentions }}
+        </div>
     </div>
 
     {% if post.image_file %}
