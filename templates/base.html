@@ -11,35 +11,29 @@
     
     <title>{% block title %}AquaNet - Rede de Aquarismo{% endblock %}</title>
     <style>
-        /* Fonte Moderna */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        
         html, body { overflow-x: hidden; }
 
-        /* Cores e Flashes */
+        /* Flashes */
         .flashes { margin-bottom: 1rem; }
-        .flash-success { background-color: #ecfdf5; color: #047857; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #a7f3d0; }
-        .flash-danger { background-color: #fef2f2; color: #b91c1c; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #fecaca; }
-        .flash-warning { background-color: #fffbeb; color: #b45309; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #fde68a; }
-        .flash-info { background-color: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #bfdbfe; }
+        .flash-success { background-color: #ecfdf5; color: #047857; padding: 1rem; border-radius: 1rem; border: 1px solid #a7f3d0; }
+        .flash-danger { background-color: #fef2f2; color: #b91c1c; padding: 1rem; border-radius: 1rem; border: 1px solid #fecaca; }
+        .flash-warning { background-color: #fffbeb; color: #b45309; padding: 1rem; border-radius: 1rem; border: 1px solid #fde68a; }
+        .flash-info { background-color: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; border: 1px solid #bfdbfe; }
         
-        /* Drawer e Loader */
         #mobile-drawer { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); will-change: transform; }
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
-            background: linear-gradient(90deg, #3b82f6, #06b6d4); z-index: 9999; transition: width 0.2s ease-out;
-            opacity: 0; pointer-events: none;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4); z-index: 9999; transition: width 0.2s ease-out; opacity: 0; pointer-events: none;
         }
         .htmx-request #page-loader { width: 70% !important; opacity: 1 !important; }
         
         @media (min-width: 768px) {
-            #mobile-drawer { display: none !important; }
-            .mobile-bottom-nav { display: none !important; }
-            #mobile-search-bar { display: none !important; }
+            #mobile-drawer, .mobile-bottom-nav, #mobile-search-bar { display: none !important; }
         }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
@@ -145,16 +139,14 @@
                 <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-slate-900 text-white font-bold p-3 rounded-xl mb-3 shadow-lg flex items-center justify-center">
                     <i class="fas fa-download mr-2"></i> App
                 </button>
-                <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">
-                    Sair
-                </a>
+                <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">Sair</a>
             {% else %}
                 <a href="{{ url_for('login') }}" class="block w-full bg-blue-600 text-white text-center font-bold p-4 rounded-xl shadow-lg shadow-blue-200">Entrar</a>
             {% endif %}
         </div>
     </aside>
 
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200/50 transition-all duration-300">
+    <header class="bg-white/80 backdrop-blur-md fixed top-0 left-0 w-full z-50 border-b border-slate-200/50 transition-all duration-300">
         <div class="container mx-auto px-4 h-16 flex justify-between items-center max-w-7xl">
             <div class="flex items-center gap-4">
                 <button onclick="toggleDrawer()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full active:bg-slate-100 text-slate-700">
@@ -241,7 +233,7 @@
         </div>
     </nav>
 
-    <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 md:pb-10">
+    <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 md:pb-10 pt-16">
         
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
@@ -254,6 +246,22 @@
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'communit' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                 </ul>
                 
+                {% if current_user.is_authenticated and current_user.joined_communities %}
+                <div class="mt-6 pt-6 border-t border-slate-100">
+                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-2">Suas Comunidades</h3>
+                    <ul class="space-y-1">
+                        {% for comm in current_user.joined_communities[:5] %}
+                            <li>
+                                <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center px-4 py-2.5 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors">
+                                    <div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>
+                                    {{ comm.name }}
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                {% endif %}
+
                 <a href="{{ url_for('create_community') }}" class="block mt-6 w-full bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-2xl text-center shadow-lg shadow-slate-200 transition-all active:scale-95">
                     <i class="fas fa-plus mr-2"></i> Criar Comunidade
                 </a>
@@ -311,7 +319,6 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            // CSRF Logic
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
             const tokenValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
@@ -326,7 +333,6 @@
                 evt.detail.headers['X-CSRFToken'] = tokenValue;
             });
 
-            // Comments & Likes Logic
             function updateReplyCounts() {
                 document.querySelectorAll('.toggle-replies-btn').forEach(btn => {
                     const targetId = btn.dataset.target;
@@ -459,9 +465,8 @@
             } else { closeDrawer(); }
         }
     </script>
-    
     {% block scripts %}{% endblock %}
-
+    
     <div id="install-banner" class="fixed bottom-20 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-80 bg-white/90 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
         <div class="flex items-center justify-between">
             <div class="flex items-center">
@@ -508,6 +513,5 @@
         if(btnAction) btnAction.addEventListener('click', triggerInstall);
         window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
     </script>
-
 </body>
 </html>
