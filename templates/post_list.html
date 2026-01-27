@@ -1,8 +1,7 @@
 {% for post in posts.items %}
-<article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition cursor-pointer relative post-item">
+<article class="bg-white rounded-lg shadow mb-4 overflow-hidden border border-gray-300 hover:border-gray-400 hover:shadow-md transition cursor-pointer relative post-item"
+         onclick="if(event.target.closest('a, button, form, video, .no-click')) return; window.location.href='{{ url_for('post_detail', post_id=post.id) }}';">
     
-    <a href="{{ url_for('post_detail', post_id=post.id) }}" class="absolute inset-0 z-0" aria-label="Ver post"></a>
-
     <div class="p-4">
         <div class="text-xs text-gray-600 mb-2 flex items-center flex-wrap gap-1">
             {% if post.community %}
@@ -11,12 +10,12 @@
                 </a>
                 <span class="text-gray-400">•</span>
             {% endif %}
-            <span class="relative z-10">Postado por <a href="{{ url_for('profile', username=post.author.username) }}" class="hover:underline">u/{{ post.author.username }}</a></span>
+            <span class="relative z-10">Postado por <a href="{{ url_for('profile', username=post.author.username) }}" class="hover:underline font-semibold">u/{{ post.author.username }}</a></span>
             <span class="text-gray-400">•</span>
             <span>{{ post.timestamp.strftime('%d/%m') }}</span>
         </div>
         
-        <div class="text-gray-800 text-base mb-3 whitespace-pre-line leading-relaxed relative z-10 pointer-events-none-if-link">
+        <div class="text-gray-800 text-base mb-3 whitespace-pre-line leading-relaxed relative z-10">
             {{ post.content | link_mentions }}
         </div>
     </div>
@@ -24,7 +23,7 @@
     {% if post.image_file %}
         {% if post.image_file.endswith('.mp4') or post.image_file.endswith('.mov') or post.image_file.endswith('.webm') %}
             <div class="bg-black flex justify-center relative z-10">
-                <video controls class="w-full max-h-[500px]" preload="metadata">
+                <video controls class="w-full max-h-[500px] no-click" preload="metadata">
                     <source src="{{ post.image_file }}" type="video/mp4">
                     Seu navegador não suporta vídeos.
                 </video>
@@ -43,6 +42,7 @@
         </a>
 
         <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form flex items-center mr-auto relative z-10">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="like-button group flex items-center p-2 rounded-md transition {{ 'text-blue-600 hover:bg-blue-50' if current_user.has_liked_post(post) else 'text-gray-500 hover:bg-gray-200 hover:text-blue-600' }}">
                 <i class="{{ 'fas' if current_user.has_liked_post(post) else 'far' }} fa-thumbs-up text-lg mr-1 transition-transform group-active:scale-110"></i>
                 <span class="like-count-text font-semibold">
