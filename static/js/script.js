@@ -251,6 +251,8 @@ if ('serviceWorker' in navigator) {
 }
 
 async function subscribeUser() {
+  alert('Função chamada!');
+
     if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
     try {
         const reg = await navigator.serviceWorker.ready;
