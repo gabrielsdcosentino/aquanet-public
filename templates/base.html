@@ -46,17 +46,7 @@
     <script>
         document.addEventListener("DOMContentLoaded", function() {
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            document.querySelectorAll('form[method="POST"]').forEach(function(form) {
-                if (!form.querySelector('input[name="csrf_token"]')) {
-                    var input = document.createElement('input');
-                    input.type = 'hidden'; input.name = 'csrf_token'; input.value = csrfToken;
-                    form.appendChild(input);
-                }
-            });
-            document.body.addEventListener('htmx:configRequest', function(evt) {
-                evt.detail.headers['X-CSRFToken'] = csrfToken;
-            });
-
+            
             // Lógica Swipe Global
             let touchStartX = 0;
             let touchStartY = 0;
@@ -89,7 +79,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
 
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}?v=2"></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -358,157 +348,6 @@
         </aside>
     </div>
     
-    <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            // CSRF Logic
-            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
-            const tokenValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
-
-            document.querySelectorAll('form[method="POST"]').forEach(function(form) {
-                if (!form.querySelector('input[name="csrf_token"]')) {
-                    const input = document.createElement('input');
-                    input.type = 'hidden'; input.name = 'csrf_token'; input.value = tokenValue;
-                    form.appendChild(input);
-                }
-            });
-            document.body.addEventListener('htmx:configRequest', function(evt) {
-                evt.detail.headers['X-CSRFToken'] = tokenValue;
-            });
-
-            // Comments & Likes Logic
-            function updateReplyCounts() {
-                document.querySelectorAll('.toggle-replies-btn').forEach(btn => {
-                    const targetId = btn.dataset.target;
-                    const container = document.getElementById(targetId);
-                    if (container) {
-                        const count = container.querySelectorAll('.comment-node').length;
-                        btn.closest('div').style.display = count > 0 ? 'block' : 'none';
-                    }
-                });
-            }
-            updateReplyCounts();
-
-            document.body.addEventListener('click', function(event) {
-                const toggleBtn = event.target.closest('.toggle-replies-btn');
-                if (toggleBtn) {
-                    const targetId = toggleBtn.dataset.target;
-                    const container = document.getElementById(targetId);
-                    if (container) container.classList.toggle('hidden');
-                }
-                const replyBtn = event.target.closest('.reply-button');
-                if (replyBtn) {
-                    const commentId = replyBtn.dataset.commentId;
-                    const container = document.getElementById(`comment-${commentId}`);
-                    const form = container ? container.querySelector('.reply-form') : null;
-                    if (form) {
-                        document.querySelectorAll('.reply-form').forEach(f => {
-                            if (f !== form) f.classList.add('hidden');
-                        });
-                        form.classList.remove('hidden');
-                        const area = form.querySelector('textarea');
-                        if(area) area.focus();
-                    }
-                }
-                const cancelBtn = event.target.closest('.cancel-reply-button');
-                if (cancelBtn) {
-                    const form = cancelBtn.closest('.reply-form');
-                    if (form) form.classList.add('hidden');
-                }
-            });
-
-            document.body.addEventListener('submit', function(e) {
-                const form = e.target;
-                const action = form.getAttribute('action') || '';
-
-                if (action.includes('like')) {
-                    e.preventDefault(); e.stopPropagation();
-                    const btn = form.querySelector('button[type="submit"]');
-                    const isCommentLike = action.includes('comment');
-                    
-                    fetch(action, {
-                        method: 'POST',
-                        headers: { 'X-CSRFToken': tokenValue, 'X-Requested-With': 'XMLHttpRequest' },
-                        body: new FormData(form)
-                    })
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success && data.liked !== undefined) {
-                            if (isCommentLike) {
-                                const text = data.liked ? 'Curtido' : 'Curtir';
-                                const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
-                                let html = `<span class="mr-1">${text}</span>`;
-                                if (data.like_count > 0) html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i><span>${data.like_count}</span>`;
-                                btn.innerHTML = html;
-                                btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
-                            } else {
-                                const icon = btn.querySelector('i');
-                                Array.from(btn.childNodes).forEach(node => {
-                                    if (node !== icon && node.nodeType === 3) node.remove(); 
-                                    if (node.classList && node.classList.contains('like-count-text')) node.remove();
-                                });
-                                const countSpan = document.createElement('span');
-                                countSpan.className = 'like-count-text font-bold ml-1'; 
-                                countSpan.innerText = data.like_count;
-                                btn.appendChild(countSpan);
-                                if (icon) icon.className = data.liked ? 'fas fa-heart text-lg text-red-500' : 'far fa-heart text-lg';
-                                if (data.liked) btn.classList.add('text-red-500'); else btn.classList.remove('text-red-500');
-                            }
-                        }
-                    });
-                    return false;
-                }
-                
-                if (!action.includes('like')) {
-                     const btn = form.querySelector('button[type="submit"]');
-                     if (btn && !form.dataset.submitting) {
-                         form.dataset.submitting = "true";
-                         const w = btn.offsetWidth;
-                         btn.style.width = w + 'px';
-                         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
-                         btn.disabled = true;
-                         setTimeout(() => { form.dataset.submitting = ""; btn.disabled=false; }, 5000);
-                     }
-                }
-            }, true);
-
-            document.body.addEventListener('htmx:afterSwap', function(evt) {
-                closeDrawer();
-                var loader = document.getElementById('page-loader');
-                if(loader) { loader.style.width = '100%'; setTimeout(() => { loader.style.opacity = '0'; loader.style.width = '0%'; }, 300); }
-            });
-            document.body.addEventListener('htmx:beforeRequest', function(evt) {
-                var loader = document.getElementById('page-loader');
-                if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
-                closeDrawer();
-            });
-        });
-
-        function toggleMobileSearch() {
-            const searchBar = document.getElementById('mobile-search-bar');
-            if (searchBar.classList.contains('hidden')) {
-                searchBar.classList.remove('hidden'); searchBar.querySelector('input').focus();
-            } else { searchBar.classList.add('hidden'); }
-        }
-
-        function closeDrawer() {
-            const drawer = document.getElementById('mobile-drawer');
-            const overlay = document.getElementById('drawer-overlay');
-            if (drawer) { drawer.classList.remove('drawer-open'); drawer.classList.add('drawer-closed'); }
-            if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('opacity-100'); }
-            document.body.style.overflow = '';
-        }
-
-        function toggleDrawer() {
-            const drawer = document.getElementById('mobile-drawer');
-            const overlay = document.getElementById('drawer-overlay');
-            if (drawer.classList.contains('drawer-closed')) {
-                drawer.classList.remove('drawer-closed'); drawer.classList.add('drawer-open');
-                overlay.classList.remove('hidden'); setTimeout(()=>overlay.classList.add('opacity-100'), 10);
-                document.body.style.overflow = 'hidden'; 
-            } else { closeDrawer(); }
-        }
-    </script>
-    
     {% block scripts %}{% endblock %}
 
     <div id="install-banner" class="fixed bottom-20 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-80 bg-white/90 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
@@ -530,6 +369,7 @@
     </div>
     
     <script>
+        // Lógica de Instalação PWA
         let deferredPrompt; const installBanner = document.getElementById('install-banner'); const menuInstallBtn = document.getElementById('menu-install-btn'); const btnAction = document.getElementById('btn-install-action');
         const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
@@ -558,22 +398,17 @@
         window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
     </script>
 
-        <script>
+    <script>
         const VAPID_PUBLIC_KEY = 'BPE4vWcVzbYPXhmR_vdVWf2pLySfcC5DpuKrBmLRllLWjYLEbHr2t70ns5vxQHR45rI1NwOof-fAyb-OHRyuXqQ';
 
-        // Função para atualizar TODOS os ícones de sino na tela
         function updatePushIcons(isSubscribed) {
-            // Procura todos os botões de notificação (Mobile e Desktop)
             const buttons = document.querySelectorAll('button[onclick="subscribeUser()"]');
-            
             buttons.forEach(btn => {
                 const icon = btn.querySelector('i');
                 if (isSubscribed) {
-                    // Estado: ATIVADO (Sino azul cheio)
                     if(icon) icon.className = 'fas fa-bell text-xl text-blue-600';
                     btn.title = "Notificações Ativadas";
                 } else {
-                    // Estado: DESATIVADO (Sino cortado cinza)
                     if(icon) icon.className = 'fas fa-bell-slash text-xl text-slate-400';
                     btn.title = "Ativar Notificações";
                 }
@@ -591,51 +426,35 @@
             return outputArray;
         }
 
-        // Verifica o status assim que a página carrega
         async function checkSubscriptionStatus() {
             if (!('serviceWorker' in navigator)) return;
             try {
                 const reg = await navigator.serviceWorker.ready;
                 const sub = await reg.pushManager.getSubscription();
-                // Se 'sub' existir, significa que já está inscrito
                 updatePushIcons(!!sub);
-            } catch (e) {
-                console.error("Erro ao verificar status:", e);
-            }
+            } catch (e) { console.error(e); }
         }
         
-        // Executa a verificação ao iniciar
         document.addEventListener('DOMContentLoaded', checkSubscriptionStatus);
 
         async function subscribeUser() {
             if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta Service Workers.');
-
             try {
                 const reg = await navigator.serviceWorker.ready;
-                
-                // Verifica se já tem inscrição para não duplicar
                 let sub = await reg.pushManager.getSubscription();
-                
                 if (!sub) {
-                    // Cria nova inscrição
                     sub = await reg.pushManager.subscribe({
                         userVisibleOnly: true,
                         applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
                     });
                 }
-
-                // Salva no Backend
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 await fetch('/api/save-subscription', {
-                    method: 'POST',
-                    body: JSON.stringify(sub),
+                    method: 'POST', body: JSON.stringify(sub),
                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
                 });
-
-                // SUCESSO: Atualiza o ícone na hora e avisa
                 updatePushIcons(true);
                 alert('Tudo pronto! Você receberá notificações. 🔔');
-
             } catch (error) {
                 console.error(error);
                 alert('Erro: ' + error.message);
@@ -644,4 +463,3 @@
     </script>
 </body>
 </html>
-
