@@ -190,7 +190,7 @@ def get_popular_communities():
 
 # --- FUNÇÃO HELPER PARA CONVERTER CHAVE VAPID RAW PARA PEM ---
 def get_vapid_pem(private_key_b64):
-    """Converte chave privada VAPID de Base64 UrlSafe para objeto PEM"""
+    """Converte chave privada VAPID de Base64 UrlSafe para objeto PEM (String)"""
     try:
         # Corrige padding se necessário
         if len(private_key_b64) % 4 != 0:
@@ -202,16 +202,17 @@ def get_vapid_pem(private_key_b64):
         # Cria objeto de chave privada EC
         private_key = ec.derive_private_key(private_value, ec.SECP256R1(), default_backend())
         
-        # Serializa para formato PEM (bytes)
+        # Serializa para formato PEM (bytes) e CONVERTE PARA STRING
         pem = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         )
-        return pem
+        return pem.decode('utf-8') # Retorna string, não bytes
     except Exception as e:
         print(f"Erro na conversão da chave VAPID: {e}")
         return None
+
 
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
