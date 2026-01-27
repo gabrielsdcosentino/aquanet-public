@@ -1,11 +1,11 @@
-// Service Worker Minimalista para PWA - Versão 2
+// Service Worker Minimalista para PWA - Versão 4
 self.addEventListener('install', (e) => {
-  console.log('[AquaNet App] Instalado v2');
+  console.log('[AquaNet App] Instalado v4');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (e) => {
-  console.log('[AquaNet App] Ativado v2');
+  console.log('[AquaNet App] Ativado v4');
   return self.clients.claim();
 });
 
