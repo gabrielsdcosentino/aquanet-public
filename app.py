@@ -8,7 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from markupsafe import Markup
 from flask import escape
-import secrets, os, datetime, unicodedata, re, json
+import secrets, os, datetime, unicodedata, re, json, base64
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -18,6 +18,11 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
 from pywebpush import webpush, WebPushException
+
+# --- IMPORTAÇÕES PARA CONVERSÃO VAPID (CORREÇÃO DO ERRO) ---
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -33,7 +38,6 @@ app = Flask(__name__)
 def link_mentions(text):
     if not text: return ""
     escaped_text = str(escape(text))
-    # Regex ajustado para capturar @nome e criar link
     return Markup(re.sub(r'@([a-zA-Z0-9_]+)', r'<a href="/profile/\1" class="text-blue-600 hover:text-blue-800 hover:underline font-bold transition-colors">@\1</a>', escaped_text))
 
 # --- CONFIG ---
@@ -56,7 +60,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,
 }
 
-# MAIL CONFIG (Pega das variáveis de ambiente da Vercel)
+# MAIL CONFIG
 app.config['MAIL_SERVER'] = os.environ.get('MAIL_SERVER', 'smtp.gmail.com')
 app.config['MAIL_PORT'] = int(os.environ.get('MAIL_PORT', 587))
 app.config['MAIL_USE_TLS'] = os.environ.get('MAIL_USE_TLS', 'True') == 'True'
@@ -137,6 +141,7 @@ oauth.register(
     client_kwargs={'scope':'profile email'}, access_token_url='https://oauth2.googleapis.com/token',
     authorize_url='https://accounts.google.com/o/oauth2/auth', api_base_url='https://www.googleapis.com/oauth2/v3/userinfo'
 )
+
 # --- TABELAS DE ASSOCIAÇÃO ---
 likes = db.Table(
     'likes', db.Column('user_id',db.Integer,db.ForeignKey('user.id',ondelete='CASCADE'),primary_key=True),
@@ -183,7 +188,32 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- SISTEMA DE EMAIL SÍNCRONO (IGUAL AO RESET DE SENHA) ---
+# --- FUNÇÃO HELPER PARA CONVERTER CHAVE VAPID RAW PARA PEM ---
+def get_vapid_pem(private_key_b64):
+    """Converte chave privada VAPID de Base64 UrlSafe para objeto PEM"""
+    try:
+        # Corrige padding se necessário
+        if len(private_key_b64) % 4 != 0:
+            private_key_b64 += '=' * (4 - len(private_key_b64) % 4)
+        
+        # Decodifica base64 para inteiro
+        private_value = int.from_bytes(base64.urlsafe_b64decode(private_key_b64), 'big')
+        
+        # Cria objeto de chave privada EC
+        private_key = ec.derive_private_key(private_value, ec.SECP256R1(), default_backend())
+        
+        # Serializa para formato PEM (bytes)
+        pem = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+        return pem
+    except Exception as e:
+        print(f"Erro na conversão da chave VAPID: {e}")
+        return None
+
+# --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
     sender = f"AquaNet <{app.config.get('MAIL_USERNAME', 'noreply@aquanet.app')}>" 
@@ -197,7 +227,7 @@ def send_reset_email(user, mail_app):
     token = user.get_reset_token()
     sender_address = f"AquaNet <{current_app.config['MAIL_USERNAME']}>" 
     msg = Message('Redefinição de Senha', sender=sender_address, recipients=[user.email])
-    msg.body = f'Para redefinir sua senha, clique no link: {url_for('reset_token', token=token, _external=True)}'
+    msg.body = f'Para redefinir sua senha, clique no link: {url_for("reset_token", token=token, _external=True)}'
     try: mail_app.send(msg)
     except Exception as e: print(f"ERRO EMAIL: {e}")
 
@@ -344,12 +374,17 @@ class EncyclopediaEntry(db.Model):
 
 # --- FUNÇÃO AUXILIAR PARA ENVIAR PUSH ---
 def send_push_notification(user, title, body, url='/'):
-    # Envia para TODOS os dispositivos daquele usuário
     subs = PushSubscription.query.filter_by(user_id=user.id).all()
     if not subs: return
     
-    private_key = os.environ.get('VAPID_PRIVATE_KEY')
-    if not private_key: return
+    private_key_raw = os.environ.get('VAPID_PRIVATE_KEY')
+    if not private_key_raw: return
+
+    # --- CONVERSÃO PARA PEM AQUI ---
+    pem_key = get_vapid_pem(private_key_raw)
+    if not pem_key:
+        print("Erro: Falha ao converter chave VAPID")
+        return
 
     for sub in subs:
         try:
@@ -359,11 +394,10 @@ def send_push_notification(user, title, body, url='/'):
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
                 data=json.dumps({"title": title, "body": body, "url": url}),
-                vapid_private_key=private_key,
+                vapid_private_key=pem_key,
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
         except WebPushException as ex:
-            # Se a inscrição expirou (ex: usuário limpou dados), remove do banco
             if ex.response and ex.response.status_code == 410:
                 db.session.delete(sub)
                 db.session.commit()
@@ -376,7 +410,6 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
     sender_id = sender.id if sender else None
     if not recipient_id: return
     
-    # 1. Cria/Atualiza notificação no banco
     existing = Notification.query.filter_by(
         recipient_id=recipient_id, sender_id=sender_id, action=action,
         post_id=post.id if post else None, comment_id=comment.id if comment else None, is_read=False
@@ -384,13 +417,12 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
     
     if existing: 
         existing.timestamp = now_br(); existing.count += 1; db.session.commit()
-        if action != 'mention': return # Se já existe e não é menção, evita spam
+        if action != 'mention': return
 
     if not existing:
         notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
         db.session.add(notif); db.session.commit()
 
-    # Define Textos para Email e Push
     msg_text = f"@{sender.username} interagiu com você"
     if action == 'mention': msg_text = f"@{sender.username} te marcou em um post"
     elif action == 'comment': msg_text = f"@{sender.username} comentou no seu post"
@@ -401,18 +433,14 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
 
     target_url = url_for('post_detail', post_id=post.id, _external=True) if post else url_for('profile', username=sender.username, _external=True)
 
-    # 2. Tenta enviar PUSH NOTIFICATION
     try:
         send_push_notification(recipient, "AquaNet", msg_text, target_url)
     except Exception as e:
         print(f"Erro ao disparar push: {e}")
 
-    # 3. Envia o E-mail (Apenas para interações importantes)
     try:
         if action in ['mention', 'comment', 'reply'] and recipient.email:
             subject = f"Nova notificação no AquaNet: {msg_text}"
-            
-            # HTML do Email
             msg_body = f"""
             <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                 <h2 style="color: #2563EB; margin-bottom: 20px;">Olá {recipient.username},</h2>
@@ -569,7 +597,6 @@ def community_feed(community_slug):
         new_post = Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)
         db.session.add(new_post); db.session.commit()
         
-        # MENÇÕES (Sincronamente agora)
         process_mentions(content, current_user, post=new_post)
         
         return redirect(url_for('community_feed', community_slug=community.slug))
@@ -719,7 +746,6 @@ def save_subscription():
     data = request.json
     if not data: return jsonify({'success': False})
     
-    # Verifica se já existe para não duplicar
     exists = PushSubscription.query.filter_by(endpoint=data['endpoint']).first()
     if not exists:
         sub = PushSubscription(
@@ -948,12 +974,16 @@ def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 @app.route('/debug/push')
 @login_required
 def debug_push():
-    # Pega as inscrições do usuário logado
     subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
     results = []
     
-    private_key = os.environ.get('VAPID_PRIVATE_KEY')
-    if not private_key: return "Erro: VAPID_PRIVATE_KEY não encontrada na Vercel"
+    private_key_raw = os.environ.get('VAPID_PRIVATE_KEY')
+    if not private_key_raw: return jsonify(["ERRO: VAPID_PRIVATE_KEY não encontrada nas variáveis de ambiente"])
+
+    # --- CONVERSÃO PARA PEM ---
+    pem_key = get_vapid_pem(private_key_raw)
+    if not pem_key:
+        return jsonify(["ERRO: Falha ao converter chave VAPID para PEM. Verifique o formato."])
 
     for sub in subs:
         try:
@@ -963,7 +993,7 @@ def debug_push():
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
                 data=json.dumps({"title": "Teste AquaNet", "body": "Se você leu isso, funcionou!", "url": "/"}),
-                vapid_private_key=private_key,
+                vapid_private_key=pem_key,
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
             results.append(f"Sucesso para ID {sub.id}")
@@ -971,7 +1001,6 @@ def debug_push():
             results.append(f"Erro no ID {sub.id}: {str(ex)}")
             
     return jsonify(results)
-
 
 if __name__ == '__main__':
     app.run(debug=False)
