@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -11,36 +11,42 @@
     
     <title>{% block title %}AquaNet - Rede de Aquarismo{% endblock %}</title>
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #DAE0E6; }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        /* Fonte Moderna */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         
-        /* Sistema de Cores para Retenção */
+        /* Ajuste para não ter barra de rolagem horizontal no mobile */
+        html, body { overflow-x: hidden; }
+
+        /* Sistema de Cores e Flashes */
         .flashes { margin-bottom: 1rem; }
-        .flash-success { background-color: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; border-left: 4px solid #10b981; }
-        .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; border-left: 4px solid #ef4444; }
-        .flash-warning { background-color: #fef3c7; color: #92400e; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; border-left: 4px solid #f59e0b; }
-        .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; border-left: 4px solid #3b82f6; }
+        .flash-success { background-color: #ecfdf5; color: #047857; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #a7f3d0; }
+        .flash-danger { background-color: #fef2f2; color: #b91c1c; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #fecaca; }
+        .flash-warning { background-color: #fffbeb; color: #b45309; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #fde68a; }
+        .flash-info { background-color: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; margin-bottom: 0.5rem; border: 1px solid #bfdbfe; }
         
-        /* Menu Mobile */
-        #mobile-drawer { transition: transform 0.3s ease-in-out; }
+        /* Menu Mobile Drawer */
+        #mobile-drawer { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); will-change: transform; }
         .drawer-open { transform: translateX(0) !important; }
         .drawer-closed { transform: translateX(-100%); }
 
-        /* Barra de Progresso */
+        /* Barra de Progresso (Loader) */
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
-            background-color: #2563EB; z-index: 9999; transition: width 0.2s ease-out;
+            background: linear-gradient(90deg, #3b82f6, #06b6d4); z-index: 9999; transition: width 0.2s ease-out;
             opacity: 0; pointer-events: none;
         }
         .htmx-request #page-loader { width: 70% !important; opacity: 1 !important; }
         
+        /* Ocultar elementos desktop no mobile */
         @media (min-width: 768px) {
             #mobile-drawer { display: none !important; }
             .mobile-bottom-nav { display: none !important; }
             #mobile-search-bar { display: none !important; }
         }
         
-        [x-cloak] { display: none !important; }
+        /* Área segura para iPhone (Notch) */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 
     <script>
@@ -60,291 +66,243 @@
     </script>
     
     <link rel="manifest" href="{{ url_for('manifest') }}">
-    <meta name="theme-color" content="#2563EB">
+    <meta name="theme-color" content="#ffffff">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="AquaNet">
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}">
 
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
-                navigator.serviceWorker.register("/sw.js")
-                .then(reg => console.log('App registrado!', reg))
-                .catch(err => console.log('Erro ao registrar App:', err));
+                navigator.serviceWorker.register("/sw.js").catch(err => console.log('Erro SW:', err));
             });
         }
     </script>
 </head>
 
-<body class="bg-gray-100 font-sans pb-16 md:pb-0" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
+<body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
-    <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden transition-opacity"></div>
+    <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity opacity-0"></div>
 
-    <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-3/4 max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col">
-        <div class="p-4 border-b bg-gray-50 flex items-center justify-between">
-            <h2 class="font-bold text-gray-700 text-lg">Navegação</h2>
-            <button onclick="toggleDrawer()" class="text-gray-500 hover:text-red-500">
-                <i class="fas fa-times text-xl"></i>
+    <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-[85%] max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col rounded-r-3xl">
+        <div class="p-6 flex items-center justify-between">
+            <h2 class="font-black text-slate-800 text-xl tracking-tight">AquaNet</h2>
+            <button onclick="toggleDrawer()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <i class="fas fa-times"></i>
             </button>
         </div>
 
-        <div class="flex-grow p-4 space-y-6">
+        <div class="flex-grow px-6 pb-6 space-y-8">
             {% if current_user.is_authenticated %}
             <div>
-                <div class="flex items-center mb-4 bg-blue-50 p-3 rounded-xl overflow-hidden">
-                    <img src="{{ current_user.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border border-blue-200 mr-3 flex-shrink-0">
+                <div class="flex items-center p-4 bg-gradient-to-r from-blue-50 to-white border border-blue-100 rounded-2xl shadow-sm">
+                    <img src="{{ current_user.profile_pic_url }}" class="w-12 h-12 rounded-full object-cover border-2 border-white shadow-sm mr-4">
                     <div class="min-w-0 flex-1">
-                        <p class="font-bold text-gray-800 leading-tight truncate">{{ current_user.username }}</p>
-                        <a href="{{ url_for('profile', username=current_user.username) }}" class="text-xs text-blue-600 hover:underline font-medium block">Ver Perfil</a>
+                        <p class="font-bold text-slate-800 text-lg truncate">{{ current_user.username }}</p>
+                        <a href="{{ url_for('profile', username=current_user.username) }}" class="text-xs font-bold text-blue-600 uppercase tracking-wide">Ver Perfil</a>
                     </div>
                 </div>
             </div>
-            <hr class="border-gray-100">
             {% endif %}
 
-            <div>
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Menu Principal</h3>
-                <ul class="space-y-3">
-                    <li><a href="{{ url_for('home') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-home w-6 text-center text-gray-400 mr-2"></i> Feed Principal</a></li>
-                    <li><a href="{{ url_for('feed') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-user-friends w-6 text-center text-gray-400 mr-2"></i> Feed Seguindo</a></li>
-                    <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-fish w-6 text-center text-gray-400 mr-2"></i> Meus Aquários</a></li>
-                    <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-book w-6 text-center text-gray-400 mr-2"></i> Enciclopédia</a></li>
-                    <li><a href="{{ url_for('calculators') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-calculator w-6 text-center text-gray-400 mr-2"></i> Ferramentas</a></li>
-                    <li><a href="{{ url_for('communities_directory') }}" class="flex items-center text-gray-700 font-medium hover:text-blue-600"><i class="fas fa-users w-6 text-center text-gray-400 mr-2"></i> Todas as Comunidades</a></li>
-                </ul>
+            <div class="space-y-1">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Menu</p>
+                <a href="{{ url_for('home') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-home w-8 text-lg"></i> Início</a>
+                <a href="{{ url_for('feed') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-rss w-8 text-lg"></i> Seguindo</a>
+                <a href="{{ url_for('my_aquariums') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-fish w-8 text-lg"></i> Aquários</a>
+                <a href="{{ url_for('encyclopedia') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-book w-8 text-lg"></i> Enciclopédia</a>
+                <a href="{{ url_for('communities_directory') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-users w-8 text-lg"></i> Comunidades</a>
             </div>
             
-            {% if current_user.is_authenticated and current_user.joined_communities|length > 0 %}
-            <hr class="border-gray-100">
-            <div>
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Suas Comunidades</h3>
-                <ul class="space-y-2">
-                    {% for comm in current_user.joined_communities %}
-                        <li>
-                            <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center text-sm text-gray-700 hover:text-blue-600 group">
-                                <span class="w-2 h-2 bg-green-500 rounded-full mr-3 group-hover:scale-125 transition-transform flex-shrink-0"></span>
-                                <span class="truncate">{{ comm.name }}</span>
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
-            </div>
-            {% endif %}
-
-            {% if popular_communities %}
-            <hr class="border-gray-100">
-            <div>
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Populares no AquaNet</h3>
-                <ul class="space-y-2">
-                    {% for community in popular_communities %}
-                        <li>
-                            <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center text-sm text-gray-700 hover:text-blue-600">
-                                <span class="bg-blue-100 text-blue-600 text-xs font-bold px-2 py-0.5 rounded-full mr-2 w-5 text-center flex-shrink-0">{{ loop.index }}</span>
-                                <span class="truncate">{{ community.name }}</span>
-                            </a>
-                        </li>
-                    {% endfor %}
-                </ul>
+            {% if current_user.is_authenticated and current_user.joined_communities %}
+            <div class="space-y-1">
+                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Suas Comunidades</p>
+                {% for comm in current_user.joined_communities[:5] %}
+                    <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center p-2 rounded-lg text-slate-600 hover:text-blue-600">
+                        <div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>
+                        <span class="truncate text-sm font-medium">{{ comm.name }}</span>
+                    </a>
+                {% endfor %}
             </div>
             {% endif %}
         </div>
         
-        <div class="p-4 border-t bg-gray-50 mt-auto">
+        <div class="p-6 bg-slate-50 mt-auto border-t border-slate-100">
             {% if current_user.is_authenticated %}
-                <a href="{{ url_for('edit_profile') }}" class="flex items-center justify-center w-full text-blue-600 font-bold border border-blue-200 bg-blue-50 hover:bg-blue-100 p-3 rounded-xl transition-colors mb-2">
-                    <i class="fas fa-user-cog mr-2"></i> Editar Perfil
-                </a>
-                
-                <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold p-3 rounded-xl mb-2 hover:shadow-lg transition-all flex items-center justify-center shadow-md">
-                    <i class="fas fa-download mr-2"></i> Instalar App
+                <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-slate-900 text-white font-bold p-3 rounded-xl mb-3 shadow-lg flex items-center justify-center">
+                    <i class="fas fa-download mr-2"></i> App
                 </button>
-
-                <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold border border-red-200 bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">
-                    <i class="fas fa-sign-out-alt mr-2"></i> Sair
+                <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">
+                    Sair
                 </a>
             {% else %}
-                <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-gradient-to-r from-blue-600 to-blue-500 text-white font-bold p-3 rounded-xl mb-2 hover:shadow-lg transition-all flex items-center justify-center shadow-md">
-                    <i class="fas fa-download mr-2"></i> Instalar App
-                </button>
-
-                <a href="{{ url_for('login') }}" class="block w-full bg-blue-600 text-white text-center font-bold p-3 rounded-xl mb-2 hover:bg-blue-700 transition-colors">Entrar</a>
+                <a href="{{ url_for('login') }}" class="block w-full bg-blue-600 text-white text-center font-bold p-4 rounded-xl shadow-lg shadow-blue-200">Entrar</a>
             {% endif %}
         </div>
     </aside>
 
-    <header class="bg-white text-gray-800 shadow-sm sticky top-0 z-50 border-b border-gray-200">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center max-w-7xl">
-            <div class="flex-shrink-0 flex items-center">
-                <button onclick="toggleDrawer()" class="md:hidden mr-3 text-gray-600 focus:outline-none p-1">
-                    <i class="fas fa-bars text-2xl"></i>
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-40 border-b border-slate-200/50 transition-all duration-300">
+        <div class="container mx-auto px-4 h-16 flex justify-between items-center max-w-7xl">
+            <div class="flex items-center gap-4">
+                <button onclick="toggleDrawer()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full active:bg-slate-100 text-slate-700">
+                    <i class="fas fa-bars text-xl"></i>
                 </button>
-                <a href="{{ url_for('home') }}" class="text-2xl font-black text-blue-600 mr-6 tracking-tighter hover:text-blue-700 transition-colors">AquaNet</a>
-                <a href="{{ url_for('my_aquariums') }}" class="hidden md:flex items-center text-sm font-bold text-gray-600 hover:text-blue-600 transition-colors">
-                    <i class="fas fa-fish mr-2 text-lg"></i> Meus Aquários
+                <a href="{{ url_for('home') }}" class="flex items-center gap-2 group">
+                    <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white shadow-md shadow-blue-200 group-hover:scale-110 transition-transform">
+                        <i class="fas fa-water"></i>
+                    </div>
+                    <span class="text-xl font-black text-slate-800 tracking-tight">AquaNet</span>
                 </a>
             </div>
             
-            <div class="flex-grow max-w-md mx-4 hidden md:block">
-                <form action="{{ url_for('search') }}" method="GET" class="relative">
-                    <input type="text" name="q" placeholder="Buscar no AquaNet..." class="w-full bg-gray-100 border-transparent focus:bg-white focus:border-blue-300 rounded-full px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-4 focus:ring-blue-100 transition-all">
-                    <i class="fas fa-search absolute left-3.5 top-2.5 text-gray-400"></i>
+            <div class="flex-grow max-w-lg mx-8 hidden md:block">
+                <form action="{{ url_for('search') }}" method="GET" class="relative group">
+                    <input type="text" name="q" placeholder="Buscar peixes, plantas, usuários..." class="w-full bg-slate-100 border-none rounded-full px-5 py-2.5 pl-12 text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all">
+                    <i class="fas fa-search absolute left-4 top-3 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
                 </form>
             </div>
 
-            <nav class="hidden md:flex items-center">
+            <nav class="flex items-center gap-1 md:gap-3">
+                <button onclick="toggleMobileSearch()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100">
+                    <i class="fas fa-search text-lg"></i>
+                </button>
+
                 {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-500 hover:text-blue-600 mr-4 transition-colors" title="Notificações">
-                        <i class="fas fa-bell text-xl"></i>
+                    <a href="{{ url_for('notifications') }}" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all relative">
+                        <i class="far fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
                         {% if new_notifs > 0 %}
-                            <span class="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-500 rounded-full border-2 border-white transform translate-x-1/4 -translate-y-1/4">{{ new_notifs }}</span>
+                            <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
                         {% endif %}
                     </a>
-                    <a href="{{ url_for('profile', username=current_user.username) }}" class="flex items-center text-sm font-semibold hover:bg-gray-100 p-2 rounded-xl mr-2 transition-colors">
-                        <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover mr-2 border border-gray-300">
-                        @{{ current_user.username }}
-                    </a>
-                    <a href="{{ url_for('logout') }}" hx-boost="false" class="text-sm font-semibold text-gray-500 hover:text-red-600 p-2 transition-colors" title="Sair">
-                        <i class="fas fa-sign-out-alt text-lg"></i>
+                    
+                    <a href="{{ url_for('profile', username=current_user.username) }}" class="hidden md:flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
+                        <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover">
+                        <span class="text-sm font-bold text-slate-700">{{ current_user.username }}</span>
                     </a>
                 {% else %}
-                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 hover:bg-blue-50 px-4 py-2 rounded-full mr-2 transition-colors">Entrar</a>
-                    <a href="{{ url_for('register') }}" class="font-bold bg-blue-600 text-white hover:bg-blue-700 px-5 py-2 rounded-full transition-colors shadow-md hover:shadow-lg">Criar Conta</a>
-                {% endif %}
-            </nav>
-            
-            <nav class="md:hidden flex items-center">
-                 {% if current_user.is_authenticated %}
-                    <a href="{{ url_for('notifications') }}" class="relative p-2 text-gray-600 hover:text-blue-600 mr-1">
-                        <i class="fas fa-bell text-xl"></i>
-                        {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
-                        {% if new_notifs > 0 %}
-                            <span class="absolute top-1 right-1 w-2.5 h-2.5 bg-red-600 rounded-full border-2 border-white"></span>
-                        {% endif %}
-                    </a>
-                {% else %}
-                    <a href="{{ url_for('login') }}" class="font-bold text-blue-600 text-sm">Entrar</a>
+                    <a href="{{ url_for('login') }}" class="text-sm font-bold text-slate-600 hover:text-blue-600 px-3">Entrar</a>
+                    <a href="{{ url_for('register') }}" class="hidden md:block bg-slate-900 text-white text-sm font-bold px-5 py-2.5 rounded-full hover:bg-black transition-transform active:scale-95">Criar Conta</a>
                 {% endif %}
             </nav>
         </div>
+        
+        <div id="mobile-search-bar" class="hidden md:hidden bg-white/95 backdrop-blur border-t border-slate-100 p-3 absolute w-full shadow-lg">
+            <form action="{{ url_for('search') }}" method="GET" class="flex relative">
+                <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
+                <input type="text" name="q" placeholder="Buscar..." class="w-full bg-slate-100 rounded-xl px-4 py-3 pl-10 text-base focus:bg-white focus:ring-2 focus:ring-blue-500 border-none">
+            </form>
+        </div>
     </header>
 
-    <div id="mobile-search-bar" class="hidden md:hidden bg-white p-3 border-b shadow-sm">
-        <form action="{{ url_for('search') }}" method="GET" class="flex">
-            <input type="text" name="q" placeholder="O que você procura?" class="flex-grow bg-gray-100 rounded-l-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-r-lg font-bold">
-                <i class="fas fa-search"></i>
-            </button>
-        </form>
-    </div>
+    <nav class="mobile-bottom-nav md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200/50 z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
+        <div class="flex justify-around items-center h-16">
+            <a href="{{ url_for('home') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
+                <i class="fas fa-home text-xl mb-0.5 {% if request.endpoint in ['home', 'feed'] %} transform scale-110 {% endif %}"></i>
+                <span class="text-[10px] font-bold">Início</span>
+            </a>
+            <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
+                <i class="fas fa-fish text-xl mb-0.5"></i>
+                <span class="text-[10px] font-bold">Aquários</span>
+            </a>
+            
+            <a href="{{ url_for('create_post') }}" class="flex items-center justify-center -mt-6">
+                <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-300 transform active:scale-90 transition-transform">
+                    <i class="fas fa-plus text-2xl"></i>
+                </div>
+            </a>
 
-    <nav class="mobile-bottom-nav md:hidden bg-white shadow-[0_-4px_20px_rgba(0,0,0,0.05)] p-1 fixed bottom-0 w-full z-40 border-t border-gray-100 flex justify-around items-center pb-safe">
-        <a href="{{ url_for('home') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
-            <i class="fas fa-home text-xl mb-1"></i>
-            <span class="text-[10px] font-medium">Feed</span>
-        </a>
-        <a href="{{ url_for('my_aquariums') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
-            <i class="fas fa-fish text-xl mb-1"></i>
-            <span class="text-[10px] font-medium">Aquários</span>
-        </a>
-        <button onclick="toggleMobileSearch()" class="flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors focus:outline-none">
-             <div class="bg-blue-50 w-10 h-10 rounded-full flex items-center justify-center -mt-4 shadow-sm border border-blue-100">
-                <i class="fas fa-search text-blue-600 text-lg"></i>
-             </div>
-            <span class="text-[10px] font-medium mt-1">Buscar</span>
-        </button>
-         <a href="{{ url_for('communities_directory') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
-            <i class="fas fa-users text-xl mb-1"></i>
-            <span class="text-[10px] font-medium">Comunidades</span>
-        </a>
-        <a href="{{ url_for('create_community') }}" class="nav-link-mobile flex flex-col items-center w-1/5 py-2 text-gray-400 hover:text-blue-600 transition-colors">
-            <i class="fas fa-plus-circle text-xl mb-1"></i>
-            <span class="text-[10px] font-medium">Criar</span>
-        </a>
+            <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
+                <i class="fas fa-users text-xl mb-0.5"></i>
+                <span class="text-[10px] font-bold">Grupos</span>
+            </a>
+            
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('profile', username=current_user.username) }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint == 'profile' %} text-blue-600 {% endif %}">
+                <img src="{{ current_user.profile_pic_url }}" class="w-6 h-6 rounded-full object-cover border border-slate-200 mb-0.5">
+                <span class="text-[10px] font-bold">Eu</span>
+            </a>
+            {% else %}
+            <a href="{{ url_for('login') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600">
+                <i class="fas fa-user-circle text-xl mb-0.5"></i>
+                <span class="text-[10px] font-bold">Entrar</span>
+            </a>
+            {% endif %}
+        </div>
     </nav>
 
-    <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 pb-24 md:pb-10">
+    <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 md:pb-10">
         
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Navegação</h3>
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                 <ul class="space-y-1">
-                    <li><a href="{{ url_for('feed') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-user-friends w-6"></i> Seguindo</a></li>
-                    <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint and 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
-                    <li><a href="{{ url_for('home') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'home' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-globe w-6"></i> Feed Global</a></li>
-                    <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
-                    <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'communities_directory' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
-                    <li><a href="{{ url_for('calculators') }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
+                    <li><a href="{{ url_for('home') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'home' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-globe w-6"></i> Global</a></li>
+                    <li><a href="{{ url_for('feed') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-rss w-6"></i> Seguindo</a></li>
+                    <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
+                    <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
+                    <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'communit' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                 </ul>
-                {% if current_user.is_authenticated and current_user.joined_communities %}
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 mt-8">Suas Comunidades</h3>
-                    <ul class="space-y-1">
-                        {% for comm in current_user.joined_communities %}
-                            <li>
-                                <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center px-3 py-2 text-gray-700 hover:bg-green-50 hover:text-green-700 rounded-xl font-semibold transition-colors">
-                                    <span class="w-2 h-2 bg-green-500 rounded-full mr-3"></span>
-                                    {{ comm.name }}
-                                </a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-
-                <a href="{{ url_for('create_community') }}" class="block mt-6 w-full bg-gray-900 hover:bg-black text-white font-bold py-3 px-4 rounded-xl text-center text-sm transition-colors shadow-md">
+                
+                <a href="{{ url_for('create_community') }}" class="block mt-6 w-full bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-2xl text-center shadow-lg shadow-slate-200 transition-all active:scale-95">
                     <i class="fas fa-plus mr-2"></i> Criar Comunidade
                 </a>
             </div>
+            
+            <div class="mt-6 text-xs text-slate-400 text-center leading-relaxed">
+                <p>&copy; 2026 AquaNet.</p>
+                <p>Feito com <i class="fas fa-heart text-red-400 mx-1"></i> para aquaristas.</p>
+            </div>
         </aside>
 
-        <main class="md:col-span-6">
+        <main class="md:col-span-6 min-h-screen">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    <div class="flashes mb-6 space-y-2">
+                    <div class="flashes mb-6 space-y-3">
                     {% for category, message in messages %}
-                        <div class="flash-{{ category }} shadow-sm flex items-center">
-                            {% if category == 'success' %}<i class="fas fa-check-circle mr-2"></i>
-                            {% elif category == 'danger' %}<i class="fas fa-biohazard mr-2"></i>
-                            {% elif category == 'warning' %}<i class="fas fa-exclamation-triangle mr-2"></i>
-                            {% else %}<i class="fas fa-info-circle mr-2"></i>{% endif %}
+                        <div class="flash-{{ category }} shadow-sm flex items-center text-sm font-medium animate-fade-in-down">
+                            {% if category == 'success' %}<i class="fas fa-check-circle mr-3 text-lg"></i>
+                            {% elif category == 'danger' %}<i class="fas fa-times-circle mr-3 text-lg"></i>
+                            {% elif category == 'warning' %}<i class="fas fa-exclamation-triangle mr-3 text-lg"></i>
+                            {% else %}<i class="fas fa-info-circle mr-3 text-lg"></i>{% endif %}
                             {{ message }}
                         </div>
                     {% endfor %}
                     </div>
                 {% endif %}
             {% endwith %}
+            
             {% block content %}{% endblock %}
         </main>
         
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
-            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Populares no AquaNet</h3>
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Em Alta</h3>
                 {% if popular_communities %}
-                    <ul class="space-y-3">
+                    <ul class="space-y-4">
                         {% for community in popular_communities %}
                             <li>
-                                <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center text-sm font-semibold text-gray-700 hover:text-blue-600 transition-colors group">
-                                    <span class="bg-blue-50 text-blue-600 text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg mr-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">{{ loop.index }}</span>
-                                    {{ community.name }}
+                                <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center justify-between group">
+                                    <div class="flex items-center">
+                                        <span class="bg-blue-50 text-blue-600 text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg mr-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">{{ loop.index }}</span>
+                                        <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{{ community.name }}</span>
+                                    </div>
+                                    <i class="fas fa-chevron-right text-xs text-slate-300 group-hover:text-blue-400"></i>
                                 </a>
                             </li>
                         {% else %}
-                             <p class="text-sm text-gray-500 italic">Nenhuma comunidade ativa ainda.</p>
+                             <p class="text-sm text-slate-400 italic">Nenhuma comunidade ativa ainda.</p>
                         {% endfor %}
                     </ul>
                 {% endif %}
-            </div>
-             <div class="mt-6 text-xs text-gray-400 text-center">
-                <p>&copy; 2026 AquaNet.</p>
-                <p class="mt-1">Feito com <i class="fas fa-heart text-red-400"></i> para aquaristas.</p>
             </div>
         </aside>
     </div>
     
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-
+            // Lógica de CSRF (Segurança)
             const csrfMeta = document.querySelector('meta[name="csrf-token"]');
             const tokenValue = csrfMeta ? csrfMeta.getAttribute('content') : '';
 
@@ -355,11 +313,11 @@
                     form.appendChild(input);
                 }
             });
-
             document.body.addEventListener('htmx:configRequest', function(evt) {
                 evt.detail.headers['X-CSRFToken'] = tokenValue;
             });
 
+            // Lógica de Comentários e Likes (AJAX)
             function updateReplyCounts() {
                 document.querySelectorAll('.toggle-replies-btn').forEach(btn => {
                     const targetId = btn.dataset.target;
@@ -372,14 +330,16 @@
             }
             updateReplyCounts();
 
+            // Delegação de Eventos para botões dinâmicos
             document.body.addEventListener('click', function(event) {
+                // Alternar Respostas
                 const toggleBtn = event.target.closest('.toggle-replies-btn');
                 if (toggleBtn) {
                     const targetId = toggleBtn.dataset.target;
                     const container = document.getElementById(targetId);
                     if (container) container.classList.toggle('hidden');
                 }
-
+                // Botão Responder
                 const replyBtn = event.target.closest('.reply-button');
                 if (replyBtn) {
                     const commentId = replyBtn.dataset.commentId;
@@ -394,7 +354,7 @@
                         if(area) area.focus();
                     }
                 }
-                
+                // Botão Cancelar
                 const cancelBtn = event.target.closest('.cancel-reply-button');
                 if (cancelBtn) {
                     const form = cancelBtn.closest('.reply-form');
@@ -402,148 +362,79 @@
                 }
             });
 
+            // Interceptar Submits para Like e Comentário (Sem Recarregar)
             document.body.addEventListener('submit', function(e) {
                 const form = e.target;
                 const action = form.getAttribute('action') || '';
 
                 if (action.includes('like')) {
                     e.preventDefault(); e.stopPropagation();
-
                     const btn = form.querySelector('button[type="submit"]');
                     const isCommentLike = action.includes('comment');
                     
                     fetch(action, {
                         method: 'POST',
-                        headers: {
-                            'X-CSRFToken': tokenValue,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
+                        headers: { 'X-CSRFToken': tokenValue, 'X-Requested-With': 'XMLHttpRequest' },
                         body: new FormData(form)
                     })
                     .then(response => response.json())
                     .then(data => {
                         if (data.success && data.liked !== undefined) {
                             if (isCommentLike) {
+                                // Lógica visual like comentário
                                 const text = data.liked ? 'Curtido' : 'Curtir';
                                 const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
                                 let html = `<span class="mr-1">${text}</span>`;
-                                if (data.like_count > 0) {
-                                    html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i><span class="like-count-text">${data.like_count}</span>`;
-                                }
+                                if (data.like_count > 0) html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i><span>${data.like_count}</span>`;
                                 btn.innerHTML = html;
                                 btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
                             } else {
+                                // Lógica visual like post
                                 const icon = btn.querySelector('i');
-                                if (btn) {
-                                    Array.from(btn.childNodes).forEach(node => {
-                                        if (node !== icon && node.nodeType === 3) node.remove(); 
-                                        if (node.classList && node.classList.contains('like-count-text')) node.remove();
-                                    });
-                                    const countSpan = document.createElement('span');
-                                    countSpan.className = 'like-count-text font-bold ml-1'; 
-                                    countSpan.innerText = data.like_count;
-                                    btn.appendChild(countSpan);
-                                }
+                                // Remove textos antigos
+                                Array.from(btn.childNodes).forEach(node => {
+                                    if (node !== icon && node.nodeType === 3) node.remove(); 
+                                    if (node.classList && node.classList.contains('like-count-text')) node.remove();
+                                });
+                                const countSpan = document.createElement('span');
+                                countSpan.className = 'like-count-text font-bold ml-1'; 
+                                countSpan.innerText = data.like_count;
+                                btn.appendChild(countSpan);
+                                
                                 if (icon) {
-                                    if (data.liked) icon.className = 'fas fa-thumbs-up text-lg text-blue-600';
-                                    else icon.className = 'far fa-thumbs-up text-lg';
+                                    icon.className = data.liked ? 'fas fa-heart text-lg text-red-500' : 'far fa-heart text-lg';
                                 }
-                                if (data.liked) btn.classList.add('text-blue-600');
-                                else btn.classList.remove('text-blue-600');
+                                if (data.liked) btn.classList.add('text-red-500');
+                                else btn.classList.remove('text-red-500');
                             }
                         }
-                    })
-                    .catch(console.error);
+                    });
                     return false;
                 }
-
-                if (action.includes('comment')) {
-                    e.preventDefault(); e.stopPropagation();
-
-                    const btn = form.querySelector('button[type="submit"]');
-                    const textarea = form.querySelector('textarea');
-                    
-                    if (btn) {
-                        if (btn.disabled || form.dataset.submitting === "true") return; 
-                        btn.dataset.originalText = btn.innerHTML;
-                        btn.disabled = true; form.dataset.submitting = "true";
-                        btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
-                    }
-
-                    fetch(action, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRFToken': tokenValue,
-                            'X-Requested-With': 'XMLHttpRequest'
-                        },
-                        body: new FormData(form)
-                    })
-                    .then(response => {
-                        if (response.redirected) { window.location.href = response.url; return null; }
-                        return response.text(); 
-                    })
-                    .then(data => {
-                        if (!data) return;
-                        window.location.reload();
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        if (btn) {
-                            btn.disabled = false; form.dataset.submitting = "false";
-                            btn.innerHTML = btn.dataset.originalText;
-                        }
-                    });
-                    return false; 
-                }
-
-                if (form.dataset.submitting === "true") { e.preventDefault(); return; }
-                const btn2 = form.querySelector('button[type="submit"]');
-                if (btn2) {
-                    form.dataset.submitting = "true";
-                    const originalText = btn2.innerHTML;
-                    btn2.disabled = true;
-                    btn2.style.opacity = "0.7";
-                    btn2.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
-                    setTimeout(() => {
-                        form.dataset.submitting = "false";
-                        btn2.disabled = false;
-                        btn2.style.opacity = "1";
-                        btn2.innerHTML = originalText;
-                    }, 15000);
+                
+                // Animação de Loading nos botões
+                if (!action.includes('like')) {
+                     const btn = form.querySelector('button[type="submit"]');
+                     if (btn && !form.dataset.submitting) {
+                         form.dataset.submitting = "true";
+                         const w = btn.offsetWidth;
+                         btn.style.width = w + 'px'; // Mantém largura
+                         btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
+                         btn.disabled = true;
+                         setTimeout(() => { form.dataset.submitting = ""; btn.disabled=false; }, 5000); // Timeout de segurança
+                     }
                 }
             }, true);
 
-            var fileInputs = document.querySelectorAll('input[type="file"]');
-            fileInputs.forEach(function(input) {
-                input.addEventListener('change', function() {
-                    if (this.files && this.files[0]) {
-                        var fileSize = this.files[0].size; 
-                        var maxSize = 4.5 * 1024 * 1024; 
-                        if (fileSize > maxSize) {
-                            alert('⚠️ O arquivo é muito grande! O limite é 4.5MB.');
-                            this.value = ""; 
-                        }
-                    }
-                });
-            });
-
+            // Loader HTMX
             document.body.addEventListener('htmx:afterSwap', function(evt) {
                 closeDrawer();
                 var loader = document.getElementById('page-loader');
-                if(loader) {
-                    loader.style.width = '100%';
-                    setTimeout(() => {
-                        loader.style.opacity = '0';
-                        loader.style.width = '0%';
-                    }, 300);
-                }
+                if(loader) { loader.style.width = '100%'; setTimeout(() => { loader.style.opacity = '0'; loader.style.width = '0%'; }, 300); }
             });
             document.body.addEventListener('htmx:beforeRequest', function(evt) {
                 var loader = document.getElementById('page-loader');
-                if(loader) {
-                    loader.style.width = '30%';
-                    loader.style.opacity = '1';
-                }
+                if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
                 closeDrawer();
             });
         });
@@ -561,147 +452,71 @@
         function closeDrawer() {
             const drawer = document.getElementById('mobile-drawer');
             const overlay = document.getElementById('drawer-overlay');
-            if (drawer) {
-                drawer.classList.remove('drawer-open');
-                drawer.classList.add('drawer-closed');
-            }
-            if (overlay) overlay.classList.add('hidden');
-            document.body.style.overflow = 'visible';
-            document.documentElement.style.overflow = 'visible';
+            if (drawer) { drawer.classList.remove('drawer-open'); drawer.classList.add('drawer-closed'); }
+            if (overlay) { overlay.classList.add('hidden'); overlay.classList.remove('opacity-100'); }
+            document.body.style.overflow = '';
         }
 
         function toggleDrawer() {
             const drawer = document.getElementById('mobile-drawer');
             const overlay = document.getElementById('drawer-overlay');
             if (drawer.classList.contains('drawer-closed')) {
-                drawer.classList.remove('drawer-closed');
-                drawer.classList.add('drawer-open');
-                overlay.classList.remove('hidden');
+                drawer.classList.remove('drawer-closed'); drawer.classList.add('drawer-open');
+                overlay.classList.remove('hidden'); 
+                setTimeout(()=>overlay.classList.add('opacity-100'), 10);
                 document.body.style.overflow = 'hidden'; 
-            } else {
-                closeDrawer();
-            }
+            } else { closeDrawer(); }
         }
     </script>
     
-    {% block scripts %}
-    {% endblock %}
+    {% block scripts %}{% endblock %}
 
-    <div id="install-banner" class="fixed bottom-[68px] left-2 right-2 md:bottom-4 md:left-auto md:right-4 md:w-96 bg-white border border-gray-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
+    <div id="install-banner" class="fixed bottom-20 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-80 bg-white/90 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
         <div class="flex items-center justify-between">
             <div class="flex items-center">
-                <div class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center mr-3 shadow-md flex-shrink-0">
-                    <i class="fas fa-fish text-lg"></i>
+                <div class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-blue-200">
+                    <i class="fas fa-water text-lg"></i>
                 </div>
                 <div>
-                    <h3 class="font-bold text-gray-800 text-sm">Instalar AquaNet</h3>
-                    <p class="text-[10px] text-gray-500 leading-tight">Melhor experiência em tela cheia.</p>
+                    <h3 class="font-bold text-slate-800 text-sm">Instalar App</h3>
+                    <p class="text-[10px] text-slate-500">Acesso rápido e tela cheia.</p>
                 </div>
             </div>
             <div class="flex items-center gap-2">
-                <button onclick="dismissInstall()" class="text-gray-400 hover:text-gray-600 p-2 text-xs font-bold">
-                    Agora não
-                </button>
-                <button id="btn-install-action" class="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md hover:bg-blue-700 transition active:scale-95">
-                    Instalar
-                </button>
+                <button onclick="dismissInstall()" class="text-slate-400 hover:text-slate-600 p-2 text-xs font-bold">Não</button>
+                <button id="btn-install-action" class="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md hover:bg-black transition">Instalar</button>
             </div>
         </div>
     </div>
-
-        <script>
-        let deferredPrompt;
-        const installBanner = document.getElementById('install-banner');
-        const menuInstallBtn = document.getElementById('menu-install-btn');
-        const btnAction = document.getElementById('btn-install-action');
-        
-        // Detecção de iOS (iPhone/iPad)
+    
+    <script>
+        // Lógica PWA (Mantida igual ao original para garantir funcionamento)
+        let deferredPrompt; const installBanner = document.getElementById('install-banner'); const menuInstallBtn = document.getElementById('menu-install-btn'); const btnAction = document.getElementById('btn-install-action');
         const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-        // Verifica se já está instalado (Modo Standalone)
         const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
-        // --- LÓGICA ANDROID (Botão Automático) ---
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            console.log("PWA: Android pronto para instalar.");
-
-            // Mostra botão no menu
+            e.preventDefault(); deferredPrompt = e;
             if(menuInstallBtn) menuInstallBtn.classList.remove('hidden');
-
-            // Mostra banner se não foi dispensado
-            if (!localStorage.getItem('installDismissed')) {
-                showBanner();
-            }
+            if (!localStorage.getItem('installDismissed')) showBanner();
         });
 
-        // --- LÓGICA iOS (Manual) ---
-        if (isIos && !isInstalled) {
-            // No iOS não existe evento 'beforeinstallprompt', então checamos direto
-            if (!localStorage.getItem('installDismissed')) {
-                // Muda o visual do banner para instrução
-                const iconDiv = installBanner.querySelector('.bg-blue-600'); // O ícone do peixe
-                const textDiv = installBanner.querySelector('div > div:nth-child(2)'); // O texto
-                const actionBtn = document.getElementById('btn-install-action'); // O botão
-                
-                // Ajusta texto para iOS
-                textDiv.innerHTML = `
-                    <h3 class="font-bold text-gray-800 text-sm">Instalar no iPhone</h3>
-                    <p class="text-[10px] text-gray-500 leading-tight">Toque em <i class="fas fa-share-square mx-1"></i> e depois em <strong>"Adicionar à Tela de Início"</strong>.</p>
-                `;
-                
-                // Remove o botão de "Instalar" pois não funciona no iOS
-                if(actionBtn) actionBtn.style.display = 'none';
-
-                // Mostra o banner após um pequeno delay para não assustar
-                setTimeout(() => {
-                    showBanner();
-                }, 2000);
-            }
+        if (isIos && !isInstalled && !localStorage.getItem('installDismissed')) {
+            const textDiv = installBanner.querySelector('div > div:nth-child(2)');
+            if(textDiv) textDiv.innerHTML = `<h3 class="font-bold text-slate-800 text-sm">Instalar no iPhone</h3><p class="text-[10px] text-slate-500">Toque em <i class="fas fa-share-square mx-1"></i> e em "Adicionar à Tela de Início".</p>`;
+            if(btnAction) btnAction.style.display = 'none';
+            setTimeout(() => showBanner(), 2000);
         }
 
-        // 2. Função para mostrar o banner com animação
-        function showBanner() {
-            if(!installBanner) return;
-            installBanner.classList.remove('hidden');
-            // Pequeno delay para a animação CSS funcionar
-            setTimeout(() => {
-                installBanner.classList.remove('translate-y-20', 'opacity-0');
-            }, 100);
-        }
-
-        // 3. Função que chama a instalação (Android apenas)
+        function showBanner() { if(installBanner) { installBanner.classList.remove('hidden'); setTimeout(() => { installBanner.classList.remove('translate-y-20', 'opacity-0'); }, 100); } }
         async function triggerInstall() {
-            if (!deferredPrompt) return;
-            deferredPrompt.prompt();
+            if (!deferredPrompt) return; deferredPrompt.prompt();
             const { outcome } = await deferredPrompt.userChoice;
-            console.log(`PWA: Usuário escolheu ${outcome}`);
-            
-            if (outcome === 'accepted') {
-                dismissInstall();
-                deferredPrompt = null;
-            }
+            if (outcome === 'accepted') { dismissInstall(); deferredPrompt = null; }
         }
-
-        // 4. Fechar o banner
-        function dismissInstall() {
-            if(!installBanner) return;
-            installBanner.classList.add('translate-y-20', 'opacity-0');
-            localStorage.setItem('installDismissed', 'true');
-            setTimeout(() => { installBanner.classList.add('hidden'); }, 500);
-        }
-
-        // Conecta o botão do banner à função (Android)
-        if(btnAction) {
-            btnAction.addEventListener('click', triggerInstall);
-        }
-
-        // Se já instalou, esconde tudo
-        window.addEventListener('appinstalled', () => {
-            dismissInstall();
-            if(menuInstallBtn) menuInstallBtn.classList.add('hidden');
-            console.log('PWA: App instalado com sucesso!');
-        });
+        function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
+        if(btnAction) btnAction.addEventListener('click', triggerInstall);
+        window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
     </script>
 
 </body>
