@@ -4,14 +4,12 @@ const getCsrfToken = () => {
     return meta ? meta.getAttribute('content') : '';
 };
 
-// Injeta token no HTMX
 document.addEventListener('htmx:configRequest', function(evt) {
     evt.detail.headers['X-CSRFToken'] = getCsrfToken();
 });
 
 // 2. LISTENERS GLOBAIS
 document.addEventListener('click', function(event) {
-    // Botão de Mostrar/Esconder Respostas
     const toggleBtn = event.target.closest('.toggle-replies-btn');
     if (toggleBtn) {
         const targetId = toggleBtn.dataset.target;
@@ -19,7 +17,6 @@ document.addEventListener('click', function(event) {
         if (container) container.classList.toggle('hidden');
     }
 
-    // Botão de Responder Comentário
     const replyBtn = event.target.closest('.reply-button');
     if (replyBtn) {
         const commentId = replyBtn.dataset.commentId;
@@ -35,7 +32,6 @@ document.addEventListener('click', function(event) {
         }
     }
     
-    // Botão Cancelar Resposta
     const cancelBtn = event.target.closest('.cancel-reply-button');
     if (cancelBtn) {
         const form = cancelBtn.closest('.reply-form');
@@ -48,14 +44,13 @@ document.addEventListener('submit', function(e) {
     const form = e.target;
     const action = form.getAttribute('action') || '';
 
-    // --- A. LIKES ---
+    // A. LIKES
     if (action.includes('like')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const btn = form.querySelector('button[type="submit"]');
         const isCommentLike = action.includes('comment');
         const token = getCsrfToken();
         
-        // Visual Otimista
         if (isCommentLike) {
             const textSpan = btn.querySelector('span');
             if (textSpan) {
@@ -119,7 +114,7 @@ document.addEventListener('submit', function(e) {
         return false;
     }
 
-    // --- B. COMENTÁRIOS ---
+    // B. COMENTÁRIOS
     if (action.includes('comment')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         const btn = form.querySelector('button[type="submit"]');
@@ -176,7 +171,7 @@ document.addEventListener('submit', function(e) {
     }
 }, true);
 
-// 4. VALIDAÇÃO DE ARQUIVO E LOADER HTMX
+// 4. VALIDAÇÃO E HTMX
 document.addEventListener('change', function(e) {
     if (e.target.tagName === 'INPUT' && e.target.type === 'file') {
         const file = e.target.files[0];
@@ -232,13 +227,9 @@ function toggleDrawer() {
     }
 }
 
-// ==========================================
-// 6. PWA & PUSH NOTIFICATIONS (NOVO)
-// ==========================================
-
+// 6. PWA & NOTIFICAÇÕES (NOVO)
 const PUBLIC_KEY = 'BPE4vWcVzbYPXhmR_vdVWf2pLySfcC5DpuKrBmLRllLWjYLEbHr2t70ns5vxQHR45rI1NwOof-fAyb-OHRyuXqQ';
 
-// Função utilitária para converter a chave
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
     const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -250,45 +241,31 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// Registra o Service Worker ao carregar a página
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
+        // A rota /sw.js é servida pelo Flask
         navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('Service Worker registrado!', reg))
-        .catch(err => console.error('Erro no SW:', err));
+        .then(reg => console.log('SW registrado', reg))
+        .catch(err => console.log('Erro SW', err));
     });
 }
 
-// Função para ser chamada pelo botão "Ativar Notificações"
 async function subscribeUser() {
-    if (!('serviceWorker' in navigator)) {
-        alert('Seu navegador não suporta notificações.');
-        return;
-    }
-    
+    if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
     try {
-        const registration = await navigator.serviceWorker.ready;
-        
-        // Pede permissão e assina
-        const subscription = await registration.pushManager.subscribe({
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
         });
-
-        // Envia para o Backend (com CSRF Token para segurança)
         await fetch('/api/save-subscription', {
             method: 'POST',
-            body: JSON.stringify(subscription),
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken() // Usa sua função existente
-            }
+            body: JSON.stringify(sub),
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
         });
-
-        alert('Notificações ativadas com sucesso!');
-        
-    } catch (error) {
-        console.error('Erro ao assinar notificações:', error);
-        alert('Não foi possível ativar as notificações. Verifique as permissões.');
+        alert('Notificações ativadas! 🔔');
+    } catch (e) {
+        console.error(e);
+        alert('Erro ao ativar notificações. Tente novamente.');
     }
 }
