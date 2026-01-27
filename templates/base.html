@@ -45,7 +45,6 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            // CSRF Setup
             var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
             document.querySelectorAll('form[method="POST"]').forEach(function(form) {
                 if (!form.querySelector('input[name="csrf_token"]')) {
@@ -58,45 +57,24 @@
                 evt.detail.headers['X-CSRFToken'] = csrfToken;
             });
 
-            // --- LÓGICA DE SWIPE GLOBAL ---
+            // Lógica Swipe Global
             let touchStartX = 0;
             let touchStartY = 0;
-
             document.addEventListener('touchstart', e => {
                 touchStartX = e.changedTouches[0].screenX;
                 touchStartY = e.changedTouches[0].screenY;
             }, {passive: true});
-
             document.addEventListener('touchend', e => {
                 let touchEndX = e.changedTouches[0].screenX;
                 let touchEndY = e.changedTouches[0].screenY;
                 let xDiff = touchEndX - touchStartX;
                 let yDiff = touchEndY - touchStartY;
-
-                // Só ativa se o movimento for horizontal (> 60px) e pouco vertical (< 50px)
                 if (Math.abs(xDiff) > 60 && Math.abs(yDiff) < 50) {
-                    
                     const tabGlobal = document.getElementById('tab-global');
                     const tabFeed = document.getElementById('tab-feed');
-
-                    // Se os botões não existem na tela (ex: perfil), não faz nada
                     if (!tabGlobal || !tabFeed) return;
-
-                    // Arrastou para DIREITA (-->) | Quer ir para GLOBAL
-                    if (xDiff > 60) {
-                        // Só clica se não estivermos no global
-                        if (!window.location.pathname.endsWith('/')) { 
-                            tabGlobal.click(); 
-                        }
-                    }
-                    
-                    // Arrastou para ESQUERDA (<--) | Quer ir para SEGUINDO
-                    if (xDiff < -60) {
-                        // Só clica se não estivermos no feed
-                        if (!window.location.pathname.includes('/feed')) { 
-                            tabFeed.click(); 
-                        }
-                    }
+                    if (xDiff > 60) { if (!window.location.pathname.endsWith('/')) tabGlobal.click(); }
+                    if (xDiff < -60) { if (!window.location.pathname.includes('/feed')) tabFeed.click(); }
                 }
             }, {passive: true});
         });
@@ -107,7 +85,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="AquaNet">
-    <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}">
+    
+    <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=2">
 
     <script>
         if ('serviceWorker' in navigator) {
