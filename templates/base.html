@@ -22,9 +22,21 @@
         .flash-warning { background-color: #fffbeb; color: #b45309; padding: 1rem; border-radius: 1rem; border: 1px solid #fde68a; }
         .flash-info { background-color: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; border: 1px solid #bfdbfe; }
         
-        #mobile-drawer { transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); will-change: transform; }
-        .drawer-open { transform: translateX(0) !important; }
-        .drawer-closed { transform: translateX(-100%); }
+        /* --- OTIMIZAÇÃO DE PERFORMANCE DO MENU (GPU + BÉZIER) --- */
+        #mobile-drawer { 
+            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); /* Curva rápida estilo iOS */
+            will-change: transform; 
+            backface-visibility: hidden; /* Evita "flicker" */
+            transform: translate3d(-100%, 0, 0); /* Força GPU */
+        }
+        .drawer-open { transform: translate3d(0, 0, 0) !important; }
+        .drawer-closed { transform: translate3d(-100%, 0, 0) !important; }
+
+        /* Animação suave do Overlay */
+        #drawer-overlay {
+            transition: opacity 0.25s ease-out;
+            will-change: opacity;
+        }
 
         #page-loader {
             position: fixed; top: 0; left: 0; height: 3px; width: 0%;
@@ -73,7 +85,7 @@
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
-    <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[60] hidden transition-opacity opacity-0"></div>
+    <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] z-[60] hidden opacity-0"></div>
 
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-[85%] max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col rounded-r-3xl">
         <div class="p-6 flex items-center justify-between">
@@ -465,8 +477,9 @@
             } else { closeDrawer(); }
         }
     </script>
-    {% block scripts %}{% endblock %}
     
+    {% block scripts %}{% endblock %}
+
     <div id="install-banner" class="fixed bottom-20 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-80 bg-white/90 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
         <div class="flex items-center justify-between">
             <div class="flex items-center">
