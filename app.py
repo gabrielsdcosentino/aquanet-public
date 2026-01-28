@@ -230,7 +230,7 @@ def debug_push():
     results = []
     
     # Agora recebemos uma STRING perfeita
-    pem_key_string = get_vapid_key_string()
+    pem_key_string = get_clean_private_key()
     
     if not pem_key_string:
         return jsonify(["ERRO: Não foi possível processar a chave privada."])
