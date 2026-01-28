@@ -20,6 +20,9 @@ import time
 from pywebpush import webpush, WebPushException
 import textwrap
 import tempfile
+import base64
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.backends import default_backend
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -185,132 +188,67 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO HELPER (Gera Arquivo Temporário Seguro) ---
-
-def get_clean_private_key_file():
-
-    # 1. A Chave Bruta (Base64 puro do Termux)
-
-    raw_b64 = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
-
+# --- FUNÇÃO MÁGICA: Converte Base64 direto para Chave PEM ---
+def get_vapid_key_bytes():
+    # Sua chave privada bruta (Gerada no Termux)
+    # Não mexa nesta string, ela está perfeita.
+    b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
     
-
-    # 2. Monta o PEM programaticamente
-
-    clean_b64 = raw_b64.strip().replace(' ', '').replace('\n', '')
-
-    formatted_body = '\n'.join(textwrap.wrap(clean_b64, 64))
-
-    pem_content = f"-----BEGIN PRIVATE KEY-----\n{formatted_body}\n-----END PRIVATE KEY-----\n"
-
-    
-
-    # 3. Cria um arquivo temporário no disco (Isso evita erros de string/bytes!)
-
     try:
-
-        tfile = tempfile.NamedTemporaryFile(mode='w+', delete=False, suffix='.pem')
-
-        tfile.write(pem_content)
-
-        tfile.close()
-
-        return tfile.name # Retorna o caminho do arquivo (/tmp/xyz.pem)
-
+        # 1. Decodifica o Base64 para "bytes" reais
+        der_data = base64.b64decode(b64_key)
+        
+        # 2. Carrega a chave usando a biblioteca de criptografia (Isso valida se é EC mesmo)
+        private_key = serialization.load_der_private_key(
+            der_data,
+            password=None,
+            backend=default_backend()
+        )
+        
+        # 3. Exporta como PEM (Bytes) formatado perfeitamente para o webpush
+        pem_bytes = private_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+        return pem_bytes
+    
     except Exception as e:
-
-        print(f"Erro ao criar arquivo de chave: {e}")
-
+        print(f"ERRO CRÍTICO NA CHAVE: {e}")
         return None
 
-
-
 @app.route('/debug/push')
-
 @login_required
-
 def debug_push():
-
     subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
-
     results = []
-
     
-
-    # 1. Gera o arquivo da chave
-
-    key_path = get_clean_private_key_file()
-
+    # Gera a chave formatada na hora
+    pem_key = get_vapid_key_bytes()
     
+    if not pem_key:
+        return jsonify(["ERRO: Não foi possível processar a chave privada."])
 
-    if not key_path:
-
-        return jsonify(["ERRO CRÍTICO: Não foi possível criar o arquivo da chave."])
-
-
-
-    try:
-
-        # TESTE DE FOGO: Tenta carregar a chave antes de usar
-
-        # Isso vai nos dizer se o problema é a chave ou o envio
-
-        with open(key_path, 'r') as f:
-
-            print(f"Chave gerada em {key_path}:\n{f.read()}")
-
-
-
-        for sub in subs:
-
-            try:
-
-                webpush(
-
-                    subscription_info={
-
-                        "endpoint": sub.endpoint,
-
-                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
-
-                    },
-
-                    data=json.dumps({"title": "Teste AquaNet", "body": "Funcionou! Aleluia!", "url": "/"}),
-
-                    vapid_private_key=key_path, # Passamos o ARQUIVO, não o texto
-
-                    vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
-
-                )
-
-                results.append(f"Sucesso para ID {sub.id}")
-
-            except Exception as ex:
-
-                results.append(f"Erro no ID {sub.id}: {str(ex)}")
-
-                # Se der erro 410 (Gone), removemos do banco
-
-                if "410" in str(ex) or "404" in str(ex):
-
-                     db.session.delete(sub)
-
-                     db.session.commit()
-
-                     results.append(f"-> Inscrição {sub.id} removida (inválida).")
-
-
-
-    finally:
-
-        # Limpeza: apaga o arquivo temporário
-
-        if key_path and os.path.exists(key_path):
-
-            os.unlink(key_path)
-
+    for sub in subs:
+        try:
+            webpush(
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
+                },
+                data=json.dumps({"title": "Teste AquaNet", "body": "Funcionou! Finalmente!", "url": "/"}),
+                vapid_private_key=pem_key, # Passamos os BYTES gerados, não arquivo
+                vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
+            )
+            results.append(f"Sucesso para ID {sub.id}")
+        except Exception as ex:
+            msg = str(ex)
+            results.append(f"Erro no ID {sub.id}: {msg}")
+            # Se a inscrição for inválida (410 Gone), remove do banco
+            if "410" in msg or "404" in msg:
+                db.session.delete(sub)
+                db.session.commit()
             
-
     return jsonify(results)
 
 # --- SISTEMA DE EMAIL ---
