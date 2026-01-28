@@ -183,6 +183,23 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
+# --- FUNÇÃO HELPER ROBUSTA PARA LIMPAR A CHAVE VAPID ---
+# Isso conserta o erro ASN.1 se a chave tiver espaços, quebras de linha erradas, etc.
+def get_clean_private_key():
+    raw_key = os.environ.get('VAPID_PRIVATE_KEY', '')
+    if not raw_key: return None
+    
+    # Remove cabeçalhos, rodapés, espaços e todo tipo de quebra de linha
+    clean_key = raw_key.replace('-----BEGIN PRIVATE KEY-----', '') \
+                       .replace('-----END PRIVATE KEY-----', '') \
+                       .replace('\\n', '') \
+                       .replace('\n', '') \
+                       .replace(' ', '') \
+                       .strip()
+    
+    # Reconstrói no formato PEM perfeito
+    return f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
@@ -342,17 +359,16 @@ class EncyclopediaEntry(db.Model):
     last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     last_editor = db.relationship('User', backref='wiki_edits')
 
-# --- FUNÇÃO AUXILIAR PARA ENVIAR PUSH (SIMPLIFICADA) ---
+# --- FUNÇÃO AUXILIAR PARA ENVIAR PUSH ---
 def send_push_notification(user, title, body, url='/'):
     subs = PushSubscription.query.filter_by(user_id=user.id).all()
     if not subs: return
     
-    private_key = os.environ.get('VAPID_PRIVATE_KEY')
-    if not private_key: return
-
-    # --- CORREÇÃO AUTOMÁTICA DO FORMATO DA CHAVE ---
-    if "\\n" in private_key:
-        private_key = private_key.replace("\\n", "\n")
+    # Usa a função de limpeza robusta
+    pem_key = get_clean_private_key()
+    if not pem_key: 
+        print("ERRO: VAPID_PRIVATE_KEY não encontrada ou inválida")
+        return
 
     for sub in subs:
         try:
@@ -362,7 +378,7 @@ def send_push_notification(user, title, body, url='/'):
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
                 data=json.dumps({"title": title, "body": body, "url": url}),
-                vapid_private_key=private_key,
+                vapid_private_key=pem_key,
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
         except WebPushException as ex:
@@ -945,12 +961,9 @@ def debug_push():
     subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
     results = []
     
-    private_key = os.environ.get('VAPID_PRIVATE_KEY')
-    if not private_key: return jsonify(["ERRO: VAPID_PRIVATE_KEY não encontrada nas variáveis de ambiente"])
-
-    # --- CORREÇÃO AUTOMÁTICA DO FORMATO DA CHAVE ---
-    if "\\n" in private_key:
-        private_key = private_key.replace("\\n", "\n")
+    # Usa a função de limpeza robusta
+    pem_key = get_clean_private_key()
+    if not pem_key: return jsonify(["ERRO: VAPID_PRIVATE_KEY vazia ou inválida na Vercel"])
 
     for sub in subs:
         try:
@@ -960,7 +973,7 @@ def debug_push():
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
                 data=json.dumps({"title": "Teste AquaNet", "body": "Se você leu isso, funcionou!", "url": "/"}),
-                vapid_private_key=private_key,
+                vapid_private_key=pem_key,
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
             results.append(f"Sucesso para ID {sub.id}")
