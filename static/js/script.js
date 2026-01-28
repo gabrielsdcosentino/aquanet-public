@@ -228,7 +228,7 @@ function toggleDrawer() {
 }
 
 // 6. PWA & NOTIFICAÇÕES (NOVO)
-const PUBLIC_KEY = 'BPE4vWcVzbYPXhmR_vdVWf2pLySfcC5DpuKrBmLRllLWjYLEbHr2t70ns5vxQHR45rI1NwOof-fAyb-OHRyuXqQ';
+const PUBLIC_KEY = 'BD-4Z2LNfjJBfLFrSGt9Zbx9Cp8hpOCZRvnZiYpUwv3qQukHfW1wrbxU9syK5gI2Jmzd3pMgLJpLG9ITXW3agIw';
 
 function urlBase64ToUint8Array(base64String) {
     const padding = '='.repeat((4 - base64String.length % 4) % 4);
