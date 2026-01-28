@@ -8,7 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from markupsafe import Markup
 from flask import escape
-import secrets, os, datetime, unicodedata, re, json, base64
+import secrets, os, datetime, unicodedata, re, json
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
 from flask_mail import Mail, Message
@@ -18,11 +18,6 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
 from pywebpush import webpush, WebPushException
-
-# --- IMPORTAÇÕES PARA CONVERSÃO VAPID (CORREÇÃO DO ERRO) ---
-from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -188,32 +183,6 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO HELPER PARA CONVERTER CHAVE VAPID RAW PARA PEM ---
-def get_vapid_pem(private_key_b64):
-    """Converte chave privada VAPID de Base64 UrlSafe para objeto PEM (String)"""
-    try:
-        # Corrige padding se necessário
-        if len(private_key_b64) % 4 != 0:
-            private_key_b64 += '=' * (4 - len(private_key_b64) % 4)
-        
-        # Decodifica base64 para inteiro
-        private_value = int.from_bytes(base64.urlsafe_b64decode(private_key_b64), 'big')
-        
-        # Cria objeto de chave privada EC
-        private_key = ec.derive_private_key(private_value, ec.SECP256R1(), default_backend())
-        
-        # Serializa para formato PEM (bytes) e CONVERTE PARA STRING
-        pem = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-        return pem.decode('utf-8') # Retorna string, não bytes
-    except Exception as e:
-        print(f"Erro na conversão da chave VAPID: {e}")
-        return None
-
-
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
@@ -373,19 +342,17 @@ class EncyclopediaEntry(db.Model):
     last_editor_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     last_editor = db.relationship('User', backref='wiki_edits')
 
-# --- FUNÇÃO AUXILIAR PARA ENVIAR PUSH ---
+# --- FUNÇÃO AUXILIAR PARA ENVIAR PUSH (SIMPLIFICADA) ---
 def send_push_notification(user, title, body, url='/'):
     subs = PushSubscription.query.filter_by(user_id=user.id).all()
     if not subs: return
     
-    private_key_raw = os.environ.get('VAPID_PRIVATE_KEY')
-    if not private_key_raw: return
+    private_key = os.environ.get('VAPID_PRIVATE_KEY')
+    if not private_key: return
 
-    # --- CONVERSÃO PARA PEM AQUI ---
-    pem_key = get_vapid_pem(private_key_raw)
-    if not pem_key:
-        print("Erro: Falha ao converter chave VAPID")
-        return
+    # --- CORREÇÃO AUTOMÁTICA DO FORMATO DA CHAVE ---
+    if "\\n" in private_key:
+        private_key = private_key.replace("\\n", "\n")
 
     for sub in subs:
         try:
@@ -395,7 +362,7 @@ def send_push_notification(user, title, body, url='/'):
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
                 data=json.dumps({"title": title, "body": body, "url": url}),
-                vapid_private_key=pem_key,
+                vapid_private_key=private_key,
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
         except WebPushException as ex:
@@ -978,13 +945,12 @@ def debug_push():
     subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
     results = []
     
-    private_key_raw = os.environ.get('VAPID_PRIVATE_KEY')
-    if not private_key_raw: return jsonify(["ERRO: VAPID_PRIVATE_KEY não encontrada nas variáveis de ambiente"])
+    private_key = os.environ.get('VAPID_PRIVATE_KEY')
+    if not private_key: return jsonify(["ERRO: VAPID_PRIVATE_KEY não encontrada nas variáveis de ambiente"])
 
-    # --- CONVERSÃO PARA PEM ---
-    pem_key = get_vapid_pem(private_key_raw)
-    if not pem_key:
-        return jsonify(["ERRO: Falha ao converter chave VAPID para PEM. Verifique o formato."])
+    # --- CORREÇÃO AUTOMÁTICA DO FORMATO DA CHAVE ---
+    if "\\n" in private_key:
+        private_key = private_key.replace("\\n", "\n")
 
     for sub in subs:
         try:
@@ -994,7 +960,7 @@ def debug_push():
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
                 data=json.dumps({"title": "Teste AquaNet", "body": "Se você leu isso, funcionou!", "url": "/"}),
-                vapid_private_key=pem_key,
+                vapid_private_key=private_key,
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
             results.append(f"Sucesso para ID {sub.id}")
