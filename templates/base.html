@@ -44,8 +44,53 @@
     </style>
 
     <script>
+        // --- FUNÇÕES GLOBAIS DE UI (Definidas aqui para garantir acesso imediato) ---
+        function toggleMobileSearch() {
+            const searchBar = document.getElementById('mobile-search-bar');
+            if (searchBar) {
+                searchBar.classList.toggle('hidden');
+                if (!searchBar.classList.contains('hidden')) {
+                    const input = searchBar.querySelector('input');
+                    if(input) input.focus();
+                }
+            }
+        }
+
+        function closeDrawer() {
+            const drawer = document.getElementById('mobile-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            if (drawer) {
+                drawer.classList.remove('drawer-open');
+                drawer.classList.add('drawer-closed');
+            }
+            if (overlay) {
+                overlay.classList.add('hidden');
+                overlay.classList.add('opacity-0');
+            }
+            document.body.style.overflow = 'visible';
+        }
+
+        function toggleDrawer() {
+            const drawer = document.getElementById('mobile-drawer');
+            const overlay = document.getElementById('drawer-overlay');
+            if (!drawer) return;
+            
+            if (drawer.classList.contains('drawer-closed')) {
+                drawer.classList.remove('drawer-closed');
+                drawer.classList.add('drawer-open');
+                if (overlay) {
+                    overlay.classList.remove('hidden');
+                    // Pequeno delay para permitir a transição de opacidade
+                    setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+                }
+                document.body.style.overflow = 'hidden'; 
+            } else {
+                closeDrawer();
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
-            var csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+            var csrfToken = document.querySelector('meta[name="csrf-token"]');
             
             // Lógica Swipe Global
             let touchStartX = 0;
@@ -54,19 +99,34 @@
                 touchStartX = e.changedTouches[0].screenX;
                 touchStartY = e.changedTouches[0].screenY;
             }, {passive: true});
+            
             document.addEventListener('touchend', e => {
                 let touchEndX = e.changedTouches[0].screenX;
                 let touchEndY = e.changedTouches[0].screenY;
                 let xDiff = touchEndX - touchStartX;
                 let yDiff = touchEndY - touchStartY;
+                
+                // Swipe apenas se não for scroll vertical significativo
                 if (Math.abs(xDiff) > 60 && Math.abs(yDiff) < 50) {
-                    const tabGlobal = document.getElementById('tab-global');
+                    const tabGlobal = document.getElementById('tab-global'); // IDs precisam existir no link
                     const tabFeed = document.getElementById('tab-feed');
-                    if (!tabGlobal || !tabFeed) return;
-                    if (xDiff > 60) { if (!window.location.pathname.endsWith('/')) tabGlobal.click(); }
-                    if (xDiff < -60) { if (!window.location.pathname.includes('/feed')) tabFeed.click(); }
+                    
+                    // Lógica simples de navegação baseada em swipe
+                    if (xDiff > 60) { 
+                        // Swipe Direita (Voltar/Global)
+                         if(tabGlobal) tabGlobal.click();
+                    }
+                    if (xDiff < -60) { 
+                        // Swipe Esquerda (Avançar/Feed)
+                        if(tabFeed) tabFeed.click();
+                    }
                 }
             }, {passive: true});
+            
+            // Fecha o drawer ao navegar com HTMX
+            document.addEventListener('htmx:beforeRequest', function(evt) {
+                closeDrawer();
+            });
         });
     </script>
     
@@ -114,8 +174,8 @@
 
             <div class="space-y-1">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Menu</p>
-                <a href="{{ url_for('home') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-home w-8 text-lg"></i> Início</a>
-                <a href="{{ url_for('feed') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-rss w-8 text-lg"></i> Seguindo</a>
+                <a href="{{ url_for('home') }}" id="tab-global" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-home w-8 text-lg"></i> Início</a>
+                <a href="{{ url_for('feed') }}" id="tab-feed" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-rss w-8 text-lg"></i> Seguindo</a>
                 <a href="{{ url_for('my_aquariums') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-fish w-8 text-lg"></i> Aquários</a>
                 <a href="{{ url_for('encyclopedia') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-book w-8 text-lg"></i> Enciclopédia</a>
                 <a href="{{ url_for('calculators') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-calculator w-8 text-lg"></i> Ferramentas</a>
@@ -162,7 +222,7 @@
     <header class="bg-white/80 backdrop-blur-md fixed top-0 left-0 w-full z-50 border-b border-slate-200/50 transition-all duration-300">
         <div class="container mx-auto px-4 h-16 flex justify-between items-center max-w-7xl">
             <div class="flex items-center gap-4">
-                <button onclick="toggleDrawer()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full active:bg-slate-100 text-slate-700">
+                <button id="btn-menu-open" onclick="toggleDrawer()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full active:bg-slate-100 text-slate-700">
                     <i class="fas fa-bars text-xl"></i>
                 </button>
                 
@@ -179,7 +239,7 @@
             </div>
 
             <nav class="flex items-center gap-1 md:gap-3">
-                <button onclick="toggleMobileSearch()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100">
+                <button id="btn-search-toggle" onclick="toggleMobileSearch()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100">
                     <i class="fas fa-search text-lg"></i>
                 </button>
 
@@ -370,8 +430,7 @@
     
     <script>
         // Lógica de Instalação PWA
-        // CORREÇÃO 3: Usando 'var' para evitar erro de redeclaração com HTMX
-        var deferredPrompt; 
+        var deferredPrompt; // Alterado para var para compatibilidade com HTMX
         const installBanner = document.getElementById('install-banner'); 
         const menuInstallBtn = document.getElementById('menu-install-btn'); 
         const btnAction = document.getElementById('btn-install-action');
