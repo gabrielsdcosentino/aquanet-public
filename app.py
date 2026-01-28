@@ -188,30 +188,32 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO MÁGICA: Converte Base64 direto para Chave PEM ---
-def get_vapid_key_bytes():
+# --- FUNÇÃO MÁGICA 2.0: Gera a Chave como STRING (Texto) ---
+def get_vapid_key_string():
     # Sua chave privada bruta (Gerada no Termux)
-    # Não mexa nesta string, ela está perfeita.
     b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
     
     try:
         # 1. Decodifica o Base64 para "bytes" reais
         der_data = base64.b64decode(b64_key)
         
-        # 2. Carrega a chave usando a biblioteca de criptografia (Isso valida se é EC mesmo)
+        # 2. Carrega a chave na memória (Validação Matemática)
         private_key = serialization.load_der_private_key(
             der_data,
             password=None,
             backend=default_backend()
         )
         
-        # 3. Exporta como PEM (Bytes) formatado perfeitamente para o webpush
+        # 3. Exporta como PEM (Bytes)
         pem_bytes = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         )
-        return pem_bytes
+        
+        # 4. A CORREÇÃO: Transforma os bytes em String UTF-8
+        # O webpush exige que seja STRING, senão ele tenta dar .encode() e falha
+        return pem_bytes.decode('utf-8')
     
     except Exception as e:
         print(f"ERRO CRÍTICO NA CHAVE: {e}")
@@ -223,10 +225,10 @@ def debug_push():
     subs = PushSubscription.query.filter_by(user_id=current_user.id).all()
     results = []
     
-    # Gera a chave formatada na hora
-    pem_key = get_vapid_key_bytes()
+    # Agora recebemos uma STRING perfeita
+    pem_key_string = get_vapid_key_string()
     
-    if not pem_key:
+    if not pem_key_string:
         return jsonify(["ERRO: Não foi possível processar a chave privada."])
 
     for sub in subs:
@@ -236,15 +238,16 @@ def debug_push():
                     "endpoint": sub.endpoint,
                     "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
                 },
-                data=json.dumps({"title": "Teste AquaNet", "body": "Funcionou! Finalmente!", "url": "/"}),
-                vapid_private_key=pem_key, # Passamos os BYTES gerados, não arquivo
+                data=json.dumps({"title": "Teste AquaNet", "body": "Funcionou! Aleluia!", "url": "/"}),
+                vapid_private_key=pem_key_string, # Passamos a STRING aqui
                 vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
             )
             results.append(f"Sucesso para ID {sub.id}")
         except Exception as ex:
             msg = str(ex)
             results.append(f"Erro no ID {sub.id}: {msg}")
-            # Se a inscrição for inválida (410 Gone), remove do banco
+            
+            # Limpeza automática de inscrições mortas
             if "410" in msg or "404" in msg:
                 db.session.delete(sub)
                 db.session.commit()
