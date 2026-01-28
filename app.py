@@ -184,9 +184,19 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
+# --- FUNÇÃO HELPER (Versão Base64 Segura) ---
 def get_clean_private_key():
-    # Versão em linha única para evitar qualquer erro de espaço ou indentação do editor
-    return "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8h\nougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dY\noW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn\n-----END PRIVATE KEY-----"
+    # Colocamos apenas o "miolo" da chave (Base64) para evitar erros de formatação manual
+    b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
+    
+    # 1. Garante que não tem espaços ou enters intrusos
+    clean_b64 = b64_key.strip().replace(' ', '').replace('\n', '').replace('\r', '')
+
+    # 2. Formata automaticamente com quebras de 64 caracteres (Obrigatório para ASN.1)
+    formatted_key = '\n'.join(textwrap.wrap(clean_b64, 64))
+    
+    # 3. Retorna a chave montada
+    return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----"
 
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
