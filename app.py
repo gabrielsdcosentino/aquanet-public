@@ -190,18 +190,28 @@ def get_popular_communities():
 
 # No arquivo app.py
 
-def get_vapid_key_string():
-    # SUAS PARTES (Copiadas corretamente!)
-    parte1 = 'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg+doy5grwW9USUOd79CFYDX'
+def get_clean_private_key():
+    # SUAS PARTES VALIDADAS (184 caracteres no total)
+    parte1 = 'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg+doy5grwW9USUOd79CFYDX'
     parte2 = 'UG5A7hlT+Uf5QEl15ArKWhRANCAASyNLY+dXxZjQXSrA6hseYNwe+cmZPQP99O/QmUmMRV'
     parte3 = 'TYO/PoGVya53A1uT+yz+LVnvHhWqItraNIadAhjU/+NU'
     
-    # O Python junta tudo. Impossível dar erro de corte!
-    b64_key = parte1 + parte2 + parte3
+    # Junta as partes e remove qualquer espaço acidental que possa ter vindo na colagem
+    b64_key = (parte1 + parte2 + parte3).replace(" ", "").replace("\n", "").strip()
     
     try:
+        # Importações necessárias dentro da função para garantir que funcionem
+        from cryptography.hazmat.primitives import serialization
+        from cryptography.hazmat.backends import default_backend
+        import base64
+
         der_data = base64.b64decode(b64_key)
-        private_key = serialization.load_der_private_key(der_data, password=None, backend=default_backend())
+        private_key = serialization.load_der_private_key(
+            der_data, 
+            password=None, 
+            backend=default_backend()
+        )
+        
         pem_bytes = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
@@ -209,7 +219,8 @@ def get_vapid_key_string():
         )
         return pem_bytes.decode('utf-8')
     except Exception as e:
-        print(f"ERRO CRÍTICO: {e}") 
+        # Isso vai ajudar a gente a ver o erro real no log da Vercel se falhar
+        print(f"ERRO AO PROCESSAR CHAVE PRIVADA: {str(e)}")
         return None
 
 @app.route('/debug/push')
