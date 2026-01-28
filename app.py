@@ -18,6 +18,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import time
 from pywebpush import webpush, WebPushException
+import textwrap
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
@@ -186,19 +187,40 @@ def get_popular_communities():
 # --- FUNÇÃO HELPER ROBUSTA PARA LIMPAR A CHAVE VAPID ---
 # Isso conserta o erro ASN.1 se a chave tiver espaços, quebras de linha erradas, etc.
 def get_clean_private_key():
+
     raw_key = os.environ.get('VAPID_PRIVATE_KEY', '')
+
     if not raw_key: return None
+
     
-    # Remove cabeçalhos, rodapés, espaços e todo tipo de quebra de linha
+
+    # 1. Limpeza brutal: remove tudo que não for a chave bruta
+
     clean_key = raw_key.replace('-----BEGIN PRIVATE KEY-----', '') \
+
                        .replace('-----END PRIVATE KEY-----', '') \
+
                        .replace('\\n', '') \
+
                        .replace('\n', '') \
+
                        .replace(' ', '') \
+
                        .strip()
+
     
-    # Reconstrói no formato PEM perfeito
-    return f"-----BEGIN PRIVATE KEY-----\n{clean_key}\n-----END PRIVATE KEY-----"
+
+    # 2. Formatação Estrita (RFC 7468): Quebra a linha a cada 64 caracteres
+
+    # Isso resolve o erro "ASN.1 invalid length"
+
+    formatted_key = '\n'.join(textwrap.wrap(clean_key, 64))
+
+    
+
+    # 3. Monta o PEM final
+
+    return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----"
 
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
