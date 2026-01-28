@@ -79,7 +79,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
 
-    <script src="{{ url_for('static', filename='script.js') }}?v=3"></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=3" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -189,7 +189,7 @@
                     </button>
 
                     <a href="{{ url_for('notifications') }}" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all relative">
-                        <i class="far fa-bell text-xl"></i>
+                        <i id="notification-bell-icon" class="far fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
                         {% if new_notifs > 0 %}
                             <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
@@ -370,7 +370,12 @@
     
     <script>
         // Lógica de Instalação PWA
-        let deferredPrompt; const installBanner = document.getElementById('install-banner'); const menuInstallBtn = document.getElementById('menu-install-btn'); const btnAction = document.getElementById('btn-install-action');
+        // CORREÇÃO 3: Usando 'var' para evitar erro de redeclaração com HTMX
+        var deferredPrompt; 
+        const installBanner = document.getElementById('install-banner'); 
+        const menuInstallBtn = document.getElementById('menu-install-btn'); 
+        const btnAction = document.getElementById('btn-install-action');
+        
         const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
         const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 
@@ -397,7 +402,5 @@
         if(btnAction) btnAction.addEventListener('click', triggerInstall);
         window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
     </script>
-
-    
 </body>
 </html>
