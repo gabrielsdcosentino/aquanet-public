@@ -191,11 +191,15 @@ def get_popular_communities():
 # No arquivo app.py
 
 def get_vapid_key_string():
-    # CHAVE NOVA (Gerada no Termux em 28/01/2026)
-    b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgv/OQ0aSbvYJinuASm/YuqjemoH3EvDoU3ygn87c4NV2hRANCAAQalLqQdH2tU/vI8Eux5XiZJK129k051ABIK2n41zK+2O027bZ4+iikZ3qxdconHBysi/oLp+ZUX2Q4XL5fZgKF"
+    # SUAS PARTES (Copiadas corretamente!)
+    parte1 = 'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg+doy5grwW9USUOd79CFYDX'
+    parte2 = 'UG5A7hlT+Uf5QEl15ArKWhRANCAASyNLY+dXxZjQXSrA6hseYNwe+cmZPQP99O/QmUmMRV'
+    parte3 = 'TYO/PoGVya53A1uT+yz+LVnvHhWqItraNIadAhjU/+NU'
+    
+    # O Python junta tudo. Impossível dar erro de corte!
+    b64_key = parte1 + parte2 + parte3
     
     try:
-        # Decodifica e converte para PEM corretamente
         der_data = base64.b64decode(b64_key)
         private_key = serialization.load_der_private_key(der_data, password=None, backend=default_backend())
         pem_bytes = private_key.private_bytes(
@@ -205,7 +209,7 @@ def get_vapid_key_string():
         )
         return pem_bytes.decode('utf-8')
     except Exception as e:
-        print(f"ERRO CRÍTICO NA CHAVE: {e}")
+        print(f"ERRO CRÍTICO: {e}") 
         return None
 
 @app.route('/debug/push')
