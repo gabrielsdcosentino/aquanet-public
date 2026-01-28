@@ -68,6 +68,11 @@ app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_DEFAULT_SENDER')
 
+VAPID_PRIVATE_KEY = os.environ.get(
+    "VAPID_PRIVATE_KEY",
+    "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg+doy5grwW9USUOd79CFYDXUG5A7hlT+Uf5QEl15ArKWhRANCAASyNLY+dXxZjQXSrA6hseYNwe+cmZPQP99O/QmUmMRVTYO/PoGVya53A1uT+yz+LVnvHhWqItraNIadAhjU/+NU"
+)
+
 # --- MODERAÇÃO AVANÇADA ---
 CUSTOM_BAD_WORDS = [
     'anal', 'anta', 'arrombado', 'arrombada', 'babaca', 'bacanal', 'batoré', 'besta', 'bicha', 'biscate', 
@@ -188,40 +193,6 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# No arquivo app.py
-
-def get_clean_private_key():
-    # SUAS PARTES VALIDADAS (184 caracteres no total)
-    parte1 = 'MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg+doy5grwW9USUOd79CFYDX'
-    parte2 = 'UG5A7hlT+Uf5QEl15ArKWhRANCAASyNLY+dXxZjQXSrA6hseYNwe+cmZPQP99O/QmUmMRV'
-    parte3 = 'TYO/PoGVya53A1uT+yz+LVnvHhWqItraNIadAhjU/+NU'
-    
-    # Junta as partes e remove qualquer espaço acidental que possa ter vindo na colagem
-    b64_key = (parte1 + parte2 + parte3).replace(" ", "").replace("\n", "").strip()
-    
-    try:
-        # Importações necessárias dentro da função para garantir que funcionem
-        from cryptography.hazmat.primitives import serialization
-        from cryptography.hazmat.backends import default_backend
-        import base64
-
-        der_data = base64.b64decode(b64_key)
-        private_key = serialization.load_der_private_key(
-            der_data, 
-            password=None, 
-            backend=default_backend()
-        )
-        
-        pem_bytes = private_key.private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-        return pem_bytes.decode('utf-8')
-    except Exception as e:
-        # Isso vai ajudar a gente a ver o erro real no log da Vercel se falhar
-        print(f"ERRO AO PROCESSAR CHAVE PRIVADA: {str(e)}")
-        return None
 
 @app.route('/debug/push')
 @login_required
@@ -230,7 +201,7 @@ def debug_push():
     results = []
     
     # Agora recebemos uma STRING perfeita
-    pem_key_string = get_clean_private_key()
+    pem_key_string = VAPID_PRIVATE_KEY
     
     if not pem_key_string:
         return jsonify(["ERRO: Não foi possível processar a chave privada."])
@@ -423,7 +394,7 @@ def send_push_notification(user, title, body, url='/'):
     if not subs: return
     
     # Usa a função de limpeza robusta
-    pem_key = get_clean_private_key()
+    pem_key = VAPID_PRIVATE_KEY
     if not pem_key: 
         print("ERRO: VAPID_PRIVATE_KEY não encontrada ou inválida")
         return
