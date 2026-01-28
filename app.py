@@ -215,7 +215,7 @@ def debug_push():
                 },
                 data=json.dumps({"title": "Teste AquaNet", "body": "Funcionou! Aleluia!", "url": "/"}),
                 vapid_private_key=pem_key_string, # Passamos a STRING aqui
-                vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
+                vapid_claims={"sub": "mailto:bielcosen14@gmail.com"}
             )
             results.append(f"Sucesso para ID {sub.id}")
         except Exception as ex:
