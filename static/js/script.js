@@ -227,7 +227,7 @@ function toggleDrawer() {
     }
 }
 
-// 6. PWA & NOTIFICAÇÕES (NOVO)
+// 6. PWA & NOTIFICAÇÕES (ATUALIZADO E CORRIGIDO)
 const PUBLIC_KEY = 'BD-4Z2LNfjJBfLFrSGt9Zbx9Cp8hpOCZRvnZiYpUwv3qQukHfW1wrbxU9syK5gI2Jmzd3pMgLJpLG9ITXW3agIw';
 
 function urlBase64ToUint8Array(base64String) {
@@ -241,33 +241,80 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
+// Função NOVA: Verifica se já é inscrito para pintar o sino
+async function checkSubscriptionStatus() {
+    if (!('serviceWorker' in navigator)) return;
+    
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    
+    // Tenta achar o ícone pelo ID
+    const bellIcon = document.getElementById('notification-bell-icon');
+    
+    if (sub) {
+        console.log("Usuário já inscrito - Pintando sino");
+        if(bellIcon) {
+            bellIcon.classList.remove('far', 'fa-bell-slash');
+            bellIcon.classList.add('fas', 'fa-bell', 'text-yellow-500'); // Amarelo/Preenchido
+        }
+    } else {
+        console.log("Usuário não inscrito");
+        if(bellIcon) {
+            bellIcon.classList.remove('fas', 'fa-bell', 'text-yellow-500');
+            bellIcon.classList.add('far', 'fa-bell'); // Normal
+        }
+    }
+}
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
-        // A rota /sw.js é servida pelo Flask
         navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('SW registrado', reg))
+        .then(reg => {
+            console.log('SW registrado', reg);
+            // Chama a verificação assim que carregar
+            checkSubscriptionStatus();
+        })
         .catch(err => console.log('Erro SW', err));
     });
 }
 
 async function subscribeUser() {
-  alert('Função chamada!');
-
     if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
+    
     try {
         const reg = await navigator.serviceWorker.ready;
+        
+        // Solicita permissão
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+            alert('Você precisa permitir as notificações no navegador!');
+            return;
+        }
+
+        // Inscreve no navegador
         const sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
         });
-        await fetch('/api/save-subscription', {
+
+        // Salva no Banco de Dados
+        const response = await fetch('/api/save-subscription', {
             method: 'POST',
             body: JSON.stringify(sub),
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrfToken() }
         });
-        alert('Notificações ativadas! 🔔');
+
+        if (response.ok) {
+            alert('Notificações ativadas com sucesso! 🔔');
+            // Atualiza o visual do sino imediatamente
+            checkSubscriptionStatus();
+        } else {
+            alert('Erro ao salvar no servidor.');
+        }
+
     } catch (e) {
-        console.error(e);
-        alert('Erro ao ativar notificações. Tente novamente.');
+        console.error("Erro no subscribe:", e);
+        // Se o erro for "subscription already exists", a gente ignora e só atualiza o visual
+        checkSubscriptionStatus();
     }
 }
