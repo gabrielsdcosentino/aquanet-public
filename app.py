@@ -184,33 +184,19 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO DE LIMPEZA 'AGRESSIVA' PARA CHAVE VAPID ---
+# --- FUNÇÃO COM A CHAVE DIRETA (SOLUÇÃO DEFINITIVA) ---
 def get_clean_private_key():
-    raw_key = os.environ.get('VAPID_PRIVATE_KEY', '')
-    if not raw_key: return None
+    # Estamos colocando a chave direto aqui para eliminar erro de leitura da Vercel
+    # Isso garante que a formatação esteja 100% perfeita para o Python
     
-    # 1. Remove aspas simples e duplas (erro comum de copy-paste)
-    temp_key = raw_key.replace('"', '').replace("'", "")
+    private_key_pem = """-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8h
+ougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dY
+oW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn
+-----END PRIVATE KEY-----"""
 
-    # 2. Remove cabeçalhos e rodapés usando REGEX (pega mesmo se tiver espaços errados)
-    # Remove "-----BEGIN PRIVATE KEY-----" e variações
-    temp_key = re.sub(r'-+\s*BEGIN\s+PRIVATE\s+KEY\s*-+', '', temp_key)
-    temp_key = re.sub(r'-+\s*END\s+PRIVATE\s+KEY\s*-+', '', temp_key)
+    return private_key_pem
 
-    # 3. FILTRO FINAL: Mantém APENAS caracteres válidos de Base64
-    # Isso elimina espaços invisíveis, quebras de linha (\n), tabs, etc.
-    allowed_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
-    clean_key = "".join(c for c in temp_key if c in allowed_chars)
-
-    # Se a chave ficou vazia ou muito curta após a limpeza, aborta
-    if len(clean_key) < 100:
-        print(f"ERRO: Chave VAPID parece inválida ou curta demais. Tam: {len(clean_key)}")
-        return None
-
-    # 4. Formata corretamente (RFC 7468)
-    formatted_key = '\n'.join(textwrap.wrap(clean_key, 64))
-    
-    return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----"
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
