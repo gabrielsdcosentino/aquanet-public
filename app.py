@@ -185,41 +185,23 @@ def get_popular_communities():
         return _cache_popular.get('data', [])
 
 # --- FUNÇÃO HELPER ROBUSTA PARA LIMPAR A CHAVE VAPID ---
-# Isso conserta o erro ASN.1 se a chave tiver espaços, quebras de linha erradas, etc.
 def get_clean_private_key():
-
     raw_key = os.environ.get('VAPID_PRIVATE_KEY', '')
-
     if not raw_key: return None
-
     
-
     # 1. Limpeza brutal: remove tudo que não for a chave bruta
-
-    clean_key = raw_key.replace('-----BEGIN PRIVATE KEY-----', '') \
-
-                       .replace('-----END PRIVATE KEY-----', '') \
-
-                       .replace('\\n', '') \
-
-                       .replace('\n', '') \
-
-                       .replace(' ', '') \
-
-                       .strip()
-
+    # Usamos parênteses (...) para permitir quebras de linha sem erros
+    clean_key = (raw_key.replace('-----BEGIN PRIVATE KEY-----', '')
+                       .replace('-----END PRIVATE KEY-----', '')
+                       .replace('\\n', '')
+                       .replace('\n', '')
+                       .replace(' ', '')
+                       .strip())
     
-
     # 2. Formatação Estrita (RFC 7468): Quebra a linha a cada 64 caracteres
-
-    # Isso resolve o erro "ASN.1 invalid length"
-
     formatted_key = '\n'.join(textwrap.wrap(clean_key, 64))
-
     
-
     # 3. Monta o PEM final
-
     return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----"
 
 # --- SISTEMA DE EMAIL ---
