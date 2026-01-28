@@ -184,20 +184,20 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO HELPER (Versão Base64 Segura) ---
 def get_clean_private_key():
-    # Colocamos apenas o "miolo" da chave (Base64) para evitar erros de formatação manual
-    b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
+    # 1. A Chave Bruta (Só o miolo, sem cabeçalhos)
+    # Copiei exatamente a chave que você gerou no Termux
+    raw_b64 = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
     
-    # 1. Garante que não tem espaços ou enters intrusos
-    clean_b64 = b64_key.strip().replace(' ', '').replace('\n', '').replace('\r', '')
+    # 2. Garante que não tem espaços invisíveis
+    key_clean = raw_b64.strip().replace(' ', '').replace('\n', '')
 
-    # 2. Formata automaticamente com quebras de 64 caracteres (Obrigatório para ASN.1)
-    formatted_key = '\n'.join(textwrap.wrap(clean_b64, 64))
+    # 3. Monta o formato PEM programaticamente (O Python faz a matemática de linhas)
+    # Isso é à prova de erros de editor de texto
+    import textwrap
+    formatted_key = '\n'.join(textwrap.wrap(key_clean, 64))
     
-    # 3. Retorna a chave montada
-    return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----"
-
+    return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----\n"
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
