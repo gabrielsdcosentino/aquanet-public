@@ -184,26 +184,33 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO HELPER ROBUSTA PARA LIMPAR A CHAVE VAPID ---
+# --- FUNÇÃO DE LIMPEZA 'AGRESSIVA' PARA CHAVE VAPID ---
 def get_clean_private_key():
     raw_key = os.environ.get('VAPID_PRIVATE_KEY', '')
     if not raw_key: return None
     
-    # 1. Limpeza brutal: remove tudo que não for a chave bruta
-    # Usamos parênteses (...) para permitir quebras de linha sem erros
-    clean_key = (raw_key.replace('-----BEGIN PRIVATE KEY-----', '')
-                       .replace('-----END PRIVATE KEY-----', '')
-                       .replace('\\n', '')
-                       .replace('\n', '')
-                       .replace(' ', '')
-                       .strip())
-    
-    # 2. Formatação Estrita (RFC 7468): Quebra a linha a cada 64 caracteres
+    # 1. Remove aspas simples e duplas (erro comum de copy-paste)
+    temp_key = raw_key.replace('"', '').replace("'", "")
+
+    # 2. Remove cabeçalhos e rodapés usando REGEX (pega mesmo se tiver espaços errados)
+    # Remove "-----BEGIN PRIVATE KEY-----" e variações
+    temp_key = re.sub(r'-+\s*BEGIN\s+PRIVATE\s+KEY\s*-+', '', temp_key)
+    temp_key = re.sub(r'-+\s*END\s+PRIVATE\s+KEY\s*-+', '', temp_key)
+
+    # 3. FILTRO FINAL: Mantém APENAS caracteres válidos de Base64
+    # Isso elimina espaços invisíveis, quebras de linha (\n), tabs, etc.
+    allowed_chars = set("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=")
+    clean_key = "".join(c for c in temp_key if c in allowed_chars)
+
+    # Se a chave ficou vazia ou muito curta após a limpeza, aborta
+    if len(clean_key) < 100:
+        print(f"ERRO: Chave VAPID parece inválida ou curta demais. Tam: {len(clean_key)}")
+        return None
+
+    # 4. Formata corretamente (RFC 7468)
     formatted_key = '\n'.join(textwrap.wrap(clean_key, 64))
     
-    # 3. Monta o PEM final
     return f"-----BEGIN PRIVATE KEY-----\n{formatted_key}\n-----END PRIVATE KEY-----"
-
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
     if not to_email: return
