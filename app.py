@@ -184,18 +184,9 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO COM A CHAVE DIRETA (SOLUÇÃO DEFINITIVA) ---
 def get_clean_private_key():
-    # Estamos colocando a chave direto aqui para eliminar erro de leitura da Vercel
-    # Isso garante que a formatação esteja 100% perfeita para o Python
-    
-    private_key_pem = """-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8h
-ougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dY
-oW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn
------END PRIVATE KEY-----"""
-
-    return private_key_pem
+    # Versão em linha única para evitar qualquer erro de espaço ou indentação do editor
+    return "-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8h\nougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dY\noW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn\n-----END PRIVATE KEY-----"
 
 # --- SISTEMA DE EMAIL ---
 def send_email_notification(to_email, subject, html_body):
