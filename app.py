@@ -71,12 +71,6 @@ VAPID_PRIVATE_KEY = os.environ.get(
     "nWLwHab_lnl9f8wASq2aphuWZWy41SaXByHUsPsVnCk"
 )
 
-# padding base64url
-padding = "=" * (-len(VAPID_PRIVATE_KEY_B64) % 4)
-VAPID_PRIVATE_KEY = base64.urlsafe_b64decode(
-    VAPID_PRIVATE_KEY_B64 + padding
-)
-
 # --- MODERAÇÃO AVANÇADA ---
 CUSTOM_BAD_WORDS = [
     'anal', 'anta', 'arrombado', 'arrombada', 'babaca', 'bacanal', 'batoré', 'besta', 'bicha', 'biscate', 
@@ -406,23 +400,14 @@ def send_push_notification(user, title, body, url='/'):
     for sub in subs:
         try:
             webpush(
-    subscription_info={
-        "endpoint": sub.endpoint,
-        "keys": {
-            "p256dh": sub.p256dh,
-            "auth": sub.auth
-        }
-    },
-    data=json.dumps({
-        "title": "Teste",
-        "body": "Agora vai",
-        "url": "/"
-    }),
-    vapid_private_key=VAPID_PRIVATE_KEY,  # BYTES
-    vapid_claims={
-        "sub": "mailto:bielcosen14@gmail.com"
-    }
-)
+                subscription_info={
+                    "endpoint": sub.endpoint,
+                    "keys": {"p256dh": sub.p256dh, "auth": sub.auth}
+                },
+                data=json.dumps({"title": title, "body": body, "url": url}),
+                vapid_private_key=pem_key,
+                vapid_claims={"sub": "mailto:admin@aquanet.app.br"}
+            )
         except WebPushException as ex:
             if ex.response and ex.response.status_code == 410:
                 db.session.delete(sub)
