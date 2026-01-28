@@ -15,118 +15,144 @@
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         html, body { overflow-x: hidden; }
 
-        /* Flashes */
         .flashes { margin-bottom: 1rem; }
         .flash-success { background-color: #ecfdf5; color: #047857; padding: 1rem; border-radius: 1rem; border: 1px solid #a7f3d0; }
         .flash-danger { background-color: #fef2f2; color: #b91c1c; padding: 1rem; border-radius: 1rem; border: 1px solid #fecaca; }
         .flash-warning { background-color: #fffbeb; color: #b45309; padding: 1rem; border-radius: 1rem; border: 1px solid #fde68a; }
         .flash-info { background-color: #eff6ff; color: #1d4ed8; padding: 1rem; border-radius: 1rem; border: 1px solid #bfdbfe; }
         
-        /* Drawer e Loader */
-        #mobile-drawer { 
-            transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-            will-change: transform; backface-visibility: hidden; transform: translate3d(-100%, 0, 0); 
-        }
+        #mobile-drawer { transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1); will-change: transform; backface-visibility: hidden; transform: translate3d(-100%, 0, 0); }
         .drawer-open { transform: translate3d(0, 0, 0) !important; }
         .drawer-closed { transform: translate3d(-100%, 0, 0) !important; }
         #drawer-overlay { transition: opacity 0.25s ease-out; will-change: opacity; }
 
-        #page-loader {
-            position: fixed; top: 0; left: 0; height: 3px; width: 0%;
-            background: linear-gradient(90deg, #3b82f6, #06b6d4); z-index: 9999; transition: width 0.2s ease-out; opacity: 0; pointer-events: none;
-        }
+        #page-loader { position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: linear-gradient(90deg, #3b82f6, #06b6d4); z-index: 9999; transition: width 0.2s ease-out; opacity: 0; pointer-events: none; }
         .htmx-request #page-loader { width: 70% !important; opacity: 1 !important; }
         
-        @media (min-width: 768px) {
-            #mobile-drawer, .mobile-bottom-nav, #mobile-search-bar { display: none !important; }
-        }
+        @media (min-width: 768px) { #mobile-drawer, .mobile-bottom-nav, #mobile-search-bar { display: none !important; } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 
     <script>
-        // --- FUNÇÕES GLOBAIS DE UI (Definidas aqui para garantir acesso imediato) ---
+        // --- CHAVE PÚBLICA VAPID (Do seu script.js original) ---
+        const PUBLIC_KEY = 'BD-4Z2LNfjJBfLFrSGt9Zbx9Cp8hpOCZRvnZiYpUwv3qQukHfW1wrbxU9syK5gI2Jmzd3pMgLJpLG9ITXW3agIw';
+
+        // --- FUNÇÕES DE UI ---
         function toggleMobileSearch() {
             const searchBar = document.getElementById('mobile-search-bar');
             if (searchBar) {
                 searchBar.classList.toggle('hidden');
-                if (!searchBar.classList.contains('hidden')) {
-                    const input = searchBar.querySelector('input');
-                    if(input) input.focus();
-                }
+                if (!searchBar.classList.contains('hidden')) { const input = searchBar.querySelector('input'); if(input) input.focus(); }
             }
         }
-
         function closeDrawer() {
-            const drawer = document.getElementById('mobile-drawer');
-            const overlay = document.getElementById('drawer-overlay');
-            if (drawer) {
-                drawer.classList.remove('drawer-open');
-                drawer.classList.add('drawer-closed');
-            }
-            if (overlay) {
-                overlay.classList.add('hidden');
-                overlay.classList.add('opacity-0');
-            }
+            const drawer = document.getElementById('mobile-drawer'); const overlay = document.getElementById('drawer-overlay');
+            if (drawer) { drawer.classList.remove('drawer-open'); drawer.classList.add('drawer-closed'); }
+            if (overlay) { overlay.classList.add('hidden'); overlay.classList.add('opacity-0'); }
             document.body.style.overflow = 'visible';
         }
-
         function toggleDrawer() {
-            const drawer = document.getElementById('mobile-drawer');
-            const overlay = document.getElementById('drawer-overlay');
+            const drawer = document.getElementById('mobile-drawer'); const overlay = document.getElementById('drawer-overlay');
             if (!drawer) return;
-            
             if (drawer.classList.contains('drawer-closed')) {
-                drawer.classList.remove('drawer-closed');
-                drawer.classList.add('drawer-open');
-                if (overlay) {
-                    overlay.classList.remove('hidden');
-                    // Pequeno delay para permitir a transição de opacidade
-                    setTimeout(() => overlay.classList.remove('opacity-0'), 10);
-                }
+                drawer.classList.remove('drawer-closed'); drawer.classList.add('drawer-open');
+                if (overlay) { overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.remove('opacity-0'), 10); }
                 document.body.style.overflow = 'hidden'; 
-            } else {
-                closeDrawer();
+            } else { closeDrawer(); }
+        }
+
+        // --- FUNÇÕES DE NOTIFICAÇÃO PUSH (Centralizadas Aqui) ---
+        function urlBase64ToUint8Array(base64String) {
+            const padding = '='.repeat((4 - base64String.length % 4) % 4);
+            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+            const rawData = window.atob(base64);
+            const outputArray = new Uint8Array(rawData.length);
+            for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
+            return outputArray;
+        }
+
+        async function checkSubscriptionStatus() {
+            if (!('serviceWorker' in navigator)) return;
+            try {
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.getSubscription();
+                const btnSubscribe = document.getElementById('btn-subscribe-push');
+                const iconBell = document.getElementById('notification-bell-icon');
+
+                if (sub) {
+                    // SE INSCRITO: Esconde o botão de inscrever e pinta o sino
+                    if(btnSubscribe) btnSubscribe.style.display = 'none';
+                    if(iconBell) { iconBell.classList.remove('far', 'fa-bell-slash'); iconBell.classList.add('fas', 'fa-bell', 'text-yellow-500'); }
+                } else {
+                    // SE NÃO INSCRITO: Mostra o botão de inscrever
+                    if(btnSubscribe) btnSubscribe.style.display = 'flex';
+                    if(iconBell) { iconBell.classList.remove('fas', 'fa-bell', 'text-yellow-500'); iconBell.classList.add('far', 'fa-bell'); }
+                }
+            } catch (e) { console.error('Erro checando status:', e); }
+        }
+
+        async function subscribeUser() {
+            if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
+            
+            try {
+                // 1. Permissão
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert('Você bloqueou as notificações. Ative nas configurações do navegador/celular.');
+                    return;
+                }
+
+                // 2. Service Worker e Inscrição
+                const reg = await navigator.serviceWorker.ready;
+                const sub = await reg.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
+                });
+
+                // 3. Salvar no Backend
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+                const response = await fetch('/api/save-subscription', {
+                    method: 'POST',
+                    body: JSON.stringify(sub),
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+                });
+
+                if (response.ok) {
+                    alert('Notificações ativadas! 🎉');
+                    checkSubscriptionStatus();
+                } else {
+                    alert('Erro ao salvar no servidor. Tente novamente.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Erro técnico: ' + e.message);
             }
         }
 
+        // --- INICIALIZAÇÃO ---
         document.addEventListener("DOMContentLoaded", function() {
-            var csrfToken = document.querySelector('meta[name="csrf-token"]');
-            
-            // Lógica Swipe Global
-            let touchStartX = 0;
-            let touchStartY = 0;
-            document.addEventListener('touchstart', e => {
-                touchStartX = e.changedTouches[0].screenX;
-                touchStartY = e.changedTouches[0].screenY;
-            }, {passive: true});
-            
+            // SW Register
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/sw.js')
+                .then(reg => { console.log('SW OK'); checkSubscriptionStatus(); })
+                .catch(err => console.log('SW Falhou', err));
+            }
+
+            // Swipe Logic
+            let touchStartX = 0; let touchStartY = 0;
+            document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, {passive: true});
             document.addEventListener('touchend', e => {
-                let touchEndX = e.changedTouches[0].screenX;
-                let touchEndY = e.changedTouches[0].screenY;
-                let xDiff = touchEndX - touchStartX;
-                let yDiff = touchEndY - touchStartY;
-                
-                // Swipe apenas se não for scroll vertical significativo
+                let xDiff = e.changedTouches[0].screenX - touchStartX;
+                let yDiff = e.changedTouches[0].screenY - touchStartY;
                 if (Math.abs(xDiff) > 60 && Math.abs(yDiff) < 50) {
-                    const tabGlobal = document.getElementById('tab-global'); // IDs precisam existir no link
+                    const tabGlobal = document.getElementById('tab-global');
                     const tabFeed = document.getElementById('tab-feed');
-                    
-                    // Lógica simples de navegação baseada em swipe
-                    if (xDiff > 60) { 
-                        // Swipe Direita (Voltar/Global)
-                         if(tabGlobal) tabGlobal.click();
-                    }
-                    if (xDiff < -60) { 
-                        // Swipe Esquerda (Avançar/Feed)
-                        if(tabFeed) tabFeed.click();
-                    }
+                    if (xDiff > 60 && tabGlobal) tabGlobal.click();
+                    if (xDiff < -60 && tabFeed) tabFeed.click();
                 }
             }, {passive: true});
             
-            // Fecha o drawer ao navegar com HTMX
-            document.addEventListener('htmx:beforeRequest', function(evt) {
-                closeDrawer();
-            });
+            document.addEventListener('htmx:beforeRequest', function(evt) { closeDrawer(); });
         });
     </script>
     
@@ -138,7 +164,6 @@
     
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
-
     <script src="{{ url_for('static', filename='script.js') }}?v=3" defer></script>
 </head>
 
@@ -150,12 +175,8 @@
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-[85%] max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col rounded-r-3xl">
         <div class="p-6 flex items-center justify-between">
             <h2 class="font-black text-slate-800 text-xl tracking-tight">AquaNet</h2>
-            
-            <button onclick="toggleDrawer()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors">
-                <i class="fas fa-times"></i>
-            </button>
+            <button onclick="toggleDrawer()" class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:text-red-500 hover:bg-red-50 transition-colors"><i class="fas fa-times"></i></button>
         </div>
-
         <div class="flex-grow px-6 pb-6 space-y-8">
             {% if current_user.is_authenticated %}
             <div>
@@ -166,12 +187,9 @@
                         <a href="{{ url_for('profile', username=current_user.username) }}" class="text-xs font-bold text-blue-600 uppercase tracking-wide">Ver Perfil</a>
                     </div>
                 </div>
-                <a href="{{ url_for('create_community') }}" class="block mt-4 w-full bg-slate-900 text-white font-bold py-3 rounded-xl text-center shadow-md active:scale-95 transition-transform">
-                    <i class="fas fa-plus-circle mr-2"></i> Criar Comunidade
-                </a>
+                <a href="{{ url_for('create_community') }}" class="block mt-4 w-full bg-slate-900 text-white font-bold py-3 rounded-xl text-center shadow-md active:scale-95 transition-transform"><i class="fas fa-plus-circle mr-2"></i> Criar Comunidade</a>
             </div>
             {% endif %}
-
             <div class="space-y-1">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Menu</p>
                 <a href="{{ url_for('home') }}" id="tab-global" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-home w-8 text-lg"></i> Início</a>
@@ -181,7 +199,6 @@
                 <a href="{{ url_for('calculators') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-calculator w-8 text-lg"></i> Ferramentas</a>
                 <a href="{{ url_for('communities_directory') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-users w-8 text-lg"></i> Comunidades</a>
             </div>
-            
             {% if current_user.is_authenticated and current_user.joined_communities %}
             <div class="space-y-1">
                 <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Suas Comunidades</p>
@@ -193,25 +210,10 @@
                 {% endfor %}
             </div>
             {% endif %}
-
-            {% if popular_communities %}
-            <div class="space-y-1 pt-4 border-t border-slate-100">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Populares</p>
-                {% for community in popular_communities %}
-                    <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center p-2 rounded-lg text-slate-600 hover:text-blue-600">
-                        <span class="bg-blue-100 text-blue-600 text-[10px] font-bold px-1.5 py-0.5 rounded mr-2 w-5 text-center">{{ loop.index }}</span>
-                        <span class="truncate text-sm font-medium">{{ community.name }}</span>
-                    </a>
-                {% endfor %}
-            </div>
-            {% endif %}
         </div>
-        
         <div class="p-6 bg-slate-50 mt-auto border-t border-slate-100">
             {% if current_user.is_authenticated %}
-                <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-slate-900 text-white font-bold p-3 rounded-xl mb-3 shadow-lg flex items-center justify-center">
-                    <i class="fas fa-download mr-2"></i> App
-                </button>
+                <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-slate-900 text-white font-bold p-3 rounded-xl mb-3 shadow-lg flex items-center justify-center"><i class="fas fa-download mr-2"></i> App</button>
                 <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">Sair</a>
             {% else %}
                 <a href="{{ url_for('login') }}" class="block w-full bg-blue-600 text-white text-center font-bold p-4 rounded-xl shadow-lg shadow-blue-200">Entrar</a>
@@ -222,48 +224,36 @@
     <header class="bg-white/80 backdrop-blur-md fixed top-0 left-0 w-full z-50 border-b border-slate-200/50 transition-all duration-300">
         <div class="container mx-auto px-4 h-16 flex justify-between items-center max-w-7xl">
             <div class="flex items-center gap-4">
-                <button id="btn-menu-open" onclick="toggleDrawer()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full active:bg-slate-100 text-slate-700">
-                    <i class="fas fa-bars text-xl"></i>
-                </button>
-                
-                <a href="{{ url_for('home') }}" class="flex items-center gap-2 group">
-                    <span class="text-2xl font-black text-blue-600 tracking-tight hover:text-blue-700 transition-colors">AquaNet</span>
-                </a>
+                <button id="btn-menu-open" onclick="toggleDrawer()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full active:bg-slate-100 text-slate-700"><i class="fas fa-bars text-xl"></i></button>
+                <a href="{{ url_for('home') }}" class="flex items-center gap-2 group"><span class="text-2xl font-black text-blue-600 tracking-tight hover:text-blue-700 transition-colors">AquaNet</span></a>
             </div>
             
             <div class="flex-grow max-w-lg mx-8 hidden md:block">
                 <form action="{{ url_for('search') }}" method="GET" class="relative group">
-                    <input type="text" name="q" placeholder="Buscar peixes, plantas, usuários..." class="w-full bg-slate-100 border-none rounded-full px-5 py-2.5 pl-12 text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all">
+                    <input type="text" name="q" placeholder="Buscar..." class="w-full bg-slate-100 border-none rounded-full px-5 py-2.5 pl-12 text-sm focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all">
                     <i class="fas fa-search absolute left-4 top-3 text-slate-400 group-focus-within:text-blue-500 transition-colors"></i>
                 </form>
             </div>
 
             <nav class="flex items-center gap-1 md:gap-3">
-                <button id="btn-search-toggle" onclick="toggleMobileSearch()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100">
-                    <i class="fas fa-search text-lg"></i>
-                </button>
+                <button id="btn-search-toggle" onclick="toggleMobileSearch()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100"><i class="fas fa-search text-lg"></i></button>
 
                 {% if current_user.is_authenticated %}
-                    <button onclick="subscribeUser()" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all mr-1" title="Ativar Notificações Push">
+                    <button id="btn-subscribe-push" onclick="subscribeUser()" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all mr-1" title="Ativar Notificações Push">
                         <i class="fas fa-bell-slash text-xl"></i>
                     </button>
 
                     <a href="{{ url_for('notifications') }}" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all relative">
                         <i id="notification-bell-icon" class="far fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
-                        {% if new_notifs > 0 %}
-                            <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
-                        {% endif %}
+                        {% if new_notifs > 0 %} <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span> {% endif %}
                     </a>
                     
                     <a href="{{ url_for('profile', username=current_user.username) }}" class="hidden md:flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
                         <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover">
                         <span class="text-sm font-bold text-slate-700">{{ current_user.username }}</span>
                     </a>
-
-                    <a href="{{ url_for('logout') }}" class="hidden md:flex w-9 h-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all ml-1" title="Sair">
-                        <i class="fas fa-sign-out-alt text-lg"></i>
-                    </a>
+                    <a href="{{ url_for('logout') }}" class="hidden md:flex w-9 h-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all ml-1" title="Sair"><i class="fas fa-sign-out-alt text-lg"></i></a>
 
                 {% else %}
                     <a href="{{ url_for('login') }}" class="text-sm font-bold text-slate-600 hover:text-blue-600 px-3">Entrar</a>
@@ -271,7 +261,6 @@
                 {% endif %}
             </nav>
         </div>
-        
         <div id="mobile-search-bar" class="hidden md:hidden bg-white/95 backdrop-blur border-t border-slate-100 p-3 absolute w-full shadow-lg">
             <form action="{{ url_for('search') }}" method="GET" class="flex relative">
                 <i class="fas fa-search absolute left-4 top-3.5 text-slate-400"></i>
@@ -282,42 +271,19 @@
 
     <nav class="mobile-bottom-nav md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200/50 z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
         <div class="flex justify-around items-center h-16">
-            <a href="{{ url_for('home') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}">
-                <i class="fas fa-home text-xl mb-0.5 {% if request.endpoint in ['home', 'feed'] %} transform scale-110 {% endif %}"></i>
-                <span class="text-[10px] font-bold">Início</span>
-            </a>
-            <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}">
-                <i class="fas fa-fish text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold">Aquários</span>
-            </a>
-            
-            <a href="{{ url_for('create_post') }}" class="flex items-center justify-center -mt-6">
-                <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-300 transform active:scale-90 transition-transform">
-                    <i class="fas fa-plus text-2xl"></i>
-                </div>
-            </a>
-
-            <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'community' in request.endpoint %} text-blue-600 {% endif %}">
-                <i class="fas fa-users text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold">Comunidades</span>
-            </a>
-            
+            <a href="{{ url_for('home') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}"><i class="fas fa-home text-xl mb-0.5 {% if request.endpoint in ['home', 'feed'] %} transform scale-110 {% endif %}"></i><span class="text-[10px] font-bold">Início</span></a>
+            <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}"><i class="fas fa-fish text-xl mb-0.5"></i><span class="text-[10px] font-bold">Aquários</span></a>
+            <a href="{{ url_for('create_post') }}" class="flex items-center justify-center -mt-6"><div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-300 transform active:scale-90 transition-transform"><i class="fas fa-plus text-2xl"></i></div></a>
+            <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'community' in request.endpoint %} text-blue-600 {% endif %}"><i class="fas fa-users text-xl mb-0.5"></i><span class="text-[10px] font-bold">Comunidades</span></a>
             {% if current_user.is_authenticated %}
-            <a href="{{ url_for('profile', username=current_user.username) }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint == 'profile' %} text-blue-600 {% endif %}">
-                <img src="{{ current_user.profile_pic_url }}" class="w-6 h-6 rounded-full object-cover border border-slate-200 mb-0.5">
-                <span class="text-[10px] font-bold">Eu</span>
-            </a>
+            <a href="{{ url_for('profile', username=current_user.username) }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint == 'profile' %} text-blue-600 {% endif %}"><img src="{{ current_user.profile_pic_url }}" class="w-6 h-6 rounded-full object-cover border border-slate-200 mb-0.5"><span class="text-[10px] font-bold">Eu</span></a>
             {% else %}
-            <a href="{{ url_for('login') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600">
-                <i class="fas fa-user-circle text-xl mb-0.5"></i>
-                <span class="text-[10px] font-bold">Entrar</span>
-            </a>
+            <a href="{{ url_for('login') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><i class="fas fa-user-circle text-xl mb-0.5"></i><span class="text-[10px] font-bold">Entrar</span></a>
             {% endif %}
         </div>
     </nav>
 
     <div class="container mx-auto px-4 mt-6 max-w-7xl grid grid-cols-1 md:grid-cols-12 gap-8 md:pb-10 pt-16">
-        
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                 <ul class="space-y-1">
@@ -327,60 +293,24 @@
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
                     <li><a href="{{ url_for('calculators') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'communit' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
-                    
-                    {% if current_user.is_authenticated %}
-                    <li class="pt-2 border-t border-slate-100 mt-2">
-                        <button onclick="subscribeUser()" class="w-full flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all text-left">
-                            <i class="fas fa-bell w-6"></i> Ativar Notificações
-                        </button>
-                    </li>
-                    {% endif %}
                 </ul>
-                
-                {% if current_user.is_authenticated and current_user.joined_communities %}
                 <div class="mt-6 pt-6 border-t border-slate-100">
                     <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-2">Suas Comunidades</h3>
                     <ul class="space-y-1">
-                        {% for comm in current_user.joined_communities[:5] %}
-                            <li>
-                                <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center px-4 py-2.5 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors">
-                                    <div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>
-                                    {{ comm.name }}
-                                </a>
-                            </li>
-                        {% endfor %}
+                        {% if current_user.is_authenticated %}{% for comm in current_user.joined_communities[:5] %}
+                            <li><a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center px-4 py-2.5 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors"><div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>{{ comm.name }}</a></li>
+                        {% endfor %}{% endif %}
                     </ul>
                 </div>
-                {% endif %}
-
-                <a href="{{ url_for('create_community') }}" class="block mt-6 w-full bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-2xl text-center shadow-lg shadow-slate-200 transition-all active:scale-95">
-                    <i class="fas fa-plus mr-2"></i> Criar Comunidade
-                </a>
+                <a href="{{ url_for('create_community') }}" class="block mt-6 w-full bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-2xl text-center shadow-lg shadow-slate-200 transition-all active:scale-95"><i class="fas fa-plus mr-2"></i> Criar Comunidade</a>
             </div>
-            
-            <div class="mt-6 text-xs text-slate-400 text-center leading-relaxed">
-                <p>&copy; 2026 AquaNet.</p>
-                <p>Feito com <i class="fas fa-heart text-red-400 mx-1"></i> para aquaristas.</p>
-            </div>
+            <div class="mt-6 text-xs text-slate-400 text-center leading-relaxed"><p>&copy; 2026 AquaNet.</p><p>Feito com <i class="fas fa-heart text-red-400 mx-1"></i> para aquaristas.</p></div>
         </aside>
 
         <main class="md:col-span-6 min-h-screen">
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    <div class="flashes mb-6 space-y-3">
-                    {% for category, message in messages %}
-                        <div class="flash-{{ category }} shadow-sm flex items-center text-sm font-medium animate-fade-in-down">
-                            {% if category == 'success' %}<i class="fas fa-check-circle mr-3 text-lg"></i>
-                            {% elif category == 'danger' %}<i class="fas fa-times-circle mr-3 text-lg"></i>
-                            {% elif category == 'warning' %}<i class="fas fa-exclamation-triangle mr-3 text-lg"></i>
-                            {% else %}<i class="fas fa-info-circle mr-3 text-lg"></i>{% endif %}
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                    </div>
-                {% endif %}
+                {% if messages %}<div class="flashes mb-6 space-y-3">{% for category, message in messages %}<div class="flash-{{ category }} shadow-sm flex items-center text-sm font-medium animate-fade-in-down">{% if category == 'success' %}<i class="fas fa-check-circle mr-3 text-lg"></i>{% elif category == 'danger' %}<i class="fas fa-times-circle mr-3 text-lg"></i>{% elif category == 'warning' %}<i class="fas fa-exclamation-triangle mr-3 text-lg"></i>{% else %}<i class="fas fa-info-circle mr-3 text-lg"></i>{% endif %}{{ message }}</div>{% endfor %}</div>{% endif %}
             {% endwith %}
-            
             {% block content %}{% endblock %}
         </main>
         
@@ -390,76 +320,31 @@
                 {% if popular_communities %}
                     <ul class="space-y-4">
                         {% for community in popular_communities %}
-                            <li>
-                                <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center justify-between group">
-                                    <div class="flex items-center">
-                                        <span class="bg-blue-50 text-blue-600 text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg mr-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">{{ loop.index }}</span>
-                                        <span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{{ community.name }}</span>
-                                    </div>
-                                    <i class="fas fa-chevron-right text-xs text-slate-300 group-hover:text-blue-400"></i>
-                                </a>
-                            </li>
-                        {% else %}
-                             <p class="text-sm text-slate-400 italic">Nenhuma comunidade ativa ainda.</p>
+                            <li><a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center justify-between group"><div class="flex items-center"><span class="bg-blue-50 text-blue-600 text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg mr-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">{{ loop.index }}</span><span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{{ community.name }}</span></div><i class="fas fa-chevron-right text-xs text-slate-300 group-hover:text-blue-400"></i></a></li>
                         {% endfor %}
                     </ul>
                 {% endif %}
             </div>
         </aside>
     </div>
-    
     {% block scripts %}{% endblock %}
 
     <div id="install-banner" class="fixed bottom-20 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-80 bg-white/90 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
         <div class="flex items-center justify-between">
-            <div class="flex items-center">
-                <div class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-blue-200">
-                    <i class="fas fa-water text-lg"></i>
-                </div>
-                <div>
-                    <h3 class="font-bold text-slate-800 text-sm">Instalar App</h3>
-                    <p class="text-[10px] text-slate-500">Acesso rápido e tela cheia.</p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <button onclick="dismissInstall()" class="text-slate-400 hover:text-slate-600 p-2 text-xs font-bold">Não</button>
-                <button id="btn-install-action" class="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md hover:bg-black transition">Instalar</button>
-            </div>
+            <div class="flex items-center"><div class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-blue-200"><i class="fas fa-water text-lg"></i></div><div><h3 class="font-bold text-slate-800 text-sm">Instalar App</h3><p class="text-[10px] text-slate-500">Acesso rápido e tela cheia.</p></div></div>
+            <div class="flex items-center gap-2"><button onclick="dismissInstall()" class="text-slate-400 hover:text-slate-600 p-2 text-xs font-bold">Não</button><button id="btn-install-action" class="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md hover:bg-black transition">Instalar</button></div>
         </div>
     </div>
     
     <script>
-        // Lógica de Instalação PWA
-        var deferredPrompt; // Alterado para var para compatibilidade com HTMX
-        const installBanner = document.getElementById('install-banner'); 
-        const menuInstallBtn = document.getElementById('menu-install-btn'); 
-        const btnAction = document.getElementById('btn-install-action');
-        
-        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream;
-        const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); deferredPrompt = e;
-            if(menuInstallBtn) menuInstallBtn.classList.remove('hidden');
-            if (!localStorage.getItem('installDismissed')) showBanner();
-        });
-
-        if (isIos && !isInstalled && !localStorage.getItem('installDismissed')) {
-            const textDiv = installBanner.querySelector('div > div:nth-child(2)');
-            if(textDiv) textDiv.innerHTML = `<h3 class="font-bold text-slate-800 text-sm">Instalar no iPhone</h3><p class="text-[10px] text-slate-500">Toque em <i class="fas fa-share-square mx-1"></i> e em "Adicionar à Tela de Início".</p>`;
-            if(btnAction) btnAction.style.display = 'none';
-            setTimeout(() => showBanner(), 2000);
-        }
-
+        var deferredPrompt; const installBanner = document.getElementById('install-banner'); const menuInstallBtn = document.getElementById('menu-install-btn'); const btnAction = document.getElementById('btn-install-action');
+        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream; const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if(menuInstallBtn) menuInstallBtn.classList.remove('hidden'); if (!localStorage.getItem('installDismissed')) showBanner(); });
+        if (isIos && !isInstalled && !localStorage.getItem('installDismissed')) { const textDiv = installBanner.querySelector('div > div:nth-child(2)'); if(textDiv) textDiv.innerHTML = `<h3 class="font-bold text-slate-800 text-sm">Instalar no iPhone</h3><p class="text-[10px] text-slate-500">Toque em <i class="fas fa-share-square mx-1"></i> e em "Adicionar à Tela de Início".</p>`; if(btnAction) btnAction.style.display = 'none'; setTimeout(() => showBanner(), 2000); }
         function showBanner() { if(installBanner) { installBanner.classList.remove('hidden'); setTimeout(() => { installBanner.classList.remove('translate-y-20', 'opacity-0'); }, 100); } }
-        async function triggerInstall() {
-            if (!deferredPrompt) return; deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-            if (outcome === 'accepted') { dismissInstall(); deferredPrompt = null; }
-        }
+        async function triggerInstall() { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { dismissInstall(); deferredPrompt = null; } }
         function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
-        if(btnAction) btnAction.addEventListener('click', triggerInstall);
-        window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
+        if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
     </script>
 </body>
 </html>
