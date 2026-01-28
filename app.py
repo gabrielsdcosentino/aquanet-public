@@ -21,8 +21,6 @@ from pywebpush import webpush, WebPushException
 import textwrap
 import tempfile
 import base64
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.backends import default_backend
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
