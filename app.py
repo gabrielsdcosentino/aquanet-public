@@ -188,33 +188,22 @@ def get_popular_communities():
         print(f"Erro ao buscar comunidades populares: {e}")
         return _cache_popular.get('data', [])
 
-# --- FUNÇÃO MÁGICA 2.0: Gera a Chave como STRING (Texto) ---
+# No arquivo app.py
+
 def get_vapid_key_string():
-    # Sua chave privada bruta (Gerada no Termux)
-    b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgMxujO1nrV+sXYm8hougE44+4qXCL3nim/Eytoti7uGqhRANCAASGv5liMy0rUa59kR0lYiuCAHQPG+dYoW7HtlSmCfaBucauxhOJxGOxYo9LOfgHTErVdlQdsl4oaIy39dSZApRn"
+    # CHAVE NOVA (Gerada no Termux em 28/01/2026)
+    b64_key = "MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgv/OQ0aSbvYJinuASm/YuqjemoH3EvDoU3ygn87c4NV2hRANCAAQalLqQdH2tU/vI8Eux5XiZJK129k051ABIK2n41zK+2O027bZ4+iikZ3qxdconHBysi/oLp+ZUX2Q4XL5fZgKF"
     
     try:
-        # 1. Decodifica o Base64 para "bytes" reais
+        # Decodifica e converte para PEM corretamente
         der_data = base64.b64decode(b64_key)
-        
-        # 2. Carrega a chave na memória (Validação Matemática)
-        private_key = serialization.load_der_private_key(
-            der_data,
-            password=None,
-            backend=default_backend()
-        )
-        
-        # 3. Exporta como PEM (Bytes)
+        private_key = serialization.load_der_private_key(der_data, password=None, backend=default_backend())
         pem_bytes = private_key.private_bytes(
             encoding=serialization.Encoding.PEM,
             format=serialization.PrivateFormat.PKCS8,
             encryption_algorithm=serialization.NoEncryption()
         )
-        
-        # 4. A CORREÇÃO: Transforma os bytes em String UTF-8
-        # O webpush exige que seja STRING, senão ele tenta dar .encode() e falha
         return pem_bytes.decode('utf-8')
-    
     except Exception as e:
         print(f"ERRO CRÍTICO NA CHAVE: {e}")
         return None
