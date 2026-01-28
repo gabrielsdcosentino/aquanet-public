@@ -398,68 +398,6 @@
         window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
     </script>
 
-    <script>
-        const VAPID_PUBLIC_KEY = 'BPE4vWcVzbYPXhmR_vdVWf2pLySfcC5DpuKrBmLRllLWjYLEbHr2t70ns5vxQHR45rI1NwOof-fAyb-OHRyuXqQ';
-
-        function updatePushIcons(isSubscribed) {
-            const buttons = document.querySelectorAll('button[onclick="subscribeUser()"]');
-            buttons.forEach(btn => {
-                const icon = btn.querySelector('i');
-                if (isSubscribed) {
-                    if(icon) icon.className = 'fas fa-bell text-xl text-blue-600';
-                    btn.title = "Notificações Ativadas";
-                } else {
-                    if(icon) icon.className = 'fas fa-bell-slash text-xl text-slate-400';
-                    btn.title = "Ativar Notificações";
-                }
-            });
-        }
-
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) {
-                outputArray[i] = rawData.charCodeAt(i);
-            }
-            return outputArray;
-        }
-
-        async function checkSubscriptionStatus() {
-            if (!('serviceWorker' in navigator)) return;
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.getSubscription();
-                updatePushIcons(!!sub);
-            } catch (e) { console.error(e); }
-        }
-        
-        document.addEventListener('DOMContentLoaded', checkSubscriptionStatus);
-
-        async function subscribeUser() {
-            if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta Service Workers.');
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                let sub = await reg.pushManager.getSubscription();
-                if (!sub) {
-                    sub = await reg.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-                    });
-                }
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                await fetch('/api/save-subscription', {
-                    method: 'POST', body: JSON.stringify(sub),
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
-                });
-                updatePushIcons(true);
-                alert('Tudo pronto! Você receberá notificações. 🔔');
-            } catch (error) {
-                console.error(error);
-                alert('Erro: ' + error.message);
-            }
-        }
-    </script>
+    
 </body>
 </html>
