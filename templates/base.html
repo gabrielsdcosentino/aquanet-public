@@ -34,28 +34,21 @@
     </style>
 
     <script>
-        // --- 1. SCRIPT DE EMERGÊNCIA PARA LIMPEZA DE PWA ---
-        // Isso vai remover o Service Worker antigo que está travando seu script.js
+        // --- LIMPEZA DE PWA E CACHE ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) {
-                    console.log('REMOVENDO SERVICE WORKER ANTIGO:', registration);
+                    console.log('REMOVENDO SW ANTIGO:', registration);
                     registration.unregister();
                 }
-                if (registrations.length > 0) {
-                    console.log('Cache limpo. Recarregando página...');
-                    // Se encontrou SW, recarrega a página uma vez para garantir que o novo script.js seja baixado
-                    if (!localStorage.getItem('force_reload_pwa')) {
-                        localStorage.setItem('force_reload_pwa', 'true');
-                        window.location.reload();
-                    }
+                if (registrations.length > 0 && !localStorage.getItem('force_reload_pwa_v2')) {
+                    localStorage.setItem('force_reload_pwa_v2', 'true');
+                    window.location.reload();
                 }
             });
         }
-        
-        // Limpa flag de reload após uso
-        if (localStorage.getItem('force_reload_pwa')) {
-            setTimeout(() => localStorage.removeItem('force_reload_pwa'), 2000);
+        if (localStorage.getItem('force_reload_pwa_v2')) {
+            setTimeout(() => localStorage.removeItem('force_reload_pwa_v2'), 5000);
         }
 
         // --- FUNÇÕES UI ---
@@ -86,7 +79,6 @@
         document.addEventListener("DOMContentLoaded", function() {
             document.addEventListener('htmx:beforeRequest', function(evt) { 
                 const target = evt.detail.elt;
-                // Protege formulários críticos do HTMX
                 if (target.getAttribute('hx-boost') === 'false' || 
                     target.classList.contains('like-form') || 
                     target.classList.contains('reply-form') || 
@@ -99,14 +91,11 @@
         });
     </script>
     
-    {# --- REMOVIDO MANIFEST E SW TEMPORARIAMENTE PARA DESTRAVAR --- #}
-    {# <link rel="manifest" href="{{ url_for('manifest') }}"> #}
-    
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
     
-    {# --- V2: FORÇA O NAVEGADOR A BAIXAR O NOVO SCRIPT --- #}
-    <script src="{{ url_for('static', filename='script.js') }}?v=EMERGENCIA_CACHE_CLEAN_01" defer></script>
+    {# --- VERSÃO DO SCRIPT ATUALIZADA --- #}
+    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_ONCLICK_V1" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -266,7 +255,6 @@
     </div>
     {% block scripts %}{% endblock %}
 
-    {# SCRIPT DE LIMPEZA DE IMAGEM #}
     <script>
         document.addEventListener('change', function(event) {
             if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
@@ -298,7 +286,6 @@
         document.addEventListener('submit', function(e) {
             const form = e.target;
             const action = form.getAttribute('action') || '';
-            // Se for like/comment, IGNORA loading para não travar
             if (form.classList.contains('like-form') || form.classList.contains('reply-form') || form.id === 'comment-form') return;
             if (form.method === 'get' || form.classList.contains('no-loading')) return;
             const btn = form.querySelector('button[type="submit"]');
