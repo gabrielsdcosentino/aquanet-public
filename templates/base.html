@@ -122,17 +122,20 @@
                 }
             }, {passive: true});
             
-            // CORREÇÃO DO SCROLL: Fecha o menu e reseta o loader
+            // --- CORREÇÃO DO SCROLL E HTMX ---
+            // Fecha o menu ao trocar de página, MAS ignora Likes e Comentários para não scrollar
             document.addEventListener('htmx:beforeRequest', function(evt) { 
-                // Impede que o HTMX capture os Likes e Comentários (isso corrige o scroll para o topo)
                 const target = evt.detail.elt;
+                
+                // Se for um formulário de Like ou Comentário, IMPEDE o HTMX de agir
                 if (target.tagName === 'FORM') {
                     const action = target.getAttribute('action') || '';
                     if (action.includes('like') || action.includes('comment')) {
-                        evt.preventDefault(); // O HTMX não deve mexer nisso, deixa para o script.js
+                        evt.preventDefault(); // Isso salva o scroll e deixa o script.js agir
                         return;
                     }
                 }
+                
                 closeDrawer(); 
             });
         });
@@ -328,9 +331,9 @@
         function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
         if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
 
-        // --- SCRIPTS GLOBAIS CORRIGIDOS ---
+        // --- SCRIPTS GLOBAIS CORRIGIDOS (VERSÃO FINAL) ---
         
-        // 1. Preview de Imagem (Seguro)
+        // 1. Preview de Imagem
         document.addEventListener('change', function(event) {
             if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
                 const input = event.target; const file = input.files[0];
@@ -363,8 +366,12 @@
             const form = e.target;
             const action = form.getAttribute('action') || '';
             
-            // IGNORA Likes, Comentários e Buscas (GET)
-            if (form.method === 'get' || action.includes('like') || action.includes('comment') || form.classList.contains('no-loading')) return;
+            // --- CORREÇÃO IMPORTANTE ---
+            // Ignora formulários de Like e Comentário para não quebrar o script.js
+            if (action.includes('like') || action.includes('comment')) return;
+            
+            // Ignora GET e no-loading
+            if (form.method === 'get' || form.classList.contains('no-loading')) return;
 
             const btn = form.querySelector('button[type="submit"]');
             if (btn && !btn.disabled) {
