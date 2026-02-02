@@ -1,4 +1,8 @@
+// ============================================================================
 // 1. CONFIGURAÇÃO GLOBAL E CSRF
+// ============================================================================
+console.log(">>> SCRIPT COMPLETO CARREGADO (V_FINAL) <<<");
+
 const getCsrfToken = () => {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
@@ -8,8 +12,11 @@ document.addEventListener('htmx:configRequest', function(evt) {
     evt.detail.headers['X-CSRFToken'] = getCsrfToken();
 });
 
-// 2. LISTENERS GLOBAIS
+// ============================================================================
+// 2. LISTENERS DE UI (Respostas, Menus)
+// ============================================================================
 document.addEventListener('click', function(event) {
+    // Botão de ver respostas
     const toggleBtn = event.target.closest('.toggle-replies-btn');
     if (toggleBtn) {
         const targetId = toggleBtn.dataset.target;
@@ -17,6 +24,7 @@ document.addEventListener('click', function(event) {
         if (container) container.classList.toggle('hidden');
     }
 
+    // Botão de responder
     const replyBtn = event.target.closest('.reply-button');
     if (replyBtn) {
         const commentId = replyBtn.dataset.commentId;
@@ -32,6 +40,7 @@ document.addEventListener('click', function(event) {
         }
     }
     
+    // Botão cancelar resposta
     const cancelBtn = event.target.closest('.cancel-reply-button');
     if (cancelBtn) {
         const form = cancelBtn.closest('.reply-form');
@@ -39,12 +48,14 @@ document.addEventListener('click', function(event) {
     }
 });
 
-// 3. INTERCEPTAÇÃO DE LIKES E COMENTÁRIOS
+// ============================================================================
+// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (LIKES E COMENTÁRIOS)
+// ============================================================================
 document.addEventListener('submit', function(e) {
     const form = e.target;
     const action = form.getAttribute('action') || '';
 
-    // A. LIKES
+    // --- LÓGICA DE LIKE (CORRIGIDA E OTIMIZADA) ---
     if (action.includes('like')) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         
@@ -53,122 +64,98 @@ document.addEventListener('submit', function(e) {
         const isCommentLike = action.includes('comment');
         const token = getCsrfToken();
 
-        // --- 1. UI Otimista (Muda TUDO imediatamente) ---
+        // 1. UI Otimista (Muda visualmente AGORA)
         if (icon && !isCommentLike) {
-            const isLikedNow = icon.classList.contains('fas'); // Se tem 'fas', já está curtido
-            
-            if (isLikedNow) {
-                // Ação: Descurtir (Visualmente)
+            if (icon.classList.contains('fas')) {
+                // Descurtir
                 icon.classList.remove('fas', 'text-blue-600');
                 icon.classList.add('far');
                 btn.classList.remove('text-blue-600', 'font-bold');
             } else {
-                // Ação: Curtir (Visualmente)
+                // Curtir
                 icon.classList.remove('far');
                 icon.classList.add('fas', 'text-blue-600');
                 btn.classList.add('text-blue-600', 'font-bold');
             }
+        } else if (isCommentLike) {
+            // Lógica visual para comentários (Texto "Curtir/Curtido")
+            const spanText = btn.querySelector('span');
+            if(spanText) {
+                if(spanText.innerText === 'Curtido') {
+                    spanText.innerText = 'Curtir';
+                    btn.classList.remove('text-blue-600', 'font-bold');
+                } else {
+                    spanText.innerText = 'Curtido';
+                    btn.classList.add('text-blue-600', 'font-bold');
+                }
+            }
         }
 
-        // --- 2. Requisição ao Servidor ---
+        // 2. Envia para o servidor
         fetch(action, {
             method: 'POST',
             headers: { 
                 'X-CSRFToken': token, 
                 'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json' 
+                'Accept': 'application/json'
             },
             body: new FormData(form)
         })
         .then(response => {
             if (response.redirected) { window.location.reload(); return null; }
-            const contentType = response.headers.get("content-type");
-            if (contentType && contentType.includes("application/json")) {
-                return response.json();
-            }
-            throw new Error("Servidor não retornou JSON");
+            return response.json();
         })
         .then(data => {
             if (!data) return;
-            console.log("Resposta do Like:", data); // DEBUG: Veja isso no Console (F12)
 
-            if (data.success && data.liked !== undefined) {
-                if (isCommentLike) {
-                    // Lógica Comentários
-                    const text = data.liked ? 'Curtido' : 'Curtir';
-                    const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
-                    let html = `<span class="mr-1">${text}</span>`;
-                    if (data.like_count > 0) {
-                        html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i><span class="like-count-text">${data.like_count}</span>`;
+            if (data.success) {
+                // Sincroniza contador e estado final
+                
+                // Atualiza Contador
+                let countSpan = btn.querySelector('.like-count-text');
+                if (data.like_count > 0) {
+                    if (!countSpan) {
+                        countSpan = document.createElement('span');
+                        countSpan.className = 'like-count-text font-bold ml-1';
+                        // Ajuste fino para comentários vs posts
+                        if(isCommentLike) countSpan.className += ' text-xs'; 
+                        btn.appendChild(countSpan);
                     }
-                    btn.innerHTML = html;
-                    btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
+                    countSpan.innerText = data.like_count;
                 } else {
-                    // Lógica Posts (Sincronização Final)
-                    
-                    // 1. Força o ícone e a cor baseada na resposta REAL do servidor
-                    if (icon) {
-                        // Remove tudo primeiro para garantir
-                        icon.classList.remove('far', 'fas', 'text-blue-600'); 
-                        
-                        if (data.liked) {
-                            icon.classList.add('fas', 'fa-thumbs-up', 'text-lg', 'text-blue-600');
-                            btn.classList.add('text-blue-600', 'font-bold');
-                        } else {
-                            icon.classList.add('far', 'fa-thumbs-up', 'text-lg');
-                            btn.classList.remove('text-blue-600', 'font-bold');
-                        }
-                    }
+                    if (countSpan) countSpan.remove();
+                }
 
-                    // 2. Atualiza o número (Contador)
-                    let countSpan = btn.querySelector('.like-count-text');
-                    
-                    if (data.like_count > 0) {
-                        if (!countSpan) {
-                            // Cria o span se não existir
-                            countSpan = document.createElement('span');
-                            countSpan.className = 'like-count-text font-bold ml-1';
-                            btn.appendChild(countSpan);
-                        }
-                        // Atualiza o texto
-                        countSpan.innerText = data.like_count;
+                // Garante estado do ícone (caso o servidor discorde da UI otimista)
+                if (icon && !isCommentLike) {
+                    if (data.liked) {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas', 'text-blue-600');
+                        btn.classList.add('text-blue-600', 'font-bold');
                     } else {
-                        // Se for zero, remove o span para ficar limpo
-                        if (countSpan) countSpan.remove();
+                        icon.classList.remove('fas', 'text-blue-600');
+                        icon.classList.add('far');
+                        btn.classList.remove('text-blue-600', 'font-bold');
                     }
                 }
             }
         })
-        .catch(err => {
-            console.error("Erro no Like:", err);
-            // Reverte UI em caso de erro (Rollback)
-            if (icon && !isCommentLike) {
-                 if (icon.classList.contains('fas')) {
-                     icon.classList.replace('fas', 'far');
-                     icon.classList.remove('text-blue-600');
-                     btn.classList.remove('text-blue-600');
-                 } else {
-                     icon.classList.replace('far', 'fas');
-                     icon.classList.add('text-blue-600');
-                     btn.classList.add('text-blue-600');
-                 }
-            }
-        });
+        .catch(err => console.error("Erro no like:", err));
         
         return false;
     }
 
-    // B. COMENTÁRIOS
+    // --- LÓGICA DE COMENTÁRIOS (MANTIDA) ---
     if (action.includes('comment')) {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+        e.preventDefault(); e.stopPropagation();
         const btn = form.querySelector('button[type="submit"]');
         const textarea = form.querySelector('textarea');
         const token = getCsrfToken();
         
         if (btn) {
-            if (btn.disabled || form.dataset.submitting === "true") return; 
+            if (btn.disabled) return; 
             btn.dataset.originalText = btn.innerHTML;
-            btn.disabled = true; form.dataset.submitting = "true";
+            btn.disabled = true;
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
         }
 
@@ -189,25 +176,22 @@ document.addEventListener('submit', function(e) {
             } else {
                 const commentList = document.getElementById('comment-list');
                 if (commentList) {
+                    // Tenta parsear JSON ou insere HTML direto
                     try {
                         const json = JSON.parse(data);
                         if (json.html) commentList.insertAdjacentHTML('afterbegin', json.html);
-                        else if (json.success) window.location.reload();
+                        else window.location.reload();
                     } catch (e) {
                         commentList.insertAdjacentHTML('afterbegin', data);
                     }
                 }
                 if (textarea) textarea.value = '';
-                if (btn) {
-                    btn.disabled = false; form.dataset.submitting = "false";
-                    btn.innerHTML = btn.dataset.originalText;
-                }
             }
         })
-        .catch(err => {
-            console.error(err);
+        .catch(err => console.error(err))
+        .finally(() => {
             if (btn) {
-                btn.disabled = false; form.dataset.submitting = "false";
+                btn.disabled = false;
                 btn.innerHTML = btn.dataset.originalText;
             }
         });
@@ -215,7 +199,9 @@ document.addEventListener('submit', function(e) {
     }
 }, true);
 
-// 4. VALIDAÇÃO E HTMX
+// ============================================================================
+// 4. UTILITÁRIOS E HTMX
+// ============================================================================
 document.addEventListener('change', function(e) {
     if (e.target.tagName === 'INPUT' && e.target.type === 'file') {
         const file = e.target.files[0];
@@ -225,6 +211,7 @@ document.addEventListener('change', function(e) {
         }
     }
 });
+
 document.addEventListener('htmx:afterSwap', function(evt) {
     closeDrawer();
     const loader = document.getElementById('page-loader');
@@ -233,13 +220,16 @@ document.addEventListener('htmx:afterSwap', function(evt) {
         setTimeout(() => { loader.style.opacity = '0'; loader.style.width = '0%'; }, 300);
     }
 });
+
 document.addEventListener('htmx:beforeRequest', function(evt) {
     const loader = document.getElementById('page-loader');
     if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
     closeDrawer();
 });
 
-// 5. FUNÇÕES DE MENU
+// ============================================================================
+// 5. FUNÇÕES DE UI (DRAWER, BUSCA)
+// ============================================================================
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
     if (searchBar) {
@@ -247,6 +237,7 @@ function toggleMobileSearch() {
         if (!searchBar.classList.contains('hidden')) searchBar.querySelector('input').focus();
     }
 }
+
 function closeDrawer() {
     const drawer = document.getElementById('mobile-drawer');
     const overlay = document.getElementById('drawer-overlay');
@@ -257,6 +248,7 @@ function closeDrawer() {
     if (overlay) overlay.classList.add('hidden');
     document.body.style.overflow = 'visible';
 }
+
 function toggleDrawer() {
     const drawer = document.getElementById('mobile-drawer');
     const overlay = document.getElementById('drawer-overlay');
@@ -271,7 +263,9 @@ function toggleDrawer() {
     }
 }
 
-// 6. PWA & NOTIFICAÇÕES (ATUALIZADO E CORRIGIDO)
+// ============================================================================
+// 6. NOTIFICAÇÕES PUSH E SERVICE WORKER (RESTAURADO)
+// ============================================================================
 const PUBLIC_KEY = 'BD-4Z2LNfjJBfLFrSGt9Zbx9Cp8hpOCZRvnZiYpUwv3qQukHfW1wrbxU9syK5gI2Jmzd3pMgLJpLG9ITXW3agIw';
 
 function urlBase64ToUint8Array(base64String) {
@@ -285,63 +279,67 @@ function urlBase64ToUint8Array(base64String) {
     return outputArray;
 }
 
-// Função NOVA: Verifica se já é inscrito para pintar o sino
+// Verifica status e pinta o sino
 async function checkSubscriptionStatus() {
     if (!('serviceWorker' in navigator)) return;
     
-    const reg = await navigator.serviceWorker.ready;
-    const sub = await reg.pushManager.getSubscription();
-    
-    // Tenta achar o ícone pelo ID
-    const bellIcon = document.getElementById('notification-bell-icon');
-    
-    if (sub) {
-        console.log("Usuário já inscrito - Pintando sino");
-        if(bellIcon) {
-            bellIcon.classList.remove('far', 'fa-bell-slash');
-            bellIcon.classList.add('fas', 'fa-bell', 'text-yellow-500'); // Amarelo/Preenchido
+    try {
+        const reg = await navigator.serviceWorker.ready;
+        const sub = await reg.pushManager.getSubscription();
+        const bellIcon = document.getElementById('notification-bell-icon');
+        const btnSubscribe = document.getElementById('btn-subscribe-push'); // Caso exista botão de inscrição explícito
+        
+        if (sub) {
+            // Inscrito: Sino Amarelo/Cheio
+            if(bellIcon) {
+                bellIcon.classList.remove('far', 'fa-bell-slash');
+                bellIcon.classList.add('fas', 'fa-bell', 'text-yellow-500');
+            }
+            if(btnSubscribe) btnSubscribe.style.display = 'none';
+        } else {
+            // Não Inscrito: Sino Contorno
+            if(bellIcon) {
+                bellIcon.classList.remove('fas', 'fa-bell', 'text-yellow-500');
+                bellIcon.classList.add('far', 'fa-bell');
+            }
+            if(btnSubscribe) btnSubscribe.style.display = 'flex';
         }
-    } else {
-        console.log("Usuário não inscrito");
-        if(bellIcon) {
-            bellIcon.classList.remove('fas', 'fa-bell', 'text-yellow-500');
-            bellIcon.classList.add('far', 'fa-bell'); // Normal
-        }
+    } catch (e) {
+        console.error('Erro checando status push:', e);
     }
 }
 
+// Inicialização do SW
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js')
         .then(reg => {
-            console.log('SW registrado', reg);
-            // Chama a verificação assim que carregar
+            console.log('Service Worker registrado:', reg);
             checkSubscriptionStatus();
         })
-        .catch(err => console.log('Erro SW', err));
+        .catch(err => console.log('Falha no SW:', err));
     });
 }
 
+// Função de Inscrição
 async function subscribeUser() {
     if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
     
     try {
         const reg = await navigator.serviceWorker.ready;
         
-        // Solicita permissão
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
             alert('Você precisa permitir as notificações no navegador!');
             return;
         }
 
-        // Inscreve no navegador
         const sub = await reg.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
         });
 
-        // Salva no Banco de Dados
+        // Salva no Backend
         const response = await fetch('/api/save-subscription', {
             method: 'POST',
             body: JSON.stringify(sub),
@@ -349,16 +347,16 @@ async function subscribeUser() {
         });
 
         if (response.ok) {
-            alert('Notificações ativadas com sucesso! 🔔');
-            // Atualiza o visual do sino imediatamente
+            alert('Notificações ativadas! 🔔');
             checkSubscriptionStatus();
         } else {
-            alert('Erro ao salvar no servidor.');
+            console.error('Erro backend:', response);
+            alert('Erro ao salvar inscrição no servidor.');
         }
 
     } catch (e) {
         console.error("Erro no subscribe:", e);
-        // Se o erro for "subscription already exists", a gente ignora e só atualiza o visual
+        // Se já existe, apenas atualiza visual
         checkSubscriptionStatus();
     }
 }
