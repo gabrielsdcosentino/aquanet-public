@@ -41,9 +41,11 @@
                          </button>
                     </form>
 
-                    <button class="reply-button hover:text-gray-800 transition-colors"
+                    {# --- CORREÇÃO AQUI: TYPE="BUTTON" E ÍCONE --- #}
+                    <button type="button" 
+                            class="reply-button hover:text-gray-800 transition-colors flex items-center gap-1"
                             data-comment-id="{{ comment.id }}">
-                        Responder
+                        <i class="fas fa-reply"></i> Responder
                     </button>
 
                     {% if comment.user_id == current_user.id or post.community.creator_id == current_user.id or current_user.username == 'bielcosen14' %}
