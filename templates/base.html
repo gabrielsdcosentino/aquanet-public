@@ -10,6 +10,7 @@
     <script src="https://unpkg.com/htmx.org@1.9.10"></script>
     
     <title>{% block title %}AquaNet - Rede de Aquarismo{% endblock %}</title>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
@@ -34,68 +35,21 @@
     </style>
 
     <script>
-        // --- LIMPEZA DE PWA E CACHE ---
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(function(registrations) {
                 for(let registration of registrations) {
-                    console.log('REMOVENDO SW ANTIGO:', registration);
+                    console.log('Limpando SW antigo:', registration);
                     registration.unregister();
                 }
-                if (registrations.length > 0 && !localStorage.getItem('force_reload_pwa_v2')) {
-                    localStorage.setItem('force_reload_pwa_v2', 'true');
-                    window.location.reload();
-                }
             });
         }
-        if (localStorage.getItem('force_reload_pwa_v2')) {
-            setTimeout(() => localStorage.removeItem('force_reload_pwa_v2'), 5000);
-        }
-
-        // --- FUNÇÕES UI ---
-        function toggleMobileSearch() {
-            const searchBar = document.getElementById('mobile-search-bar');
-            if (searchBar) {
-                searchBar.classList.toggle('hidden');
-                if (!searchBar.classList.contains('hidden')) { const input = searchBar.querySelector('input'); if(input) input.focus(); }
-            }
-        }
-        function closeDrawer() {
-            const drawer = document.getElementById('mobile-drawer'); const overlay = document.getElementById('drawer-overlay');
-            if (drawer) { drawer.classList.remove('drawer-open'); drawer.classList.add('drawer-closed'); }
-            if (overlay) { overlay.classList.add('hidden'); overlay.classList.add('opacity-0'); }
-            document.body.style.overflow = 'visible';
-        }
-        function toggleDrawer() {
-            const drawer = document.getElementById('mobile-drawer'); const overlay = document.getElementById('drawer-overlay');
-            if (!drawer) return;
-            if (drawer.classList.contains('drawer-closed')) {
-                drawer.classList.remove('drawer-closed'); drawer.classList.add('drawer-open');
-                if (overlay) { overlay.classList.remove('hidden'); setTimeout(() => overlay.classList.remove('opacity-0'), 10); }
-                document.body.style.overflow = 'hidden'; 
-            } else { closeDrawer(); }
-        }
-
-        // --- CORREÇÃO DE SEGURANÇA HTMX ---
-        document.addEventListener("DOMContentLoaded", function() {
-            document.addEventListener('htmx:beforeRequest', function(evt) { 
-                const target = evt.detail.elt;
-                if (target.getAttribute('hx-boost') === 'false' || 
-                    target.classList.contains('like-form') || 
-                    target.classList.contains('reply-form') || 
-                    target.id === 'comment-form') {
-                    evt.preventDefault();
-                    return;
-                }
-                closeDrawer(); 
-            });
-        });
     </script>
     
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
     
-    {# --- VERSÃO DO SCRIPT ATUALIZADA --- #}
-    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_ONCLICK_V1" defer></script>
+    {# Carrega o script completo com versão nova #}
+    <script src="{{ url_for('static', filename='script.js') }}?v=FULL_RESTORE_V1" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -130,17 +84,6 @@
                 <a href="{{ url_for('calculators') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-calculator w-8 text-lg"></i> Ferramentas</a>
                 <a href="{{ url_for('communities_directory') }}" class="flex items-center p-3 rounded-xl text-slate-600 font-semibold hover:bg-blue-50 hover:text-blue-600 transition-all"><i class="fas fa-users w-8 text-lg"></i> Comunidades</a>
             </div>
-            {% if current_user.is_authenticated and current_user.joined_communities %}
-            <div class="space-y-1">
-                <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-2">Suas Comunidades</p>
-                {% for comm in current_user.joined_communities[:5] %}
-                    <a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center p-2 rounded-lg text-slate-600 hover:text-blue-600">
-                        <div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>
-                        <span class="truncate text-sm font-medium">{{ comm.name }}</span>
-                    </a>
-                {% endfor %}
-            </div>
-            {% endif %}
         </div>
         <div class="p-6 bg-slate-50 mt-auto border-t border-slate-100">
             {% if current_user.is_authenticated %}
@@ -170,20 +113,16 @@
 
                 {% if current_user.is_authenticated %}
                     <a href="{{ url_for('notifications') }}" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all relative">
-                        <i id="notification-bell-icon" class="far fa-bell text-xl"></i>
+                        <i class="far fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
                         {% if new_notifs > 0 %} <span class="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span> {% endif %}
                     </a>
-                    
                     <a href="{{ url_for('profile', username=current_user.username) }}" class="hidden md:flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all">
                         <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full object-cover">
                         <span class="text-sm font-bold text-slate-700">{{ current_user.username }}</span>
                     </a>
-                    <a href="{{ url_for('logout') }}" class="hidden md:flex w-9 h-9 items-center justify-center rounded-full text-slate-400 hover:bg-red-50 hover:text-red-500 transition-all ml-1" title="Sair"><i class="fas fa-sign-out-alt text-lg"></i></a>
-
                 {% else %}
                     <a href="{{ url_for('login') }}" class="text-sm font-bold text-slate-600 hover:text-blue-600 px-3">Entrar</a>
-                    <a href="{{ url_for('register') }}" class="hidden md:block bg-slate-900 text-white text-sm font-bold px-5 py-2.5 rounded-full hover:bg-black transition-transform active:scale-95">Criar Conta</a>
                 {% endif %}
             </nav>
         </div>
@@ -197,14 +136,14 @@
 
     <nav class="mobile-bottom-nav md:hidden fixed bottom-0 left-0 w-full bg-white/90 backdrop-blur-lg border-t border-slate-200/50 z-40 pb-safe shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
         <div class="flex justify-around items-center h-16">
-            <a href="{{ url_for('home') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint in ['home', 'feed'] %} text-blue-600 {% endif %}"><i class="fas fa-home text-xl mb-0.5 {% if request.endpoint in ['home', 'feed'] %} transform scale-110 {% endif %}"></i><span class="text-[10px] font-bold">Início</span></a>
-            <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'aquarium' in request.endpoint %} text-blue-600 {% endif %}"><i class="fas fa-fish text-xl mb-0.5"></i><span class="text-[10px] font-bold">Aquários</span></a>
+            <a href="{{ url_for('home') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><i class="fas fa-home text-xl mb-0.5"></i><span class="text-[10px] font-bold">Início</span></a>
+            <a href="{{ url_for('my_aquariums') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><i class="fas fa-fish text-xl mb-0.5"></i><span class="text-[10px] font-bold">Aquários</span></a>
             <a href="{{ url_for('create_post') }}" class="flex items-center justify-center -mt-6"><div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white shadow-lg shadow-blue-300 transform active:scale-90 transition-transform"><i class="fas fa-plus text-2xl"></i></div></a>
-            <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if 'community' in request.endpoint %} text-blue-600 {% endif %}"><i class="fas fa-users text-xl mb-0.5"></i><span class="text-[10px] font-bold">Comunidades</span></a>
+            <a href="{{ url_for('communities_directory') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><i class="fas fa-users text-xl mb-0.5"></i><span class="text-[10px] font-bold">Comunidades</span></a>
             {% if current_user.is_authenticated %}
-            <a href="{{ url_for('profile', username=current_user.username) }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600 {% if request.endpoint == 'profile' %} text-blue-600 {% endif %}"><img src="{{ current_user.profile_pic_url }}" class="w-6 h-6 rounded-full object-cover border border-slate-200 mb-0.5"><span class="text-[10px] font-bold">Eu</span></a>
+                <a href="{{ url_for('profile', username=current_user.username) }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><img src="{{ current_user.profile_pic_url }}" class="w-6 h-6 rounded-full object-cover border border-slate-200 mb-0.5"><span class="text-[10px] font-bold">Eu</span></a>
             {% else %}
-            <a href="{{ url_for('login') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><i class="fas fa-user-circle text-xl mb-0.5"></i><span class="text-[10px] font-bold">Entrar</span></a>
+                <a href="{{ url_for('login') }}" class="flex flex-col items-center justify-center w-full h-full text-slate-400 hover:text-blue-600"><i class="fas fa-user-circle text-xl mb-0.5"></i><span class="text-[10px] font-bold">Entrar</span></a>
             {% endif %}
         </div>
     </nav>
@@ -213,45 +152,23 @@
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
                 <ul class="space-y-1">
-                    <li><a href="{{ url_for('home') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'home' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-globe w-6"></i> Global</a></li>
-                    <li><a href="{{ url_for('feed') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'feed' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-rss w-6"></i> Seguindo</a></li>
-                    <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'aquarium' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
-                    <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'encyclopedia' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
-                    <li><a href="{{ url_for('calculators') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if request.endpoint == 'calculators' %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
-                    <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all {% if 'communit' in request.endpoint %} bg-blue-50 text-blue-600 {% endif %}"><i class="fas fa-users w-6"></i> Comunidades</a></li>
+                    <li><a href="{{ url_for('home') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-globe w-6"></i> Global</a></li>
+                    <li><a href="{{ url_for('feed') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-rss w-6"></i> Seguindo</a></li>
+                    <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
+                    <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                 </ul>
-                <div class="mt-6 pt-6 border-t border-slate-100">
-                    <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-3 px-2">Suas Comunidades</h3>
-                    <ul class="space-y-1">
-                        {% if current_user.is_authenticated %}{% for comm in current_user.joined_communities[:5] %}
-                            <li><a href="{{ url_for('community_feed', community_slug=comm.slug) }}" class="flex items-center px-4 py-2.5 text-sm text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-xl font-semibold transition-colors"><div class="w-2 h-2 rounded-full bg-green-400 mr-3"></div>{{ comm.name }}</a></li>
-                        {% endfor %}{% endif %}
-                    </ul>
-                </div>
-                <a href="{{ url_for('create_community') }}" class="block mt-6 w-full bg-slate-900 hover:bg-black text-white font-bold py-3.5 px-4 rounded-2xl text-center shadow-lg shadow-slate-200 transition-all active:scale-95"><i class="fas fa-plus mr-2"></i> Criar Comunidade</a>
             </div>
-            <div class="mt-6 text-xs text-slate-400 text-center leading-relaxed"><p>&copy; 2026 AquaNet.</p><p>Feito com <i class="fas fa-heart text-red-400 mx-1"></i> para aquaristas.</p></div>
         </aside>
 
         <main class="md:col-span-6 min-h-screen">
             {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}<div class="flashes mb-6 space-y-3">{% for category, message in messages %}<div class="flash-{{ category }} shadow-sm flex items-center text-sm font-medium animate-fade-in-down">{% if category == 'success' %}<i class="fas fa-check-circle mr-3 text-lg"></i>{% elif category == 'danger' %}<i class="fas fa-times-circle mr-3 text-lg"></i>{% elif category == 'warning' %}<i class="fas fa-exclamation-triangle mr-3 text-lg"></i>{% else %}<i class="fas fa-info-circle mr-3 text-lg"></i>{% endif %}{{ message }}</div>{% endfor %}</div>{% endif %}
+                {% if messages %}<div class="flashes mb-6 space-y-3">{% for category, message in messages %}<div class="flash-{{ category }} shadow-sm flex items-center text-sm font-medium animate-fade-in-down">{{ message }}</div>{% endfor %}</div>{% endif %}
             {% endwith %}
             {% block content %}{% endblock %}
         </main>
         
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
-            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Em Alta</h3>
-                {% if popular_communities %}
-                    <ul class="space-y-4">
-                        {% for community in popular_communities %}
-                            <li><a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center justify-between group"><div class="flex items-center"><span class="bg-blue-50 text-blue-600 text-xs font-bold w-6 h-6 flex items-center justify-center rounded-lg mr-3 group-hover:bg-blue-600 group-hover:text-white transition-colors">{{ loop.index }}</span><span class="text-sm font-bold text-slate-700 group-hover:text-blue-600 transition-colors">{{ community.name }}</span></div><i class="fas fa-chevron-right text-xs text-slate-300 group-hover:text-blue-400"></i></a></li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-            </div>
-        </aside>
+             </aside>
     </div>
     {% block scripts %}{% endblock %}
 
@@ -268,9 +185,8 @@
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        previewContainer.innerHTML = `<div class="relative inline-block mt-2 group"><img src="${e.target.result}" class="h-24 w-24 object-cover rounded-xl border-2 border-slate-200 shadow-sm transition-transform hover:scale-105"><button type="button" onclick="removeImage(this)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600 transition transform hover:scale-110 z-10" title="Remover imagem"><i class="fas fa-times"></i></button><div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 rounded-b-lg truncate text-center backdrop-blur-sm">${file.name}</div></div>`;
+                        previewContainer.innerHTML = `<div class="relative inline-block mt-2 group"><img src="${e.target.result}" class="h-24 w-24 object-cover rounded-xl border-2 border-slate-200 shadow-sm transition-transform hover:scale-105"><button type="button" onclick="removeImage(this)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600 transition transform hover:scale-110 z-10"><i class="fas fa-times"></i></button></div>`;
                         previewContainer.classList.remove('hidden');
-                        const icon = input.parentElement.querySelector('i'); if(icon) { icon.classList.remove('text-gray-400', 'text-slate-400'); icon.classList.add('text-green-500'); }
                     }
                     reader.readAsDataURL(file);
                 }
@@ -279,36 +195,9 @@
         window.removeImage = function(btn) {
             const container = btn.closest('[id^="preview-"]'); if(!container) return;
             const inputName = container.id.replace('preview-', ''); const input = document.querySelector(`input[name="${inputName}"]`);
-            if(input) { input.value = ''; const icon = input.parentElement.querySelector('i'); if(icon) { icon.classList.add('text-gray-400'); icon.classList.remove('text-green-500'); } }
+            if(input) input.value = '';
             container.innerHTML = ''; container.classList.add('hidden');
         }
-
-        document.addEventListener('submit', function(e) {
-            const form = e.target;
-            const action = form.getAttribute('action') || '';
-            if (form.classList.contains('like-form') || form.classList.contains('reply-form') || form.id === 'comment-form') return;
-            if (form.method === 'get' || form.classList.contains('no-loading')) return;
-            const btn = form.querySelector('button[type="submit"]');
-            if (btn && !btn.disabled) {
-                if (!form.checkValidity()) return;
-                btn.dataset.originalHtml = btn.innerHTML;
-                btn.disabled = true;
-                btn.innerHTML = '<span class="flex items-center justify-center"><i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...</span>';
-                btn.classList.add('opacity-75', 'cursor-not-allowed');
-            }
-        });
-
-        window.addEventListener('pageshow', function(event) {
-            if (event.persisted) {
-                 document.querySelectorAll('button[type="submit"]').forEach(btn => {
-                     btn.disabled = false;
-                     btn.classList.remove('opacity-75', 'cursor-not-allowed');
-                     if(btn.dataset.originalHtml) {
-                         btn.innerHTML = btn.dataset.originalHtml;
-                     }
-                 });
-            }
-        });
     </script>
 </body>
 </html>
