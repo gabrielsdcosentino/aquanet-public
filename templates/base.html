@@ -121,7 +121,20 @@
                     if (xDiff < -60 && tabFeed) tabFeed.click();
                 }
             }, {passive: true});
-            document.addEventListener('htmx:beforeRequest', function(evt) { closeDrawer(); });
+            
+            // CORREÇÃO DO SCROLL: Fecha o menu e reseta o loader
+            document.addEventListener('htmx:beforeRequest', function(evt) { 
+                // Impede que o HTMX capture os Likes e Comentários (isso corrige o scroll para o topo)
+                const target = evt.detail.elt;
+                if (target.tagName === 'FORM') {
+                    const action = target.getAttribute('action') || '';
+                    if (action.includes('like') || action.includes('comment')) {
+                        evt.preventDefault(); // O HTMX não deve mexer nisso, deixa para o script.js
+                        return;
+                    }
+                }
+                closeDrawer(); 
+            });
         });
     </script>
     
@@ -345,36 +358,27 @@
             container.innerHTML = ''; container.classList.add('hidden');
         }
 
-        // 2. Efeito de Carregamento nos Botões (CORRIGIDO PARA NÃO QUEBRAR NO MOBILE)
+        // 2. Efeito de Carregamento nos Botões
         document.addEventListener('submit', function(e) {
             const form = e.target;
             const action = form.getAttribute('action') || '';
             
-            // IGNORA Likes, Comentários (já tratados no script.js) e Buscas (GET)
+            // IGNORA Likes, Comentários e Buscas (GET)
             if (form.method === 'get' || action.includes('like') || action.includes('comment') || form.classList.contains('no-loading')) return;
 
             const btn = form.querySelector('button[type="submit"]');
             if (btn && !btn.disabled) {
-                // Validação do HTML5 antes de travar
                 if (!form.checkValidity()) return;
-
-                // Salva o conteúdo original para poder restaurar
                 btn.dataset.originalHtml = btn.innerHTML;
-                
-                // Trava o botão
                 btn.disabled = true;
-                
-                // Insere o loader com estrutura Flex para alinhar ícone e texto
                 btn.innerHTML = '<span class="flex items-center justify-center"><i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...</span>';
-                
                 btn.classList.add('opacity-75', 'cursor-not-allowed');
             }
         });
 
-        // 3. CORREÇÃO "INFINITE SPIN" NO MOBILE (Bfcache)
-        // Se o usuário clicar em "Voltar" no navegador, esta função destrava os botões
+        // 3. Destrava botões ao voltar (Mobile Back Cache)
         window.addEventListener('pageshow', function(event) {
-            if (event.persisted) { // Página restaurada do cache (comum no iOS/Chrome Mobile)
+            if (event.persisted) {
                  document.querySelectorAll('button[type="submit"]').forEach(btn => {
                      btn.disabled = false;
                      btn.classList.remove('opacity-75', 'cursor-not-allowed');
