@@ -28,7 +28,7 @@
                 <div class="flex items-center mt-1 space-x-3 text-xs text-gray-500 font-semibold">
                     <span class="font-normal">{{ comment.timestamp.strftime('%d/%m') }}</span>
 
-                    {# FORMULÁRIO DE LIKE #}
+                    {# BOTÃO DE LIKE #}
                     <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" class="like-form inline-flex" hx-boost="false">
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                          <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
@@ -40,10 +40,10 @@
                          </button>
                     </form>
 
-                    {# --- CORREÇÃO AQUI: ONCLICK DIRETO NO BOTÃO --- #}
+                    {# BOTÃO DE RESPONDER (COM ID DIRETO) #}
                     <button type="button" 
                             onclick="toggleReply('{{ comment.id }}')"
-                            class="hover:text-gray-800 transition-colors flex items-center gap-1 font-semibold">
+                            class="hover:text-gray-800 transition-colors flex items-center gap-1 font-semibold text-gray-500">
                         <i class="fas fa-reply"></i> Responder
                     </button>
 
@@ -58,31 +58,40 @@
 
                 {% if level == 0 and comment.replies.count() > 0 %}
                     <div class="mt-1">
-                        <button class="toggle-replies-btn text-xs font-bold text-gray-400 flex items-center hover:text-gray-600 transition-colors"
-                                data-target="replies-for-{{ comment.id }}">
+                        <button type="button" 
+                                onclick="toggleRepliesVis('replies-for-{{ comment.id }}')"
+                                class="text-xs font-bold text-gray-400 flex items-center hover:text-gray-600 transition-colors">
                             <div class="w-6 border-t border-gray-300 mr-2"></div>
-                            <span class="reply-count-label">Ver respostas</span>
+                            <span>Ver respostas</span>
                         </button>
                     </div>
                 {% endif %}
 
-                {# FORMULÁRIO DE RESPOSTA (ESCONDIDO POR PADRÃO) #}
+                {# FORMULÁRIO DE RESPOSTA (COM ID ÚNICO) #}
                 <form method="POST"
                       action="{{ url_for('api_add_comment', post_id=post.id) }}"
-                      class="reply-form hidden mt-2 mb-2"
-                      data-parent-id="{{ comment.id }}"
+                      id="reply-form-{{ comment.id }}"
+                      class="reply-form hidden mt-2 mb-2 bg-gray-50 p-2 rounded-lg"
                       hx-boost="false">
+                    
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="parent_id" value="{{ comment.id }}">
                     
-                    <div class="flex items-start space-x-2">
-                        <textarea name="comment_text" required
-                                  class="flex-grow bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none h-12"
-                                  placeholder="Sua resposta..."></textarea>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-2">
-                        <button type="button" class="cancel-reply-button text-xs text-gray-500 font-bold px-2 py-1">Cancelar</button>
-                        <button type="submit" class="bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full hover:bg-blue-700">Enviar</button>
+                    <div class="flex flex-col space-y-2">
+                        <textarea name="comment_text" 
+                                  id="reply-input-{{ comment.id }}"
+                                  required
+                                  class="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none h-16"
+                                  placeholder="Escreva sua resposta para {{ comment.comment_author.username }}..."></textarea>
+                        
+                        <div class="flex justify-end space-x-2">
+                            <button type="button" onclick="toggleReply('{{ comment.id }}')" class="text-xs text-gray-500 font-bold px-3 py-1.5 border border-gray-300 rounded-md hover:bg-gray-100">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-md hover:bg-blue-700 shadow-sm">
+                                Enviar Resposta
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -189,4 +198,53 @@
         </div>
 
     </div>
+
+    {# --- SCRIPT INJETADO DIRETAMENTE NO HTML (PARA EVITAR CACHE) --- #}
+    <script>
+        // Função para mostrar/esconder caixa de resposta
+        function toggleReply(commentId) {
+            console.log("Abrindo resposta para:", commentId);
+            
+            // 1. Tenta achar o formulário pelo ID específico
+            var form = document.getElementById('reply-form-' + commentId);
+            
+            if (!form) {
+                alert('Erro interno: Formulário ' + commentId + ' não encontrado.');
+                return;
+            }
+
+            // 2. Se o formulário atual estiver fechado (hidden), fecha os outros antes de abrir
+            if (form.classList.contains('hidden')) {
+                // Fecha todos os outros forms abertos
+                var allForms = document.querySelectorAll('.reply-form');
+                allForms.forEach(function(f) {
+                    f.classList.add('hidden');
+                });
+                
+                // Abre o nosso
+                form.classList.remove('hidden');
+                
+                // Foca no textarea
+                var input = document.getElementById('reply-input-' + commentId);
+                if (input) {
+                    setTimeout(function() { input.focus(); }, 100);
+                }
+            } else {
+                // Se já estava aberto, apenas fecha
+                form.classList.add('hidden');
+            }
+        }
+
+        // Função para mostrar/esconder sub-respostas
+        function toggleRepliesVis(elementId) {
+            var el = document.getElementById(elementId);
+            if (el) {
+                if (el.classList.contains('hidden')) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            }
+        }
+    </script>
 {% endblock %}
