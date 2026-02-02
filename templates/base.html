@@ -315,9 +315,9 @@
         function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
         if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
 
-        // --- SCRIPTS GLOBAIS (PREVIEW DE IMAGEM + LOADING STATE) ---
+        // --- SCRIPTS GLOBAIS CORRIGIDOS ---
         
-        // 1. Preview de Imagem
+        // 1. Preview de Imagem (Seguro)
         document.addEventListener('change', function(event) {
             if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
                 const input = event.target; const file = input.files[0];
@@ -345,26 +345,43 @@
             container.innerHTML = ''; container.classList.add('hidden');
         }
 
-        // 2. Efeito de Carregamento nos Botões (Global)
+        // 2. Efeito de Carregamento nos Botões (CORRIGIDO PARA NÃO QUEBRAR NO MOBILE)
         document.addEventListener('submit', function(e) {
             const form = e.target;
-            // Ignora formulários de busca (GET) ou que tenham a classe 'no-loading'
-            if (form.method === 'get' || form.classList.contains('no-loading')) return;
+            const action = form.getAttribute('action') || '';
+            
+            // IGNORA Likes, Comentários (já tratados no script.js) e Buscas (GET)
+            if (form.method === 'get' || action.includes('like') || action.includes('comment') || form.classList.contains('no-loading')) return;
 
             const btn = form.querySelector('button[type="submit"]');
             if (btn && !btn.disabled) {
-                // Validação do HTML5 (required, minlength, etc) antes de travar o botão
+                // Validação do HTML5 antes de travar
                 if (!form.checkValidity()) return;
 
-                // Salva a largura original para evitar que o botão "encolha"
-                btn.style.width = btn.offsetWidth + 'px';
+                // Salva o conteúdo original para poder restaurar
+                btn.dataset.originalHtml = btn.innerHTML;
                 
-                // Trava o botão e muda o texto
+                // Trava o botão
                 btn.disabled = true;
-                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
                 
-                // Adiciona estilos de desativado (opacidade e cursor)
+                // Insere o loader com estrutura Flex para alinhar ícone e texto
+                btn.innerHTML = '<span class="flex items-center justify-center"><i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...</span>';
+                
                 btn.classList.add('opacity-75', 'cursor-not-allowed');
+            }
+        });
+
+        // 3. CORREÇÃO "INFINITE SPIN" NO MOBILE (Bfcache)
+        // Se o usuário clicar em "Voltar" no navegador, esta função destrava os botões
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted) { // Página restaurada do cache (comum no iOS/Chrome Mobile)
+                 document.querySelectorAll('button[type="submit"]').forEach(btn => {
+                     btn.disabled = false;
+                     btn.classList.remove('opacity-75', 'cursor-not-allowed');
+                     if(btn.dataset.originalHtml) {
+                         btn.innerHTML = btn.dataset.originalHtml;
+                     }
+                 });
             }
         });
     </script>
