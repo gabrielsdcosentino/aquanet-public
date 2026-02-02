@@ -36,7 +36,6 @@
     <script>
         const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwIbFji26aPpC1IFnD1GacI7pHvTUY';
 
-        // --- FUNÇÕES DE UI ---
         function toggleMobileSearch() {
             const searchBar = document.getElementById('mobile-search-bar');
             if (searchBar) {
@@ -60,7 +59,7 @@
             } else { closeDrawer(); }
         }
 
-        // --- FUNÇÕES DE NOTIFICAÇÃO PUSH ---
+        // --- PUSH NOTIFICATIONS ---
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -104,36 +103,22 @@
             } catch (e) { console.error(e); alert('Erro técnico: ' + e.message); }
         }
 
-        // --- INICIALIZAÇÃO ---
         document.addEventListener("DOMContentLoaded", function() {
             if ('serviceWorker' in navigator) {
                 navigator.serviceWorker.register('/sw.js').then(reg => { checkSubscriptionStatus(); }).catch(err => console.log('SW Falhou', err));
             }
-            let touchStartX = 0; let touchStartY = 0;
-            document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, {passive: true});
-            document.addEventListener('touchend', e => {
-                let xDiff = e.changedTouches[0].screenX - touchStartX;
-                let yDiff = e.changedTouches[0].screenY - touchStartY;
-                if (Math.abs(xDiff) > 60 && Math.abs(yDiff) < 50) {
-                    const tabGlobal = document.getElementById('tab-global');
-                    const tabFeed = document.getElementById('tab-feed');
-                    if (xDiff > 60 && tabGlobal) tabGlobal.click();
-                    if (xDiff < -60 && tabFeed) tabFeed.click();
-                }
-            }, {passive: true});
             
-            // --- CORREÇÃO CRÍTICA HTMX (LIKE/COMENTÁRIO) ---
+            // --- CORREÇÃO DE SEGURANÇA PARA EVITAR CONFLITO COM SCRIPT.JS ---
+            // Se o alvo for um formulário controlado pelo script.js, cancela o HTMX
             document.addEventListener('htmx:beforeRequest', function(evt) { 
                 const target = evt.detail.elt;
-                
-                // Se o formulário tiver essas classes, IMPEDE o HTMX de agir
-                // para que o script.js (AJAX) assuma o controle sem recarregar
-                if (target.classList.contains('like-form') || target.classList.contains('reply-form') || target.id === 'comment-form') {
+                if (target.getAttribute('hx-boost') === 'false' || 
+                    target.classList.contains('like-form') || 
+                    target.classList.contains('reply-form') || 
+                    target.id === 'comment-form') {
                     evt.preventDefault();
                     return;
                 }
-                
-                // Fecha o drawer em navegações normais
                 closeDrawer(); 
             });
         });
@@ -147,7 +132,7 @@
     
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
-    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_FIX_V2" defer></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=FORCE_UPDATE_NOW" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -330,8 +315,6 @@
         if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
 
         // --- SCRIPTS GLOBAIS ---
-        
-        // 1. Preview de Imagem
         document.addEventListener('change', function(event) {
             if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
                 const input = event.target; const file = input.files[0];
@@ -359,12 +342,11 @@
             container.innerHTML = ''; container.classList.add('hidden');
         }
 
-        // 2. Efeito de Carregamento nos Botões
         document.addEventListener('submit', function(e) {
             const form = e.target;
             const action = form.getAttribute('action') || '';
             
-            // Ignora Like/Comment para não sobrepor o script.js
+            // Se for like/comment, IGNORA loading para não travar
             if (form.classList.contains('like-form') || form.classList.contains('reply-form') || form.id === 'comment-form') return;
             
             if (form.method === 'get' || form.classList.contains('no-loading')) return;

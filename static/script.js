@@ -1,14 +1,14 @@
 // ============================================================================
 // 1. CONFIGURAÇÃO GLOBAL
 // ============================================================================
-console.log(">>> SCRIPT AQUANET CARREGADO (FIX FINAL) <<<");
+console.log(">>> SCRIPT AQUANET CARREGADO (VERSÃO FINAL COMPLETA) <<<");
 
 const getCsrfToken = () => {
     const meta = document.querySelector('meta[name="csrf-token"]');
     return meta ? meta.getAttribute('content') : '';
 };
 
-// HTMX Config
+// HTMX Config: Adiciona o Token CSRF em todas as requisições HTMX
 document.addEventListener('htmx:configRequest', function(evt) {
     evt.detail.headers['X-CSRFToken'] = getCsrfToken();
 });
@@ -18,7 +18,8 @@ document.addEventListener('htmx:configRequest', function(evt) {
 // ============================================================================
 
 document.addEventListener('click', function(event) {
-    // A. Toggle de Ver Respostas
+    
+    // A. Toggle de Ver Respostas (Ex: "Ver 3 respostas")
     const toggleBtn = event.target.closest('.toggle-replies-btn');
     if (toggleBtn) {
         const targetId = toggleBtn.dataset.target;
@@ -26,16 +27,17 @@ document.addEventListener('click', function(event) {
         if (container) container.classList.toggle('hidden');
     }
 
-    // B. Botão de Responder (CORRIGIDO)
+    // B. Botão de Responder (Abre o formulário de resposta)
     const replyBtn = event.target.closest('.reply-button');
     if (replyBtn) {
         const commentId = replyBtn.dataset.commentId;
-        // Procura o formulário específico dentro do mesmo container do comentário
         const container = document.getElementById(`comment-${commentId}`);
-        const form = container ? container.querySelector(`.reply-form[data-parent-id="${commentId}"]`) : null;
+        
+        // Busca apenas pela classe, já que está dentro do container único do comentário
+        const form = container ? container.querySelector('.reply-form') : null;
         
         if (form) {
-            // Fecha outros formulários abertos para não poluir
+            // Fecha todos os outros forms para limpar a tela
             document.querySelectorAll('.reply-form').forEach(f => {
                 if (f !== form) f.classList.add('hidden');
             });
@@ -46,8 +48,6 @@ document.addEventListener('click', function(event) {
                 const area = form.querySelector('textarea');
                 if(area) area.focus();
             }
-        } else {
-            console.error("Formulário de resposta não encontrado para ID:", commentId);
         }
     }
     
@@ -60,7 +60,7 @@ document.addEventListener('click', function(event) {
 });
 
 // ============================================================================
-// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (LIKES E COMENTÁRIOS)
+// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (A PARTE CRÍTICA)
 // ============================================================================
 document.addEventListener('submit', function(e) {
     const form = e.target;
@@ -68,40 +68,24 @@ document.addEventListener('submit', function(e) {
     // --- LÓGICA DE LIKE ---
     if (form.classList.contains('like-form')) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // Garante que o HTMX não execute
+        e.stopImmediatePropagation(); // IMPEDE O HTMX DE RECARREGAR A PÁGINA
         
         const btn = form.querySelector('button[type="submit"]');
         const icon = btn.querySelector('i');
         const countSpan = btn.querySelector('.like-count-text');
-        const isComment = form.action.includes('comment');
         
-        // Feedback Visual Imediato (Otimista)
-        const isLiked = icon && icon.classList.contains('fas');
-        
+        // Efeito Visual Instantâneo (Feedback Otimista)
         if (icon) {
-            if (isLiked) {
+            if (icon.classList.contains('fas')) { // Se já curtiu -> Descurtir
                 icon.classList.replace('fas', 'far');
-                if(!isComment) {
-                    icon.classList.remove('text-blue-600');
-                    btn.classList.remove('text-blue-600');
-                } else {
-                    btn.classList.remove('text-blue-600', 'font-bold');
-                    const txt = btn.querySelector('span');
-                    if(txt && txt.innerText === 'Curtido') txt.innerText = 'Curtir';
-                }
-            } else {
+                btn.classList.remove('text-blue-600', 'font-bold');
+            } else { // Se não curtiu -> Curtir
                 icon.classList.replace('far', 'fas');
-                if(!isComment) {
-                    icon.classList.add('text-blue-600');
-                    btn.classList.add('text-blue-600');
-                } else {
-                    btn.classList.add('text-blue-600', 'font-bold');
-                    const txt = btn.querySelector('span');
-                    if(txt && txt.innerText === 'Curtir') txt.innerText = 'Curtido';
-                }
+                btn.classList.add('text-blue-600', 'font-bold');
             }
         }
 
+        // Envia para o servidor em segundo plano
         fetch(form.action, {
             method: 'POST',
             headers: { 
@@ -112,6 +96,7 @@ document.addEventListener('submit', function(e) {
         })
         .then(res => res.json())
         .then(data => {
+            // Atualiza o número real de likes vindo do servidor
             if (data.success && countSpan) {
                 countSpan.innerText = data.like_count > 0 ? data.like_count : '';
             }
@@ -121,15 +106,12 @@ document.addEventListener('submit', function(e) {
         return false;
     }
 
-    // --- LÓGICA DE COMENTÁRIO E RESPOSTA ---
+    // --- LÓGICA DE COMENTÁRIOS E RESPOSTAS ---
     if (form.id === 'comment-form' || form.classList.contains('reply-form')) {
         e.preventDefault();
-        e.stopImmediatePropagation();
+        e.stopImmediatePropagation(); // IMPEDE O HTMX DE RECARREGAR A PÁGINA
         
         const btn = form.querySelector('button[type="submit"]');
-        const textarea = form.querySelector('textarea');
-        
-        if (!textarea.value.trim()) return;
         
         if (btn) {
             btn.dataset.original = btn.innerHTML;
@@ -147,28 +129,9 @@ document.addEventListener('submit', function(e) {
         })
         .then(res => res.text())
         .then(html => {
-            // Se for resposta, recarrega para manter a ordem da árvore (simples e eficaz)
-            if (form.classList.contains('reply-form')) {
-                window.location.reload();
-            } else {
-                // Se for comentário principal, injeta no topo da lista
-                try {
-                    const json = JSON.parse(html);
-                    // Caso o back-end retorne JSON
-                    window.location.reload();
-                } catch {
-                    // Caso o back-end retorne HTML (fragmento)
-                    const list = document.getElementById('comment-list');
-                    const noComments = document.getElementById('no-comments-message');
-                    if (noComments) noComments.remove();
-                    if (list) list.insertAdjacentHTML('afterbegin', html);
-                    textarea.value = '';
-                    
-                    // Atualiza contador se existir
-                    const counter = document.getElementById('post-comment-count');
-                    if(counter) counter.innerText = parseInt(counter.innerText || 0) + 1;
-                }
-            }
+            // Recarrega a página para mostrar o comentário na ordem certa
+            // Isso simula o comportamento de "app" atualizando a lista
+            window.location.reload(); 
         })
         .catch(err => console.error(err))
         .finally(() => {
@@ -183,7 +146,7 @@ document.addEventListener('submit', function(e) {
 });
 
 // ============================================================================
-// 4. UI: DRAWER, BUSCA E FILE UPLOAD
+// 4. UI: MENU DRAWER, BUSCA E ARQUIVOS
 // ============================================================================
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
@@ -218,6 +181,7 @@ function toggleDrawer() {
     }
 }
 
+// Validação de tamanho de arquivo (Upload)
 document.addEventListener('change', function(e) {
     if (e.target.tagName === 'INPUT' && e.target.type === 'file') {
         const file = e.target.files[0];
@@ -228,8 +192,14 @@ document.addEventListener('change', function(e) {
     }
 });
 
-document.addEventListener('htmx:afterSwap', function(evt) {
+// Barra de Carregamento do HTMX (Loading azul no topo)
+document.addEventListener('htmx:beforeRequest', function(evt) {
+    const loader = document.getElementById('page-loader');
+    if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
     closeDrawer();
+});
+
+document.addEventListener('htmx:afterSwap', function(evt) {
     const loader = document.getElementById('page-loader');
     if(loader) {
         loader.style.width = '100%';
@@ -237,28 +207,9 @@ document.addEventListener('htmx:afterSwap', function(evt) {
     }
 });
 
-document.addEventListener('htmx:beforeRequest', function(evt) {
-    const loader = document.getElementById('page-loader');
-    if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
-    closeDrawer();
-});
-
 // ============================================================================
-// 5. SERVICE WORKER E PUSH
+// 5. SERVICE WORKER (NOTIFICAÇÕES PUSH)
 // ============================================================================
-const PUBLIC_KEY_JS = 'BD-4Z2LNfjJBfLFrSGt9Zbx9Cp8hpOCZRvnZiYpUwv3qQukHfW1wrbxU9syK5gI2Jmzd3pMgLJpLG9ITXW3agIw';
-
-function urlBase64ToUint8ArrayJs(base64String) {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-        outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
-}
-
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js')
