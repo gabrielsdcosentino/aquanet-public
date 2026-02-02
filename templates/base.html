@@ -122,20 +122,18 @@
                 }
             }, {passive: true});
             
-            // --- CORREÇÃO DO SCROLL E HTMX ---
-            // Fecha o menu ao trocar de página, MAS ignora Likes e Comentários para não scrollar
+            // --- CORREÇÃO CRÍTICA HTMX (LIKE/COMENTÁRIO) ---
             document.addEventListener('htmx:beforeRequest', function(evt) { 
                 const target = evt.detail.elt;
                 
-                // Se for um formulário de Like ou Comentário, IMPEDE o HTMX de agir
-                if (target.tagName === 'FORM') {
-                    const action = target.getAttribute('action') || '';
-                    if (action.includes('like') || action.includes('comment')) {
-                        evt.preventDefault(); // Isso salva o scroll e deixa o script.js agir
-                        return;
-                    }
+                // Se o formulário tiver essas classes, IMPEDE o HTMX de agir
+                // para que o script.js (AJAX) assuma o controle sem recarregar
+                if (target.classList.contains('like-form') || target.classList.contains('reply-form') || target.id === 'comment-form') {
+                    evt.preventDefault();
+                    return;
                 }
                 
+                // Fecha o drawer em navegações normais
                 closeDrawer(); 
             });
         });
@@ -149,7 +147,7 @@
     
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
-    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_AJAX" defer></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_FIX_V2" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -331,7 +329,7 @@
         function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
         if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
 
-        // --- SCRIPTS GLOBAIS CORRIGIDOS (VERSÃO FINAL) ---
+        // --- SCRIPTS GLOBAIS ---
         
         // 1. Preview de Imagem
         document.addEventListener('change', function(event) {
@@ -366,11 +364,9 @@
             const form = e.target;
             const action = form.getAttribute('action') || '';
             
-            // --- CORREÇÃO IMPORTANTE ---
-            // Ignora formulários de Like e Comentário para não quebrar o script.js
-            if (action.includes('like') || action.includes('comment')) return;
+            // Ignora Like/Comment para não sobrepor o script.js
+            if (form.classList.contains('like-form') || form.classList.contains('reply-form') || form.id === 'comment-form') return;
             
-            // Ignora GET e no-loading
             if (form.method === 'get' || form.classList.contains('no-loading')) return;
 
             const btn = form.querySelector('button[type="submit"]');
@@ -383,7 +379,6 @@
             }
         });
 
-        // 3. Destrava botões ao voltar (Mobile Back Cache)
         window.addEventListener('pageshow', function(event) {
             if (event.persisted) {
                  document.querySelectorAll('button[type="submit"]').forEach(btn => {
