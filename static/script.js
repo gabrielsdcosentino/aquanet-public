@@ -1,7 +1,7 @@
 // ============================================================================
 // 1. CONFIGURAÇÃO GLOBAL E CSRF
 // ============================================================================
-console.log(">>> SCRIPT COMPLETO CARREGADO (V_FINAL) <<<");
+console.log(">>> SCRIPT COMPLETO CARREGADO (VERSÃO FINAL AJAX) <<<");
 
 const getCsrfToken = () => {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -49,19 +49,24 @@ document.addEventListener('click', function(event) {
 });
 
 // ============================================================================
-// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (LIKES E COMENTÁRIOS)
+// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (O CORAÇÃO DO AJAX)
 // ============================================================================
 document.addEventListener('submit', function(e) {
     const form = e.target;
-    const action = form.getAttribute('action') || '';
-
-    // --- LÓGICA DE LIKE (CORRIGIDA E OTIMIZADA) ---
-    if (action.includes('like')) {
-        e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
+    
+    // ------------------------------------------------------------------------
+    // A. LÓGICA DE LIKE (BLINDADA)
+    // ------------------------------------------------------------------------
+    if (form.classList.contains('like-form')) {
+        // PARAR O RECARREGAMENTO IMEDIATAMENTE
+        e.preventDefault();
+        e.stopPropagation();
         
+        console.log(">>> Like interceptado via JS! <<<");
+
         const btn = form.querySelector('button[type="submit"]');
         const icon = btn.querySelector('i');
-        const isCommentLike = action.includes('comment');
+        const isCommentLike = form.action.includes('comment'); 
         const token = getCsrfToken();
 
         // 1. UI Otimista (Muda visualmente AGORA)
@@ -78,7 +83,6 @@ document.addEventListener('submit', function(e) {
                 btn.classList.add('text-blue-600', 'font-bold');
             }
         } else if (isCommentLike) {
-            // Lógica visual para comentários (Texto "Curtir/Curtido")
             const spanText = btn.querySelector('span');
             if(spanText) {
                 if(spanText.innerText === 'Curtido') {
@@ -91,8 +95,8 @@ document.addEventListener('submit', function(e) {
             }
         }
 
-        // 2. Envia para o servidor
-        fetch(action, {
+        // 2. Envia para o servidor silenciosamente
+        fetch(form.action, {
             method: 'POST',
             headers: { 
                 'X-CSRFToken': token, 
@@ -103,30 +107,33 @@ document.addEventListener('submit', function(e) {
         })
         .then(response => {
             if (response.redirected) { window.location.reload(); return null; }
-            return response.json();
+            const contentType = response.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                return response.json();
+            }
+            return null;
         })
         .then(data => {
             if (!data) return;
 
             if (data.success) {
-                // Sincroniza contador e estado final
-                
-                // Atualiza Contador
+                // Atualiza Contador com dados reais
                 let countSpan = btn.querySelector('.like-count-text');
+                
                 if (data.like_count > 0) {
                     if (!countSpan) {
                         countSpan = document.createElement('span');
                         countSpan.className = 'like-count-text font-bold ml-1';
-                        // Ajuste fino para comentários vs posts
-                        if(isCommentLike) countSpan.className += ' text-xs'; 
+                        if(isCommentLike) countSpan.classList.add('text-xs');
                         btn.appendChild(countSpan);
                     }
                     countSpan.innerText = data.like_count;
+                    countSpan.classList.remove('hidden');
                 } else {
                     if (countSpan) countSpan.remove();
                 }
 
-                // Garante estado do ícone (caso o servidor discorde da UI otimista)
+                // Sincronização final do ícone
                 if (icon && !isCommentLike) {
                     if (data.liked) {
                         icon.classList.remove('far');
@@ -142,12 +149,15 @@ document.addEventListener('submit', function(e) {
         })
         .catch(err => console.error("Erro no like:", err));
         
-        return false;
+        return false; // Garante que não recarrega
     }
 
-    // --- LÓGICA DE COMENTÁRIOS (MANTIDA) ---
-    if (action.includes('comment')) {
+    // ------------------------------------------------------------------------
+    // B. LÓGICA DE COMENTÁRIOS
+    // ------------------------------------------------------------------------
+    if (form.action.includes('api') && form.action.includes('comment')) {
         e.preventDefault(); e.stopPropagation();
+        
         const btn = form.querySelector('button[type="submit"]');
         const textarea = form.querySelector('textarea');
         const token = getCsrfToken();
@@ -159,7 +169,7 @@ document.addEventListener('submit', function(e) {
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
         }
 
-        fetch(action, {
+        fetch(form.action, {
             method: 'POST',
             headers: { 'X-CSRFToken': token, 'X-Requested-With': 'XMLHttpRequest' },
             body: new FormData(form)
@@ -176,7 +186,6 @@ document.addEventListener('submit', function(e) {
             } else {
                 const commentList = document.getElementById('comment-list');
                 if (commentList) {
-                    // Tenta parsear JSON ou insere HTML direto
                     try {
                         const json = JSON.parse(data);
                         if (json.html) commentList.insertAdjacentHTML('afterbegin', json.html);
@@ -197,7 +206,7 @@ document.addEventListener('submit', function(e) {
         });
         return false; 
     }
-}, true);
+}, true); // UseCapture=true ajuda a pegar eventos antes de outros scripts
 
 // ============================================================================
 // 4. UTILITÁRIOS E HTMX
@@ -264,7 +273,7 @@ function toggleDrawer() {
 }
 
 // ============================================================================
-// 6. NOTIFICAÇÕES PUSH E SERVICE WORKER (RESTAURADO)
+// 6. NOTIFICAÇÕES PUSH E SERVICE WORKER
 // ============================================================================
 const PUBLIC_KEY = 'BD-4Z2LNfjJBfLFrSGt9Zbx9Cp8hpOCZRvnZiYpUwv3qQukHfW1wrbxU9syK5gI2Jmzd3pMgLJpLG9ITXW3agIw';
 
@@ -287,7 +296,7 @@ async function checkSubscriptionStatus() {
         const reg = await navigator.serviceWorker.ready;
         const sub = await reg.pushManager.getSubscription();
         const bellIcon = document.getElementById('notification-bell-icon');
-        const btnSubscribe = document.getElementById('btn-subscribe-push'); // Caso exista botão de inscrição explícito
+        const btnSubscribe = document.getElementById('btn-subscribe-push'); 
         
         if (sub) {
             // Inscrito: Sino Amarelo/Cheio
@@ -314,7 +323,7 @@ if ('serviceWorker' in navigator) {
     window.addEventListener('load', function() {
         navigator.serviceWorker.register('/sw.js')
         .then(reg => {
-            console.log('Service Worker registrado:', reg);
+            console.log('SW registrado', reg);
             checkSubscriptionStatus();
         })
         .catch(err => console.log('Falha no SW:', err));
@@ -350,7 +359,6 @@ async function subscribeUser() {
             alert('Notificações ativadas! 🔔');
             checkSubscriptionStatus();
         } else {
-            console.error('Erro backend:', response);
             alert('Erro ao salvar inscrição no servidor.');
         }
 
