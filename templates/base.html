@@ -346,6 +346,82 @@ const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwI
         async function triggerInstall() { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { dismissInstall(); deferredPrompt = null; } }
         function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
         if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
+
+        // --- SCRIPT DE PREVIEW DE IMAGEM UNIVERSAL ---
+        // Este script funciona para qualquer formulário que use <input type="file" name="image">
+        document.addEventListener('change', function(event) {
+            // Verifica se o elemento alterado é um input de arquivo com nome "image" ou "profile_pic"
+            if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
+                const input = event.target;
+                const file = input.files[0];
+                
+                // Gera um ID único para o container de preview baseado no nome do input
+                let previewId = 'preview-' + input.name;
+                let previewContainer = document.getElementById(previewId);
+                
+                // Se não existir container de preview, cria um dinamicamente logo após o elemento pai do input (geralmente o label)
+                if (!previewContainer) {
+                    // Tenta achar o label associado ou usa o próprio input como referência
+                    const label = input.parentElement.querySelector('label') || input;
+                    const target = label.parentElement; // Insere no container pai
+                    
+                    previewContainer = document.createElement('div');
+                    previewContainer.id = previewId;
+                    previewContainer.className = "mt-3 hidden w-full";
+                    target.appendChild(previewContainer);
+                }
+
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        previewContainer.innerHTML = `
+                            <div class="relative inline-block mt-2 group">
+                                <img src="${e.target.result}" class="h-24 w-24 object-cover rounded-xl border-2 border-slate-200 shadow-sm transition-transform hover:scale-105">
+                                <button type="button" onclick="removeImage(this)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600 transition transform hover:scale-110 z-10" title="Remover imagem">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 rounded-b-lg truncate text-center backdrop-blur-sm">
+                                    ${file.name}
+                                </div>
+                            </div>
+                        `;
+                        previewContainer.classList.remove('hidden');
+                        
+                        // Muda a cor do ícone no label para indicar sucesso (se existir um ícone)
+                        const icon = input.parentElement.querySelector('i');
+                        if(icon) {
+                            icon.classList.remove('text-gray-400', 'text-slate-400');
+                            icon.classList.add('text-green-500');
+                        }
+                    }
+                    reader.readAsDataURL(file);
+                }
+            }
+        });
+
+        // Função global para remover a imagem e limpar o input
+        window.removeImage = function(btn) {
+            const container = btn.closest('[id^="preview-"]');
+            if(!container) return;
+            
+            const inputName = container.id.replace('preview-', '');
+            // Busca o input em todo o documento
+            const input = document.querySelector(`input[name="${inputName}"]`);
+            
+            if(input) {
+                input.value = ''; // Limpa o input file
+                
+                // Reseta a cor do ícone
+                const icon = input.parentElement.querySelector('i');
+                if(icon) {
+                    icon.classList.add('text-gray-400');
+                    icon.classList.remove('text-green-500');
+                }
+            }
+            
+            container.innerHTML = '';
+            container.classList.add('hidden');
+        }
     </script>
 </body>
 </html>
