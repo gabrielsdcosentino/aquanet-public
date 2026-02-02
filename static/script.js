@@ -49,21 +49,24 @@ document.addEventListener('submit', function(e) {
         e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation();
         
         const btn = form.querySelector('button[type="submit"]');
+        const icon = btn.querySelector('i');
         const isCommentLike = action.includes('comment');
         const token = getCsrfToken();
 
-        // --- 1. UI Otimista (Muda o ícone imediatamente antes do servidor responder) ---
-        // Isso dá sensação de velocidade instantânea para o usuário
-        const icon = btn.querySelector('i');
+        // --- 1. UI Otimista (Muda TUDO imediatamente) ---
         if (icon && !isCommentLike) {
-            if (icon.classList.contains('fas')) {
-                // Se estava preenchido (curtido), desmarca visualmente
+            const isLikedNow = icon.classList.contains('fas'); // Se tem 'fas', já está curtido
+            
+            if (isLikedNow) {
+                // Ação: Descurtir (Visualmente)
                 icon.classList.remove('fas', 'text-blue-600');
                 icon.classList.add('far');
+                btn.classList.remove('text-blue-600', 'font-bold');
             } else {
-                // Se estava vazio, marca visualmente
+                // Ação: Curtir (Visualmente)
                 icon.classList.remove('far');
                 icon.classList.add('fas', 'text-blue-600');
+                btn.classList.add('text-blue-600', 'font-bold');
             }
         }
 
@@ -78,66 +81,59 @@ document.addEventListener('submit', function(e) {
             body: new FormData(form)
         })
         .then(response => {
-            // Se o servidor redirecionar (ex: sessão expirou e foi para login), recarrega a página
-            if (response.redirected) {
-                window.location.reload();
-                return null;
-            }
-            // Garante que a resposta é JSON antes de tentar ler
+            if (response.redirected) { window.location.reload(); return null; }
             const contentType = response.headers.get("content-type");
-            if (contentType && contentType.indexOf("application/json") !== -1) {
+            if (contentType && contentType.includes("application/json")) {
                 return response.json();
-            } else {
-                // Se não for JSON (ex: erro 500 do servidor mostrando HTML), lança erro
-                throw new Error("Resposta do servidor não foi JSON");
             }
+            throw new Error("Servidor não retornou JSON");
         })
         .then(data => {
-            if (!data) return; // Se foi redirecionamento, paramos aqui
+            if (!data) return;
+            console.log("Resposta do Like:", data); // DEBUG: Veja isso no Console (F12)
 
             if (data.success && data.liked !== undefined) {
                 if (isCommentLike) {
-                    // Lógica para Likes de Comentários
+                    // Lógica Comentários
                     const text = data.liked ? 'Curtido' : 'Curtir';
                     const colorClass = data.liked ? 'text-blue-600 font-bold' : '';
                     let html = `<span class="mr-1">${text}</span>`;
-                    
                     if (data.like_count > 0) {
                         html += `<i class="fas fa-thumbs-up text-[10px] mr-1"></i><span class="like-count-text">${data.like_count}</span>`;
                     }
-                    
                     btn.innerHTML = html;
                     btn.className = `hover:text-blue-600 transition-colors flex items-center ${colorClass}`;
-                
                 } else {
-                    // Lógica para Likes de Posts (Mais robusta)
+                    // Lógica Posts (Sincronização Final)
                     
-                    // 1. Atualiza o ícone com a "verdade" do servidor
+                    // 1. Força o ícone e a cor baseada na resposta REAL do servidor
                     if (icon) {
-                        // Remove classes antigas para garantir
-                        icon.classList.remove('far', 'fas', 'text-blue-600');
+                        // Remove tudo primeiro para garantir
+                        icon.classList.remove('far', 'fas', 'text-blue-600'); 
+                        
                         if (data.liked) {
                             icon.classList.add('fas', 'fa-thumbs-up', 'text-lg', 'text-blue-600');
-                            btn.classList.add('text-blue-600');
+                            btn.classList.add('text-blue-600', 'font-bold');
                         } else {
                             icon.classList.add('far', 'fa-thumbs-up', 'text-lg');
-                            btn.classList.remove('text-blue-600');
+                            btn.classList.remove('text-blue-600', 'font-bold');
                         }
                     }
 
-                    // 2. Atualiza o contador sem destruir o botão inteiro
+                    // 2. Atualiza o número (Contador)
                     let countSpan = btn.querySelector('.like-count-text');
                     
                     if (data.like_count > 0) {
                         if (!countSpan) {
-                            // Se não existe contador, cria um
+                            // Cria o span se não existir
                             countSpan = document.createElement('span');
                             countSpan.className = 'like-count-text font-bold ml-1';
                             btn.appendChild(countSpan);
                         }
+                        // Atualiza o texto
                         countSpan.innerText = data.like_count;
                     } else {
-                        // Se o contador é zero, remove o span se ele existir
+                        // Se for zero, remove o span para ficar limpo
                         if (countSpan) countSpan.remove();
                     }
                 }
@@ -145,12 +141,16 @@ document.addEventListener('submit', function(e) {
         })
         .catch(err => {
             console.error("Erro no Like:", err);
-            // Opcional: Reverter o ícone se der erro (desfaz a UI otimista)
+            // Reverte UI em caso de erro (Rollback)
             if (icon && !isCommentLike) {
                  if (icon.classList.contains('fas')) {
-                     icon.classList.remove('fas', 'text-blue-600'); icon.classList.add('far');
+                     icon.classList.replace('fas', 'far');
+                     icon.classList.remove('text-blue-600');
+                     btn.classList.remove('text-blue-600');
                  } else {
-                     icon.classList.remove('far'); icon.classList.add('fas', 'text-blue-600');
+                     icon.classList.replace('far', 'fas');
+                     icon.classList.add('text-blue-600');
+                     btn.classList.add('text-blue-600');
                  }
             }
         });
