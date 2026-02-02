@@ -28,10 +28,9 @@
                 <div class="flex items-center mt-1 space-x-3 text-xs text-gray-500 font-semibold">
                     <span class="font-normal">{{ comment.timestamp.strftime('%d/%m') }}</span>
 
-                    {# --- CORREÇÃO: HX-BOOST="FALSE" NO LIKE --- #}
+                    {# FORMULÁRIO DE LIKE #}
                     <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" class="like-form inline-flex" hx-boost="false">
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                         
                          <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
                             <span class="mr-1">{{ 'Curtido' if current_user.has_liked_comment(comment) else 'Curtir' }}</span>
                             {% if comment.likes|length > 0 %}
@@ -41,10 +40,10 @@
                          </button>
                     </form>
 
-                    {# --- CORREÇÃO AQUI: TYPE="BUTTON" E ÍCONE --- #}
+                    {# --- CORREÇÃO AQUI: ONCLICK DIRETO NO BOTÃO --- #}
                     <button type="button" 
-                            class="reply-button hover:text-gray-800 transition-colors flex items-center gap-1"
-                            data-comment-id="{{ comment.id }}">
+                            onclick="toggleReply('{{ comment.id }}')"
+                            class="hover:text-gray-800 transition-colors flex items-center gap-1 font-semibold">
                         <i class="fas fa-reply"></i> Responder
                     </button>
 
@@ -67,7 +66,7 @@
                     </div>
                 {% endif %}
 
-                {# --- CORREÇÃO: HX-BOOST="FALSE" NA RESPOSTA --- #}
+                {# FORMULÁRIO DE RESPOSTA (ESCONDIDO POR PADRÃO) #}
                 <form method="POST"
                       action="{{ url_for('api_add_comment', post_id=post.id) }}"
                       class="reply-form hidden mt-2 mb-2"
@@ -142,7 +141,6 @@
             {% endif %}
             
             <div class="flex items-center space-x-4 text-sm text-gray-500 pt-2 border-t border-gray-50 mt-2">
-                {# --- CORREÇÃO: HX-BOOST="FALSE" NO LIKE DO POST --- #}
                 <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form" hx-boost="false">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
@@ -161,7 +159,6 @@
         <hr class="border-gray-100 h-1 bg-gray-50">
 
         <div class="bg-white p-4 border-b border-gray-100">
-             {# --- CORREÇÃO: HX-BOOST="FALSE" NO COMENTÁRIO PRINCIPAL --- #}
              <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" id="comment-form" class="flex items-start space-x-3" hx-boost="false">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 
@@ -192,8 +189,4 @@
         </div>
 
     </div>
-{% endblock %}
-
-{% block scripts %}
-    {{ super() }}
 {% endblock %}
