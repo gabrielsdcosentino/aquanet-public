@@ -34,8 +34,31 @@
     </style>
 
     <script>
-        const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwIbFji26aPpC1IFnD1GacI7pHvTUY';
+        // --- 1. SCRIPT DE EMERGÊNCIA PARA LIMPEZA DE PWA ---
+        // Isso vai remover o Service Worker antigo que está travando seu script.js
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    console.log('REMOVENDO SERVICE WORKER ANTIGO:', registration);
+                    registration.unregister();
+                }
+                if (registrations.length > 0) {
+                    console.log('Cache limpo. Recarregando página...');
+                    // Se encontrou SW, recarrega a página uma vez para garantir que o novo script.js seja baixado
+                    if (!localStorage.getItem('force_reload_pwa')) {
+                        localStorage.setItem('force_reload_pwa', 'true');
+                        window.location.reload();
+                    }
+                }
+            });
+        }
+        
+        // Limpa flag de reload após uso
+        if (localStorage.getItem('force_reload_pwa')) {
+            setTimeout(() => localStorage.removeItem('force_reload_pwa'), 2000);
+        }
 
+        // --- FUNÇÕES UI ---
         function toggleMobileSearch() {
             const searchBar = document.getElementById('mobile-search-bar');
             if (searchBar) {
@@ -59,59 +82,11 @@
             } else { closeDrawer(); }
         }
 
-        // --- PUSH NOTIFICATIONS ---
-        function urlBase64ToUint8Array(base64String) {
-            const padding = '='.repeat((4 - base64String.length % 4) % 4);
-            const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-            const rawData = window.atob(base64);
-            const outputArray = new Uint8Array(rawData.length);
-            for (let i = 0; i < rawData.length; ++i) { outputArray[i] = rawData.charCodeAt(i); }
-            return outputArray;
-        }
-
-        async function checkSubscriptionStatus() {
-            if (!('serviceWorker' in navigator)) return;
-            try {
-                const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.getSubscription();
-                const btnSubscribe = document.getElementById('btn-subscribe-push');
-                const iconBell = document.getElementById('notification-bell-icon');
-
-                if (sub) {
-                    if(btnSubscribe) btnSubscribe.style.display = 'none';
-                    if(iconBell) { iconBell.classList.remove('far', 'fa-bell-slash'); iconBell.classList.add('fas', 'fa-bell', 'text-yellow-500'); }
-                } else {
-                    if(btnSubscribe) btnSubscribe.style.display = 'flex';
-                    if(iconBell) { iconBell.classList.remove('fas', 'fa-bell', 'text-yellow-500'); iconBell.classList.add('far', 'fa-bell'); }
-                }
-            } catch (e) { console.error('Erro checando status:', e); }
-        }
-
-        async function subscribeUser() {
-            if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
-            try {
-                const permission = await Notification.requestPermission();
-                if (permission !== 'granted') return alert('Você bloqueou as notificações. Ative nas configurações.');
-                const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY) });
-                const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-                const response = await fetch('/api/save-subscription', {
-                    method: 'POST', body: JSON.stringify(sub), headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
-                });
-                if (response.ok) { alert('Notificações ativadas! 🎉'); checkSubscriptionStatus(); } 
-                else { alert('Erro ao salvar no servidor.'); }
-            } catch (e) { console.error(e); alert('Erro técnico: ' + e.message); }
-        }
-
+        // --- CORREÇÃO DE SEGURANÇA HTMX ---
         document.addEventListener("DOMContentLoaded", function() {
-            if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js').then(reg => { checkSubscriptionStatus(); }).catch(err => console.log('SW Falhou', err));
-            }
-            
-            // --- CORREÇÃO DE SEGURANÇA PARA EVITAR CONFLITO COM SCRIPT.JS ---
-            // Se o alvo for um formulário controlado pelo script.js, cancela o HTMX
             document.addEventListener('htmx:beforeRequest', function(evt) { 
                 const target = evt.detail.elt;
+                // Protege formulários críticos do HTMX
                 if (target.getAttribute('hx-boost') === 'false' || 
                     target.classList.contains('like-form') || 
                     target.classList.contains('reply-form') || 
@@ -124,15 +99,14 @@
         });
     </script>
     
-    <link rel="manifest" href="{{ url_for('manifest') }}">
-    <meta name="theme-color" content="#ffffff">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="AquaNet">
+    {# --- REMOVIDO MANIFEST E SW TEMPORARIAMENTE PARA DESTRAVAR --- #}
+    {# <link rel="manifest" href="{{ url_for('manifest') }}"> #}
     
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
-    <script src="{{ url_for('static', filename='script.js') }}?v=MOBILE_FIX_V1" defer></script>
+    
+    {# --- V2: FORÇA O NAVEGADOR A BAIXAR O NOVO SCRIPT --- #}
+    <script src="{{ url_for('static', filename='script.js') }}?v=EMERGENCIA_CACHE_CLEAN_01" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
@@ -181,7 +155,6 @@
         </div>
         <div class="p-6 bg-slate-50 mt-auto border-t border-slate-100">
             {% if current_user.is_authenticated %}
-                <button id="menu-install-btn" onclick="triggerInstall()" class="hidden w-full bg-slate-900 text-white font-bold p-3 rounded-xl mb-3 shadow-lg flex items-center justify-center"><i class="fas fa-download mr-2"></i> App</button>
                 <a href="{{ url_for('logout') }}" hx-boost="false" class="flex items-center justify-center w-full text-red-600 font-bold bg-red-50 hover:bg-red-100 p-3 rounded-xl transition-colors">Sair</a>
             {% else %}
                 <a href="{{ url_for('login') }}" class="block w-full bg-blue-600 text-white text-center font-bold p-4 rounded-xl shadow-lg shadow-blue-200">Entrar</a>
@@ -207,10 +180,6 @@
                 <button id="btn-search-toggle" onclick="toggleMobileSearch()" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-slate-600 active:bg-slate-100"><i class="fas fa-search text-lg"></i></button>
 
                 {% if current_user.is_authenticated %}
-                    <button id="btn-subscribe-push" onclick="subscribeUser()" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all mr-1" title="Ativar Notificações Push">
-                        <i class="fas fa-bell-slash text-xl"></i>
-                    </button>
-
                     <a href="{{ url_for('notifications') }}" class="w-10 h-10 flex items-center justify-center rounded-full text-slate-600 hover:bg-slate-100 hover:text-blue-600 transition-all relative">
                         <i id="notification-bell-icon" class="far fa-bell text-xl"></i>
                         {% set new_notifs = current_user.notifications.filter_by(is_read=False).count() %}
@@ -297,24 +266,8 @@
     </div>
     {% block scripts %}{% endblock %}
 
-    <div id="install-banner" class="fixed bottom-20 left-4 right-4 md:bottom-6 md:right-6 md:left-auto md:w-80 bg-white/90 backdrop-blur border border-slate-200 shadow-2xl rounded-2xl p-4 z-[100] hidden transform translate-y-20 opacity-0 transition-all duration-500">
-        <div class="flex items-center justify-between">
-            <div class="flex items-center"><div class="bg-blue-600 text-white w-10 h-10 rounded-xl flex items-center justify-center mr-3 shadow-lg shadow-blue-200"><i class="fas fa-water text-lg"></i></div><div><h3 class="font-bold text-slate-800 text-sm">Instalar App</h3><p class="text-[10px] text-slate-500">Acesso rápido e tela cheia.</p></div></div>
-            <div class="flex items-center gap-2"><button onclick="dismissInstall()" class="text-slate-400 hover:text-slate-600 p-2 text-xs font-bold">Não</button><button id="btn-install-action" class="bg-slate-900 text-white px-4 py-2 rounded-lg font-bold text-xs shadow-md hover:bg-black transition">Instalar</button></div>
-        </div>
-    </div>
-    
+    {# SCRIPT DE LIMPEZA DE IMAGEM #}
     <script>
-        var deferredPrompt; const installBanner = document.getElementById('install-banner'); const menuInstallBtn = document.getElementById('menu-install-btn'); const btnAction = document.getElementById('btn-install-action');
-        const isIos = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.MSStream; const isInstalled = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if(menuInstallBtn) menuInstallBtn.classList.remove('hidden'); if (!localStorage.getItem('installDismissed')) showBanner(); });
-        if (isIos && !isInstalled && !localStorage.getItem('installDismissed')) { const textDiv = installBanner.querySelector('div > div:nth-child(2)'); if(textDiv) textDiv.innerHTML = `<h3 class="font-bold text-slate-800 text-sm">Instalar no iPhone</h3><p class="text-[10px] text-slate-500">Toque em <i class="fas fa-share-square mx-1"></i> e em "Adicionar à Tela de Início".</p>`; if(btnAction) btnAction.style.display = 'none'; setTimeout(() => showBanner(), 2000); }
-        function showBanner() { if(installBanner) { installBanner.classList.remove('hidden'); setTimeout(() => { installBanner.classList.remove('translate-y-20', 'opacity-0'); }, 100); } }
-        async function triggerInstall() { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { dismissInstall(); deferredPrompt = null; } }
-        function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
-        if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
-
-        // --- SCRIPTS GLOBAIS ---
         document.addEventListener('change', function(event) {
             if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
                 const input = event.target; const file = input.files[0];
@@ -345,12 +298,9 @@
         document.addEventListener('submit', function(e) {
             const form = e.target;
             const action = form.getAttribute('action') || '';
-            
             // Se for like/comment, IGNORA loading para não travar
             if (form.classList.contains('like-form') || form.classList.contains('reply-form') || form.id === 'comment-form') return;
-            
             if (form.method === 'get' || form.classList.contains('no-loading')) return;
-
             const btn = form.querySelector('button[type="submit"]');
             if (btn && !btn.disabled) {
                 if (!form.checkValidity()) return;
