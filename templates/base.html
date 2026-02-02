@@ -34,9 +34,7 @@
     </style>
 
     <script>
-        // No arquivo templates/base.html
-
-const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwIbFji26aPpC1IFnD1GacI7pHvTUY';
+        const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwIbFji26aPpC1IFnD1GacI7pHvTUY';
 
         // --- FUNÇÕES DE UI ---
         function toggleMobileSearch() {
@@ -62,7 +60,7 @@ const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwI
             } else { closeDrawer(); }
         }
 
-        // --- FUNÇÕES DE NOTIFICAÇÃO PUSH (Centralizadas Aqui) ---
+        // --- FUNÇÕES DE NOTIFICAÇÃO PUSH ---
         function urlBase64ToUint8Array(base64String) {
             const padding = '='.repeat((4 - base64String.length % 4) % 4);
             const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -81,11 +79,9 @@ const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwI
                 const iconBell = document.getElementById('notification-bell-icon');
 
                 if (sub) {
-                    // SE INSCRITO: Esconde o botão de inscrever e pinta o sino
                     if(btnSubscribe) btnSubscribe.style.display = 'none';
                     if(iconBell) { iconBell.classList.remove('far', 'fa-bell-slash'); iconBell.classList.add('fas', 'fa-bell', 'text-yellow-500'); }
                 } else {
-                    // SE NÃO INSCRITO: Mostra o botão de inscrever
                     if(btnSubscribe) btnSubscribe.style.display = 'flex';
                     if(iconBell) { iconBell.classList.remove('fas', 'fa-bell', 'text-yellow-500'); iconBell.classList.add('far', 'fa-bell'); }
                 }
@@ -94,52 +90,25 @@ const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwI
 
         async function subscribeUser() {
             if (!('serviceWorker' in navigator)) return alert('Seu navegador não suporta notificações.');
-            
             try {
-                // 1. Permissão
                 const permission = await Notification.requestPermission();
-                if (permission !== 'granted') {
-                    alert('Você bloqueou as notificações. Ative nas configurações do navegador/celular.');
-                    return;
-                }
-
-                // 2. Service Worker e Inscrição
+                if (permission !== 'granted') return alert('Você bloqueou as notificações. Ative nas configurações.');
                 const reg = await navigator.serviceWorker.ready;
-                const sub = await reg.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY)
-                });
-
-                // 3. Salvar no Backend
+                const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(PUBLIC_KEY) });
                 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
                 const response = await fetch('/api/save-subscription', {
-                    method: 'POST',
-                    body: JSON.stringify(sub),
-                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
+                    method: 'POST', body: JSON.stringify(sub), headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrfToken }
                 });
-
-                if (response.ok) {
-                    alert('Notificações ativadas! 🎉');
-                    checkSubscriptionStatus();
-                } else {
-                    alert('Erro ao salvar no servidor. Tente novamente.');
-                }
-            } catch (e) {
-                console.error(e);
-                alert('Erro técnico: ' + e.message);
-            }
+                if (response.ok) { alert('Notificações ativadas! 🎉'); checkSubscriptionStatus(); } 
+                else { alert('Erro ao salvar no servidor.'); }
+            } catch (e) { console.error(e); alert('Erro técnico: ' + e.message); }
         }
 
         // --- INICIALIZAÇÃO ---
         document.addEventListener("DOMContentLoaded", function() {
-            // SW Register
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js')
-                .then(reg => { console.log('SW OK'); checkSubscriptionStatus(); })
-                .catch(err => console.log('SW Falhou', err));
+                navigator.serviceWorker.register('/sw.js').then(reg => { checkSubscriptionStatus(); }).catch(err => console.log('SW Falhou', err));
             }
-
-            // Swipe Logic
             let touchStartX = 0; let touchStartY = 0;
             document.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; touchStartY = e.changedTouches[0].screenY; }, {passive: true});
             document.addEventListener('touchend', e => {
@@ -152,7 +121,6 @@ const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwI
                     if (xDiff < -60 && tabFeed) tabFeed.click();
                 }
             }, {passive: true});
-            
             document.addEventListener('htmx:beforeRequest', function(evt) { closeDrawer(); });
         });
     </script>
@@ -347,81 +315,58 @@ const PUBLIC_KEY = 'BOOcYYIrST-8nxTW5twrExfzZwnlc9Sip8BvBpF2xAhPjX1L84Hl-9yvXuwI
         function dismissInstall() { if(installBanner) { installBanner.classList.add('translate-y-20', 'opacity-0'); localStorage.setItem('installDismissed', 'true'); setTimeout(() => { installBanner.classList.add('hidden'); }, 500); } }
         if(btnAction) btnAction.addEventListener('click', triggerInstall); window.addEventListener('appinstalled', () => { dismissInstall(); if(menuInstallBtn) menuInstallBtn.classList.add('hidden'); });
 
-        // --- SCRIPT DE PREVIEW DE IMAGEM UNIVERSAL ---
-        // Este script funciona para qualquer formulário que use <input type="file" name="image">
+        // --- SCRIPTS GLOBAIS (PREVIEW DE IMAGEM + LOADING STATE) ---
+        
+        // 1. Preview de Imagem
         document.addEventListener('change', function(event) {
-            // Verifica se o elemento alterado é um input de arquivo com nome "image" ou "profile_pic"
             if (event.target && (event.target.name === 'image' || event.target.name === 'profile_pic') && event.target.type === 'file') {
-                const input = event.target;
-                const file = input.files[0];
-                
-                // Gera um ID único para o container de preview baseado no nome do input
-                let previewId = 'preview-' + input.name;
-                let previewContainer = document.getElementById(previewId);
-                
-                // Se não existir container de preview, cria um dinamicamente logo após o elemento pai do input (geralmente o label)
+                const input = event.target; const file = input.files[0];
+                let previewId = 'preview-' + input.name; let previewContainer = document.getElementById(previewId);
                 if (!previewContainer) {
-                    // Tenta achar o label associado ou usa o próprio input como referência
-                    const label = input.parentElement.querySelector('label') || input;
-                    const target = label.parentElement; // Insere no container pai
-                    
-                    previewContainer = document.createElement('div');
-                    previewContainer.id = previewId;
-                    previewContainer.className = "mt-3 hidden w-full";
+                    const label = input.parentElement.querySelector('label') || input; const target = label.parentElement;
+                    previewContainer = document.createElement('div'); previewContainer.id = previewId; previewContainer.className = "mt-3 hidden w-full";
                     target.appendChild(previewContainer);
                 }
-
                 if (file) {
                     const reader = new FileReader();
                     reader.onload = function(e) {
-                        previewContainer.innerHTML = `
-                            <div class="relative inline-block mt-2 group">
-                                <img src="${e.target.result}" class="h-24 w-24 object-cover rounded-xl border-2 border-slate-200 shadow-sm transition-transform hover:scale-105">
-                                <button type="button" onclick="removeImage(this)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600 transition transform hover:scale-110 z-10" title="Remover imagem">
-                                    <i class="fas fa-times"></i>
-                                </button>
-                                <div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 rounded-b-lg truncate text-center backdrop-blur-sm">
-                                    ${file.name}
-                                </div>
-                            </div>
-                        `;
+                        previewContainer.innerHTML = `<div class="relative inline-block mt-2 group"><img src="${e.target.result}" class="h-24 w-24 object-cover rounded-xl border-2 border-slate-200 shadow-sm transition-transform hover:scale-105"><button type="button" onclick="removeImage(this)" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 w-6 h-6 flex items-center justify-center text-xs shadow-md hover:bg-red-600 transition transform hover:scale-110 z-10" title="Remover imagem"><i class="fas fa-times"></i></button><div class="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[10px] p-1 rounded-b-lg truncate text-center backdrop-blur-sm">${file.name}</div></div>`;
                         previewContainer.classList.remove('hidden');
-                        
-                        // Muda a cor do ícone no label para indicar sucesso (se existir um ícone)
-                        const icon = input.parentElement.querySelector('i');
-                        if(icon) {
-                            icon.classList.remove('text-gray-400', 'text-slate-400');
-                            icon.classList.add('text-green-500');
-                        }
+                        const icon = input.parentElement.querySelector('i'); if(icon) { icon.classList.remove('text-gray-400', 'text-slate-400'); icon.classList.add('text-green-500'); }
                     }
                     reader.readAsDataURL(file);
                 }
             }
         });
-
-        // Função global para remover a imagem e limpar o input
         window.removeImage = function(btn) {
-            const container = btn.closest('[id^="preview-"]');
-            if(!container) return;
-            
-            const inputName = container.id.replace('preview-', '');
-            // Busca o input em todo o documento
-            const input = document.querySelector(`input[name="${inputName}"]`);
-            
-            if(input) {
-                input.value = ''; // Limpa o input file
-                
-                // Reseta a cor do ícone
-                const icon = input.parentElement.querySelector('i');
-                if(icon) {
-                    icon.classList.add('text-gray-400');
-                    icon.classList.remove('text-green-500');
-                }
-            }
-            
-            container.innerHTML = '';
-            container.classList.add('hidden');
+            const container = btn.closest('[id^="preview-"]'); if(!container) return;
+            const inputName = container.id.replace('preview-', ''); const input = document.querySelector(`input[name="${inputName}"]`);
+            if(input) { input.value = ''; const icon = input.parentElement.querySelector('i'); if(icon) { icon.classList.add('text-gray-400'); icon.classList.remove('text-green-500'); } }
+            container.innerHTML = ''; container.classList.add('hidden');
         }
+
+        // 2. Efeito de Carregamento nos Botões (Global)
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            // Ignora formulários de busca (GET) ou que tenham a classe 'no-loading'
+            if (form.method === 'get' || form.classList.contains('no-loading')) return;
+
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn && !btn.disabled) {
+                // Validação do HTML5 (required, minlength, etc) antes de travar o botão
+                if (!form.checkValidity()) return;
+
+                // Salva a largura original para evitar que o botão "encolha"
+                btn.style.width = btn.offsetWidth + 'px';
+                
+                // Trava o botão e muda o texto
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
+                
+                // Adiciona estilos de desativado (opacidade e cursor)
+                btn.classList.add('opacity-75', 'cursor-not-allowed');
+            }
+        });
     </script>
 </body>
 </html>
