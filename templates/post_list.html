@@ -41,7 +41,7 @@
             {{ post.comments|length }} <span class="hidden sm:inline ml-1">Comentários</span>
         </a>
 
-        <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form flex items-center mr-auto relative z-10">
+        <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" hx-boost="false" class="like-form flex items-center mr-auto relative z-10">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="like-button group flex items-center p-2 rounded-md transition {{ 'text-blue-600 hover:bg-blue-50' if current_user.has_liked_post(post) else 'text-gray-500 hover:bg-gray-200 hover:text-blue-600' }}">
                 <i class="{{ 'fas' if current_user.has_liked_post(post) else 'far' }} fa-thumbs-up text-lg mr-1 transition-transform group-active:scale-110"></i>

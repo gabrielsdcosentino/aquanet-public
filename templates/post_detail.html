@@ -28,7 +28,7 @@
                 <div class="flex items-center mt-1 space-x-3 text-xs text-gray-500 font-semibold">
                     <span class="font-normal">{{ comment.timestamp.strftime('%d/%m') }}</span>
 
-                    <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" class="like-form inline-flex">
+                    <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" hx-boost="false" class="like-form inline-flex">
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                          
                          <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
@@ -137,7 +137,7 @@
             {% endif %}
             
             <div class="flex items-center space-x-4 text-sm text-gray-500 pt-2 border-t border-gray-50 mt-2">
-                <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form">
+                <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" hx-boost="false" class="like-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
                     <button type="submit" class="like-button flex items-center space-x-1 {{ 'text-blue-600' if current_user.has_liked_post(post) else 'hover:text-blue-600' }}">
