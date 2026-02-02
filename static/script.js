@@ -1,7 +1,7 @@
 // ============================================================================
 // 1. CONFIGURAÇÃO GLOBAL
 // ============================================================================
-console.log(">>> SCRIPT AQUANET CARREGADO (VERSÃO FINAL COMPLETA) <<<");
+console.log(">>> SCRIPT AQUANET CARREGADO (VERSÃO ONCLICK) <<<");
 
 const getCsrfToken = () => {
     const meta = document.querySelector('meta[name="csrf-token"]');
@@ -14,12 +14,51 @@ document.addEventListener('htmx:configRequest', function(evt) {
 });
 
 // ============================================================================
-// 2. LISTENERS DE UI E INTERAÇÕES
+// 2. FUNÇÕES GLOBAIS (Chamadas diretamente do HTML)
+// ============================================================================
+
+// NOVA FUNÇÃO DE RESPONDER - Chamada via onclick="" no HTML
+window.toggleReply = function(commentId) {
+    // console.log("Tentando responder ao ID:", commentId);
+
+    const container = document.getElementById(`comment-${commentId}`);
+    if (!container) {
+        alert('Erro: Container do comentário ' + commentId + ' não encontrado.');
+        return;
+    }
+
+    const form = container.querySelector('.reply-form');
+    if (!form) {
+        alert('Erro: Formulário de resposta não encontrado dentro do comentário.');
+        return;
+    }
+
+    // Verifica se já está aberto
+    const isHidden = form.classList.contains('hidden');
+
+    // 1. Fecha TODOS os outros formulários abertos para limpar a tela
+    document.querySelectorAll('.reply-form').forEach(f => {
+        f.classList.add('hidden');
+    });
+
+    // 2. Se o que clicamos estava fechado, agora abrimos
+    if (isHidden) {
+        form.classList.remove('hidden');
+        
+        // Tenta focar no campo de texto
+        setTimeout(() => {
+            const area = form.querySelector('textarea');
+            if(area) area.focus();
+        }, 50);
+    }
+};
+
+// ============================================================================
+// 3. LISTENERS GERAIS
 // ============================================================================
 
 document.addEventListener('click', function(event) {
-    
-    // A. Toggle de Ver Respostas (Ex: "Ver 3 respostas")
+    // A. Toggle de "Ver Respostas"
     const toggleBtn = event.target.closest('.toggle-replies-btn');
     if (toggleBtn) {
         const targetId = toggleBtn.dataset.target;
@@ -27,37 +66,7 @@ document.addEventListener('click', function(event) {
         if (container) container.classList.toggle('hidden');
     }
 
-    // B. Botão de Responder (LÓGICA CORRIGIDA)
-    const replyBtn = event.target.closest('.reply-button');
-    if (replyBtn) {
-        event.preventDefault(); // Impede comportamento padrão
-        event.stopPropagation(); // Evita conflitos
-
-        const commentId = replyBtn.dataset.commentId;
-        const container = document.getElementById(`comment-${commentId}`);
-        
-        if (container) {
-            const form = container.querySelector('.reply-form');
-            if (form) {
-                // Se o formulário atual já está aberto?
-                const isHidden = form.classList.contains('hidden');
-
-                // 1. Fecha TODOS os formulários primeiro para limpar a tela
-                document.querySelectorAll('.reply-form').forEach(f => {
-                    f.classList.add('hidden');
-                });
-
-                // 2. Se estava fechado, abre este específico
-                if (isHidden) {
-                    form.classList.remove('hidden');
-                    const area = form.querySelector('textarea');
-                    if (area) setTimeout(() => area.focus(), 50); // Foca no campo
-                }
-            }
-        }
-    }
-    
-    // C. Botão Cancelar Resposta
+    // B. Botão Cancelar Resposta
     const cancelBtn = event.target.closest('.cancel-reply-button');
     if (cancelBtn) {
         const form = cancelBtn.closest('.reply-form');
@@ -66,7 +75,7 @@ document.addEventListener('click', function(event) {
 });
 
 // ============================================================================
-// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (A PARTE CRÍTICA)
+// 4. INTERCEPTAÇÃO DE FORMULÁRIOS
 // ============================================================================
 document.addEventListener('submit', function(e) {
     const form = e.target;
@@ -74,24 +83,23 @@ document.addEventListener('submit', function(e) {
     // --- LÓGICA DE LIKE ---
     if (form.classList.contains('like-form')) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // IMPEDE O HTMX DE RECARREGAR A PÁGINA
+        e.stopImmediatePropagation();
         
         const btn = form.querySelector('button[type="submit"]');
         const icon = btn.querySelector('i');
         const countSpan = btn.querySelector('.like-count-text');
         
-        // Efeito Visual Instantâneo (Feedback Otimista)
+        // Feedback Visual Instantâneo
         if (icon) {
-            if (icon.classList.contains('fas')) { // Se já curtiu -> Descurtir
+            if (icon.classList.contains('fas')) { // Descurtir
                 icon.classList.replace('fas', 'far');
                 btn.classList.remove('text-blue-600', 'font-bold');
-            } else { // Se não curtiu -> Curtir
+            } else { // Curtir
                 icon.classList.replace('far', 'fas');
                 btn.classList.add('text-blue-600', 'font-bold');
             }
         }
 
-        // Envia para o servidor em segundo plano
         fetch(form.action, {
             method: 'POST',
             headers: { 
@@ -102,7 +110,6 @@ document.addEventListener('submit', function(e) {
         })
         .then(res => res.json())
         .then(data => {
-            // Atualiza o número real de likes vindo do servidor
             if (data.success && countSpan) {
                 countSpan.innerText = data.like_count > 0 ? data.like_count : '';
             }
@@ -112,13 +119,12 @@ document.addEventListener('submit', function(e) {
         return false;
     }
 
-    // --- LÓGICA DE COMENTÁRIOS E RESPOSTAS ---
+    // --- LÓGICA DE ENVIO DE COMENTÁRIO ---
     if (form.id === 'comment-form' || form.classList.contains('reply-form')) {
         e.preventDefault();
-        e.stopImmediatePropagation(); // IMPEDE O HTMX DE RECARREGAR A PÁGINA
+        e.stopImmediatePropagation();
         
         const btn = form.querySelector('button[type="submit"]');
-        
         if (btn) {
             btn.dataset.original = btn.innerHTML;
             btn.disabled = true;
@@ -135,7 +141,6 @@ document.addEventListener('submit', function(e) {
         })
         .then(res => res.text())
         .then(html => {
-            // Recarrega a página para mostrar o comentário na ordem certa
             window.location.reload(); 
         })
         .catch(err => console.error(err))
@@ -145,13 +150,12 @@ document.addEventListener('submit', function(e) {
                 btn.innerHTML = btn.dataset.original;
             }
         });
-        
         return false;
     }
 });
 
 // ============================================================================
-// 4. UI: MENU DRAWER, BUSCA E ARQUIVOS
+// 5. UI: MENU, BUSCA E UPLOAD
 // ============================================================================
 function toggleMobileSearch() {
     const searchBar = document.getElementById('mobile-search-bar');
@@ -186,7 +190,6 @@ function toggleDrawer() {
     }
 }
 
-// Validação de tamanho de arquivo (Upload)
 document.addEventListener('change', function(e) {
     if (e.target.tagName === 'INPUT' && e.target.type === 'file') {
         const file = e.target.files[0];
@@ -197,7 +200,6 @@ document.addEventListener('change', function(e) {
     }
 });
 
-// Barra de Carregamento do HTMX (Loading azul no topo)
 document.addEventListener('htmx:beforeRequest', function(evt) {
     const loader = document.getElementById('page-loader');
     if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
@@ -211,14 +213,3 @@ document.addEventListener('htmx:afterSwap', function(evt) {
         setTimeout(() => { loader.style.opacity = '0'; loader.style.width = '0%'; }, 300);
     }
 });
-
-// ============================================================================
-// 5. SERVICE WORKER (NOTIFICAÇÕES PUSH)
-// ============================================================================
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', function() {
-        navigator.serviceWorker.register('/sw.js')
-        .then(reg => console.log('SW registrado', reg))
-        .catch(err => console.log('Falha no SW:', err));
-    });
-}
