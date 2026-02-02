@@ -27,26 +27,32 @@ document.addEventListener('click', function(event) {
         if (container) container.classList.toggle('hidden');
     }
 
-    // B. Botão de Responder (Abre o formulário de resposta)
+    // B. Botão de Responder (LÓGICA CORRIGIDA)
     const replyBtn = event.target.closest('.reply-button');
     if (replyBtn) {
+        event.preventDefault(); // Impede comportamento padrão
+        event.stopPropagation(); // Evita conflitos
+
         const commentId = replyBtn.dataset.commentId;
         const container = document.getElementById(`comment-${commentId}`);
         
-        // Busca apenas pela classe, já que está dentro do container único do comentário
-        const form = container ? container.querySelector('.reply-form') : null;
-        
-        if (form) {
-            // Fecha todos os outros forms para limpar a tela
-            document.querySelectorAll('.reply-form').forEach(f => {
-                if (f !== form) f.classList.add('hidden');
-            });
-            
-            form.classList.toggle('hidden');
-            
-            if (!form.classList.contains('hidden')) {
-                const area = form.querySelector('textarea');
-                if(area) area.focus();
+        if (container) {
+            const form = container.querySelector('.reply-form');
+            if (form) {
+                // Se o formulário atual já está aberto?
+                const isHidden = form.classList.contains('hidden');
+
+                // 1. Fecha TODOS os formulários primeiro para limpar a tela
+                document.querySelectorAll('.reply-form').forEach(f => {
+                    f.classList.add('hidden');
+                });
+
+                // 2. Se estava fechado, abre este específico
+                if (isHidden) {
+                    form.classList.remove('hidden');
+                    const area = form.querySelector('textarea');
+                    if (area) setTimeout(() => area.focus(), 50); // Foca no campo
+                }
             }
         }
     }
@@ -130,7 +136,6 @@ document.addEventListener('submit', function(e) {
         .then(res => res.text())
         .then(html => {
             // Recarrega a página para mostrar o comentário na ordem certa
-            // Isso simula o comportamento de "app" atualizando a lista
             window.location.reload(); 
         })
         .catch(err => console.error(err))
