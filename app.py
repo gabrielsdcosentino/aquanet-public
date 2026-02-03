@@ -511,24 +511,42 @@ def assign_badge(user, slug):
     if badge and badge not in user.badges:
         user.badges.append(badge)
         db.session.commit()
-        # Notifica o usuário da conquista (usando o badge no lugar do comentário para passar o nome)
+        # Notifica o usuário da conquista
         create_notification(recipient=user, action='badge', sender=None, comment=badge)
 
 def check_badges(user):
-    # 1. BIÓLOGO (Logs de Parâmetros) - Atualizado
+    # 1. AQUARISTA (Logs de Parâmetros)
     log_count = ParameterLog.query.join(Aquarium).filter(Aquarium.user_id == user.id).count()
-    if log_count >= 1: assign_badge(user, 'cientista-iniciante')
-    if log_count >= 10: assign_badge(user, 'cientista-dedicado')
+    if log_count >= 1: assign_badge(user, 'aquarista-iniciante')
+    if log_count >= 10: assign_badge(user, 'aquarista-dedicado')
+    if log_count >= 50: assign_badge(user, 'aquarista-master')
     
     # 2. TAGARELA (Comentários)
     comment_count = Comment.query.filter_by(user_id=user.id).count()
     if comment_count >= 5: assign_badge(user, 'tagarela-junior')
     if comment_count >= 50: assign_badge(user, 'tagarela-senior')
 
-    # 3. INFLUENCER (Likes recebidos em Posts)
-    # (Lógica simplificada para performance)
-    if len(user.posts) > 0:
-        assign_badge(user, 'criador-conteudo')
+    # 3. CRIADOR (Posts)
+    post_count = Post.query.filter_by(user_id=user.id).count()
+    if post_count >= 1: assign_badge(user, 'criador-conteudo')
+    if post_count >= 20: assign_badge(user, 'influenciador')
+
+    # 4. FOTÓGRAFO (Fotos Postadas)
+    # Conta quantos posts do usuário têm imagem (image_file não é None)
+    photo_count = Post.query.filter_by(user_id=user.id).filter(Post.image_file.isnot(None)).count()
+    if photo_count >= 5: assign_badge(user, 'fotografo')
+
+    # 5. COLECIONADOR (Qtd Aquários)
+    aqua_count = len(user.aquariums)
+    if aqua_count >= 3: assign_badge(user, 'colecionador')
+
+    # 6. POPULAR (Seguidores)
+    follower_count = user.followers.count()
+    if follower_count >= 10: assign_badge(user, 'popular')
+
+    # 7. VETERANO (Fundador/Primeiros Usuários)
+    if user.username == 'bielcosen14' or user.id <= 10:
+        assign_badge(user, 'veterano')
 
 with app.app_context():
     db.create_all()
@@ -1043,36 +1061,60 @@ def manifest(): return send_from_directory(app.static_folder, 'manifest.json')
 @app.route('/icon-512.png')
 def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 
-# --- ROTA PARA INICIAR/ATUALIZAR AS MEDALHAS ---
+# --- ROTA PARA INICIAR AS MEDALHAS ---
 @app.route('/init_badges')
 @login_required
 def init_badges():
     if current_user.username != 'bielcosen14': return "Acesso negado"
     
-    # Atualizado com novos nomes (Biólogo)
     badges_data = [
-        {'slug': 'cientista-iniciante', 'name': 'Biólogo Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
-        {'slug': 'cientista-dedicado', 'name': 'Biólogo Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'purple'},
+        {'slug': 'aquarista-iniciante', 'name': 'Aquarista Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
+        {'slug': 'aquarista-dedicado', 'name': 'Aquarista Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'teal'},
+        {'slug': 'aquarista-master', 'name': 'Aquarista Master', 'desc': 'Registrou parâmetros 50 vezes.', 'icon': 'fas fa-dna', 'color': 'purple'},
+        
         {'slug': 'tagarela-junior', 'name': 'Tagarela', 'desc': 'Fez 5 comentários.', 'icon': 'fas fa-comments', 'color': 'blue'},
         {'slug': 'tagarela-senior', 'name': 'Debatedor', 'desc': 'Fez 50 comentários.', 'icon': 'fas fa-bullhorn', 'color': 'orange'},
+        
         {'slug': 'criador-conteudo', 'name': 'Criador', 'desc': 'Fez a primeira postagem.', 'icon': 'fas fa-pen-nib', 'color': 'red'},
-        {'slug': 'veterano', 'name': 'Veterano', 'desc': 'Membro fundador.', 'icon': 'fas fa-star', 'color': 'yellow'},
+        {'slug': 'influenciador', 'name': 'Influenciador', 'desc': 'Fez 20 postagens.', 'icon': 'fas fa-star', 'color': 'yellow'},
+        
+        {'slug': 'fotografo', 'name': 'Fotógrafo', 'desc': 'Postou 5 fotos.', 'icon': 'fas fa-camera', 'color': 'pink'},
+        
+        {'slug': 'colecionador', 'name': 'Colecionador', 'desc': 'Tem 3 ou mais aquários.', 'icon': 'fas fa-layer-group', 'color': 'cyan'},
+        
+        {'slug': 'popular', 'name': 'Popular', 'desc': 'Tem 10 seguidores.', 'icon': 'fas fa-crown', 'color': 'indigo'},
+        
+        {'slug': 'veterano', 'name': 'Veterano', 'desc': 'Membro fundador.', 'icon': 'fas fa-medal', 'color': 'gray'},
     ]
     
+    count = 0
     for b in badges_data:
         badge = Badge.query.filter_by(slug=b['slug']).first()
         if not badge:
-            # Cria se não existir
             db.session.add(Badge(slug=b['slug'], name=b['name'], description=b['desc'], icon=b['icon'], color=b['color']))
+            count += 1
         else:
-            # Atualiza se já existir (para mudar o nome de Cientista para Biólogo)
+            # Atualiza se já existir (para garantir os nomes novos)
             badge.name = b['name']
             badge.description = b['desc']
             badge.icon = b['icon']
             badge.color = b['color']
     
     db.session.commit()
-    return "Medalhas atualizadas com sucesso (Cientista virou Biólogo)!"
+    return f"Sucesso! {count} medalhas novas criadas e as antigas atualizadas."
+
+@app.route('/update_all_badges')
+@login_required
+def update_all_badges():
+    # Só você pode rodar isso
+    if current_user.username != 'bielcosen14': 
+        return "Acesso negado", 403
+    
+    users = User.query.all()
+    for user in users:
+        check_badges(user)
+    
+    return f"Sucesso! Medalhas verificadas e entregues para {len(users)} usuários."
 
 if __name__ == '__main__':
     app.run(debug=False)
