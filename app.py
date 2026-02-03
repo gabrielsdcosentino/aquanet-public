@@ -511,8 +511,17 @@ def assign_badge(user, slug):
     if badge and badge not in user.badges:
         user.badges.append(badge)
         db.session.commit()
-        # Notifica o usuário da conquista
-        create_notification(recipient=user, action='badge', sender=None, comment=badge)
+        
+        # Cria notificação explícita
+        # Usamos o campo 'action' como 'badge' e 'sender' nulo (Sistema)
+        msg = f"Você conquistou: {badge.name}"
+        # Criamos a notificação manualmente para garantir o texto
+        notif = Notification(recipient_id=user.id, action='badge', count=1, timestamp=now_br())
+        db.session.add(notif)
+        db.session.commit()
+        
+        # Envia Push (se ativo)
+        send_push_notification(user, "Nova Conquista! 🏆", msg, url_for('profile', username=user.username, _external=True))
 
 def check_badges(user):
     # 1. AQUARISTA (Logs de Parâmetros)
