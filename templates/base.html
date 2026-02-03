@@ -48,8 +48,7 @@
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
     
-    {# Carrega o script completo #}
-    <script src="{{ url_for('static', filename='script.js') }}?v=FULL_RESTORE_V2" defer></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=FULL_RESTORE_V3" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-target="body" hx-swap="outerHTML show:top">
@@ -155,11 +154,17 @@
                     <li><a href="{{ url_for('home') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-globe w-6"></i> Global</a></li>
                     <li><a href="{{ url_for('feed') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-rss w-6"></i> Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
-                    
                     <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
                     <li><a href="{{ url_for('calculators') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
-                    
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-users w-6"></i> Comunidades</a></li>
+                    
+                    {% if current_user.is_authenticated %}
+                        <li class="pt-2 mt-2 border-t border-slate-100">
+                            <a href="{{ url_for('logout') }}" class="flex items-center px-4 py-3 text-red-500 hover:bg-red-50 hover:text-red-700 rounded-2xl font-bold transition-all">
+                                <i class="fas fa-sign-out-alt w-6"></i> Sair
+                            </a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
         </aside>
