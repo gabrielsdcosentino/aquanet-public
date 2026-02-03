@@ -1,53 +1,68 @@
 // ============================================================================
-// AQUANET SCRIPT - V6 (PWA RESTAURADO)
+// AQUANET SCRIPT - V7 (PWA INTELIGENTE + CORREÇÕES)
 // ============================================================================
-console.log(">>> SCRIPT AQUANET V6 - PWA Ativo <<<");
+console.log(">>> SCRIPT AQUANET V7 <<<");
 
-let deferredPrompt; // Guarda o evento de instalação
+let deferredPrompt; 
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM Carregado.");
     
-    // --- LÓGICA DE INSTALAÇÃO PWA ---
+    // --- LÓGICA DE INSTALAÇÃO PWA INTELIGENTE ---
     const installCard = document.getElementById('pwa-install-card');
     const installBtn = document.getElementById('pwa-install-btn');
     const closeBtn = document.getElementById('pwa-close-btn');
 
-    // 1. O navegador dispara esse evento se o site for "instalável"
+    // Verifica se o usuário já recusou ou instalou antes
+    const pwaDismissed = localStorage.getItem('aquanet_pwa_dismissed');
+    const pwaInstalled = localStorage.getItem('aquanet_pwa_installed');
+
+    // 1. O navegador avisa que pode instalar
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Previne a barra padrão do Chrome (para mostrarmos o nosso card)
-        e.preventDefault();
+        e.preventDefault(); // Impede barra nativa feia
         deferredPrompt = e;
         
-        // Mostra o nosso card personalizado
-        if (installCard) {
+        // Só mostra se o usuário não recusou antes E não instalou
+        if (!pwaDismissed && !pwaInstalled && installCard) {
             setTimeout(() => {
                 installCard.classList.remove('hidden');
                 installCard.classList.add('flex');
-            }, 3000); // Espera 3s para não ser intrusivo
+            }, 5000); // Espera 5s para não assustar o usuário
         }
     });
 
-    // 2. Clique no botão "Instalar"
+    // 2. Clique no Instalar
     if (installBtn) {
         installBtn.addEventListener('click', async () => {
             if (deferredPrompt) {
-                deferredPrompt.prompt(); // Mostra o prompt nativo do celular
+                deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log(`Resultado da instalação: ${outcome}`);
+                console.log(`Resultado: ${outcome}`);
+                
+                if (outcome === 'accepted') {
+                    localStorage.setItem('aquanet_pwa_installed', 'true');
+                }
+                
                 deferredPrompt = null;
-                // Esconde o card
-                if (installCard) installCard.classList.add('hidden');
+                installCard.classList.add('hidden');
             }
         });
     }
 
-    // 3. Botão Fechar (X)
+    // 3. Clique no Fechar (X) - "Não me mostre mais"
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            if (installCard) installCard.classList.add('hidden');
+            // Salva na memória para não mostrar mais
+            localStorage.setItem('aquanet_pwa_dismissed', 'true');
+            installCard.classList.add('hidden');
         });
     }
+
+    // 4. Detectar se foi instalado com sucesso
+    window.addEventListener('appinstalled', () => {
+        localStorage.setItem('aquanet_pwa_installed', 'true');
+        if (installCard) installCard.classList.add('hidden');
+        console.log('AquaNet instalado com sucesso!');
+    });
 });
 
 // Helper CSRF
@@ -60,7 +75,7 @@ document.addEventListener('htmx:configRequest', function(evt) {
 });
 
 // ============================================================================
-// FUNCIONALIDADES GLOBAIS (Likes, Comentários, Menus)
+// FUNCIONALIDADES GLOBAIS
 // ============================================================================
 document.addEventListener('click', function(event) {
     // Toggle Respostas
@@ -81,8 +96,7 @@ document.addEventListener('click', function(event) {
             if (form) {
                 document.querySelectorAll('.reply-form').forEach(f => f.classList.add('hidden'));
                 form.classList.remove('hidden');
-                const area = form.querySelector('textarea');
-                if (area) setTimeout(() => area.focus(), 100);
+                setTimeout(() => form.querySelector('textarea')?.focus(), 100);
             }
         }
     }
@@ -105,7 +119,6 @@ document.addEventListener('submit', function(e) {
         const icon = btn.querySelector('i');
         const countSpan = btn.querySelector('.like-count-text');
         
-        // UI Otimista
         if (icon) {
             if (icon.classList.contains('fas')) { 
                 icon.classList.replace('fas', 'far'); 
