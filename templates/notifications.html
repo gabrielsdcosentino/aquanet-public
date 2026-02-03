@@ -6,10 +6,7 @@
 <div class="max-w-2xl mx-auto pb-20">
     <div class="bg-white p-4 rounded-3xl shadow-sm border border-slate-100 mb-6 flex justify-between items-center sticky top-20 z-10">
         <h1 class="text-xl font-bold text-slate-800">Notificações</h1>
-        {% if notifications %}
-        <span class="bg-blue-100 text-blue-600 text-xs font-bold px-3 py-1 rounded-full">{{ notifications|length }} novas</span>
-        {% endif %}
-    </div>
+        </div>
 
     <div class="space-y-3">
         {% for n in notifications %}
@@ -25,14 +22,14 @@
                     <p class="text-sm text-slate-800">
                         <span class="font-bold text-yellow-700">Parabéns!</span> Você desbloqueou uma nova conquista.
                     </p>
-                    <p class="text-xs text-slate-500 mt-0.5 font-medium">Toque para ver sua coleção de medalhas.</p>
+                    <p class="text-xs text-slate-500 mt-0.5 font-medium">Toque para ver na sua Sala de Troféus.</p>
                     <p class="text-[10px] text-slate-400 mt-2">{{ n.timestamp.strftime('%d/%m às %H:%M') }}</p>
                 </div>
             </div>
         </a>
 
         {% else %}
-        <a href="{{ url_for('post_detail', post_id=n.post_id) if n.post_id else url_for('profile', username=n.sender.username) }}" class="block bg-white p-4 rounded-3xl shadow-sm border border-slate-100 hover:border-blue-200 transition-all {{ 'opacity-60' if n.is_read else '' }}">
+        <a href="{{ url_for('post_detail', post_id=n.post_id) if n.post_id else url_for('profile', username=n.sender.username) }}" class="block p-4 rounded-3xl shadow-sm border transition-all {{ 'bg-white border-slate-100 opacity-75' if n.is_read else 'bg-blue-50/50 border-blue-100' }}">
             <div class="flex items-start gap-3">
                 <img src="{{ n.sender.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border border-slate-100 shrink-0">
                 
@@ -63,7 +60,7 @@
                 </div>
 
                 <div class="text-lg text-slate-300">
-                    {% if n.action == 'like_post' or n.action == 'like_comment' %}<i class="fas fa-heart text-red-400"></i>
+                    {% if n.action == 'like_post' or n.action == 'like_comment' %}<i class="fas fa-thumbs-up text-blue-400"></i>
                     {% elif n.action == 'comment' or n.action == 'reply' %}<i class="fas fa-comment text-blue-400"></i>
                     {% elif n.action == 'follow' %}<i class="fas fa-user-plus text-green-400"></i>
                     {% elif n.action == 'mention' %}<i class="fas fa-at text-purple-400"></i>
@@ -71,14 +68,24 @@
                 </div>
             </div>
         </a>
-        {% endif %} {% else %}
+        {% endif %}
+
+        {% else %}
         <div class="text-center py-12">
             <div class="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-300 text-2xl">
                 <i class="far fa-bell-slash"></i>
             </div>
-            <p class="text-slate-500 font-medium text-sm">Tudo tranquilo por aqui.</p>
+            <p class="text-slate-500 font-medium text-sm">Nenhuma notificação nova.</p>
         </div>
         {% endfor %}
     </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Encontra a bolinha vermelha no menu (se existir) e remove
+        const badges = document.querySelectorAll('.fa-bell + span');
+        badges.forEach(b => b.style.display = 'none');
+    });
+</script>
 {% endblock %}
