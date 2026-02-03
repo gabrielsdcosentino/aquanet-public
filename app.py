@@ -500,6 +500,35 @@ def process_mentions(content, sender, post, comment=None):
 with app.app_context():
     db.create_all()
 
+# --- SISTEMA DE GAMIFICAÇÃO ---
+def check_badges(user):
+    badges_earned = []
+    
+    # 1. CIENTISTA (Logs de Parâmetros)
+    log_count = ParameterLog.query.filter_by(aquarium_id=Aquarium.id).join(Aquarium).filter(Aquarium.user_id==user.id).count()
+    if log_count >= 1: assign_badge(user, 'cientista-Iniciante')
+    if log_count >= 10: assign_badge(user, 'cientista-dedicado')
+    
+    # 2. TAGARELA (Comentários)
+    comment_count = Comment.query.filter_by(user_id=user.id).count()
+    if comment_count >= 5: assign_badge(user, 'tagarela-junior')
+    if comment_count >= 50: assign_badge(user, 'tagarela-senior')
+
+    # 3. INFLUENCER (Likes recebidos em Posts)
+    # (Lógica simplificada para performance)
+    if len(user.posts) > 0:
+        assign_badge(user, 'criador-conteudo')
+
+    return badges_earned
+
+def assign_badge(user, slug):
+    badge = Badge.query.filter_by(slug=slug).first()
+    if badge and badge not in user.badges:
+        user.badges.append(badge)
+        db.session.commit()
+        # Opcional: Criar notificação de conquista aqui
+        print(f"🏅 CONQUISTA: {user.username} ganhou {badge.name}!")
+
 # --- ROTAS ---
 @app.route('/login/google')
 def login_google():
