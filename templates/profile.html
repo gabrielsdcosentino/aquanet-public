@@ -31,10 +31,10 @@
             <h3 class="font-bold text-slate-800 text-sm mb-4 flex items-center justify-center gap-2">
                 <i class="fas fa-trophy text-yellow-500"></i> Sala de Troféus
             </h3>
-            <div class="grid grid-cols-3 md:grid-cols-4 gap-3 max-w-lg mx-auto">
+            <div class="grid grid-cols-3 md:grid-cols-4 gap-4 max-w-lg mx-auto pb-4">
                 {% for badge in all_badges %}
                     {% set has_badge = badge in user.badges %}
-                    <div class="flex flex-col items-center p-2 rounded-xl {{ 'hover:bg-slate-50' if has_badge else 'opacity-50 grayscale' }} transition-all group relative cursor-help">
+                    <div class="flex flex-col items-center p-2 rounded-xl {{ 'hover:bg-slate-50' if has_badge else 'opacity-60 grayscale' }} transition-all group relative cursor-help z-0 hover:z-20">
                         
                         <div class="w-12 h-12 rounded-full {{ 'bg-' + badge.color + '-50 text-' + badge.color + '-500 border-' + badge.color + '-100' if has_badge else 'bg-slate-100 text-slate-400 border-slate-200' }} border flex items-center justify-center text-xl mb-2 shadow-sm {{ 'group-hover:scale-110' if has_badge else '' }} transition-transform">
                             <i class="{{ badge.icon }}"></i>
@@ -42,12 +42,12 @@
                         
                         <span class="text-[10px] font-bold {{ 'text-slate-600' if has_badge else 'text-slate-400' }} uppercase tracking-wide leading-tight">{{ badge.name }}</span>
                         
-                        <div class="absolute bottom-full mb-2 hidden group-hover:block w-32 bg-slate-800 text-white text-[10px] p-2 rounded-lg z-20 shadow-xl">
-                            {{ badge.description }}
+                        <div class="absolute top-full mt-2 hidden group-hover:block w-36 bg-slate-900 text-white text-[11px] p-3 rounded-xl z-50 shadow-xl border border-slate-700">
+                            <p class="leading-relaxed">{{ badge.description }}</p>
                             {% if not has_badge %}
-                            <div class="mt-1 text-yellow-300 font-bold uppercase text-[9px]">(Bloqueado)</div>
+                            <div class="mt-2 text-yellow-400 font-bold uppercase text-[9px] border-t border-slate-700 pt-1 tracking-wider"><i class="fas fa-lock mr-1"></i> Bloqueado</div>
                             {% endif %}
-                            <div class="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                            <div class="absolute bottom-full left-1/2 -translate-x-1/2 border-8 border-transparent border-b-slate-900"></div>
                         </div>
                     </div>
                 {% endfor %}
