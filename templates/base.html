@@ -30,7 +30,6 @@
         #page-loader { position: fixed; top: 0; left: 0; height: 3px; width: 0%; background: linear-gradient(90deg, #3b82f6, #06b6d4); z-index: 9999; transition: width 0.2s ease-out; opacity: 0; pointer-events: none; }
         .htmx-request #page-loader { width: 70% !important; opacity: 1 !important; }
         
-        /* Scrollbar fina para listas de comunidades */
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
@@ -39,16 +38,40 @@
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('SW registrado para instalação PWA:', registration.scope);
+                }, function(err) {
+                    console.log('Falha SW:', err);
+                });
+            });
+        }
+    </script>
+    
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
     
-    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_FIX_V2" defer></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=PWA_RESTORE" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] z-[60] hidden opacity-0"></div>
+
+    <div id="pwa-install-card" class="hidden fixed bottom-20 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-96 bg-white p-4 rounded-2xl shadow-2xl border border-blue-100 z-50 items-center gap-4 animate-fade-in-up">
+        <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-2xl shadow-lg shrink-0">
+            <i class="fas fa-water"></i>
+        </div>
+        <div class="flex-grow">
+            <h3 class="font-bold text-slate-800 text-sm">Instalar AquaNet</h3>
+            <p class="text-xs text-slate-500">Acesse mais rápido direto da tela inicial.</p>
+        </div>
+        <button id="pwa-install-btn" class="bg-blue-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors shadow-md">Instalar</button>
+        <button id="pwa-close-btn" class="text-slate-400 hover:text-slate-600 p-1"><i class="fas fa-times"></i></button>
+    </div>
 
     <aside id="mobile-drawer" class="md:hidden fixed top-0 left-0 w-[85%] max-w-xs h-full bg-white z-[70] drawer-closed shadow-2xl overflow-y-auto flex flex-col rounded-r-3xl">
         <div class="p-6 flex items-center justify-between">
@@ -225,7 +248,7 @@
             </div>
 
             <div class="mt-6 text-center">
-                <p class="text-xs text-slate-400 font-medium">© 2026 AquaNet <br> Feito com 💙 </p>
+                <p class="text-xs text-slate-400 font-medium">© 2026 AquaNet <br> Feito com 💙 por Gabriel Cosentino</p>
             </div>
         </aside>
     </div>
