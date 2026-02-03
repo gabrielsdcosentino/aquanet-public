@@ -1,10 +1,25 @@
 // ============================================================================
-// AQUANET SCRIPT - VERSÃO CORRIGIDA E REFORÇADA (V4)
+// AQUANET SCRIPT - VERSÃO V5 (MATADOR DE CACHE)
 // ============================================================================
-console.log(">>> SCRIPT AQUANET INICIADO V4 <<<");
+console.log(">>> SCRIPT AQUANET V5 - Tentando limpar Service Workers... <<<");
+
+// 1. FORÇAR REMOÇÃO DE SERVICE WORKERS ANTIGOS
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+            console.log('🚨 Service Worker encontrado. Desinstalando para limpar cache:', registration);
+            registration.unregister();
+        }
+        if(registrations.length > 0) {
+            console.log("♻️ SW removido. Recarregando página em 1s...");
+            // Opcional: Recarregar a página automaticamente uma vez para garantir a limpeza
+            // setTimeout(() => window.location.reload(), 1000); 
+        }
+    });
+}
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log("DOM Completamente Carregado. Iniciando listeners...");
+    console.log("DOM Completamente Carregado. Listeners ativos.");
 });
 
 // Helper para pegar o token CSRF
@@ -19,51 +34,34 @@ document.addEventListener('htmx:configRequest', function(evt) {
 });
 
 // ============================================================================
-// 1. GERENCIADOR DE CLIQUES (UI e Interações)
+// 2. GERENCIADOR DE CLIQUES (UI e Interações)
 // ============================================================================
 document.addEventListener('click', function(event) {
     
-    // --- A. TOGGLE DE RESPOSTAS (Ver X respostas) ---
+    // --- A. TOGGLE DE RESPOSTAS ---
     const toggleBtn = event.target.closest('.toggle-replies-btn');
     if (toggleBtn) {
         const targetId = toggleBtn.dataset.target;
         const container = document.getElementById(targetId);
-        if (container) {
-            container.classList.toggle('hidden');
-            console.log(`Toggle respostas: ${targetId}`);
-        }
+        if (container) container.classList.toggle('hidden');
     }
 
-    // --- B. BOTÃO RESPONDER (Abre o formulário) ---
+    // --- B. BOTÃO RESPONDER ---
     const replyBtn = event.target.closest('.reply-button');
     if (replyBtn) {
         event.preventDefault();
         event.stopPropagation();
-
         const commentId = replyBtn.dataset.commentId;
-        console.log(`Botão Responder Clicado. ID: ${commentId}`);
-
-        // Procura o container principal do comentário
         const container = document.getElementById(`comment-${commentId}`);
         
         if (container) {
-            // Procura o formulário DENTRO desse container
             const form = container.querySelector('.reply-form');
             if (form) {
-                // Fecha outros formulários abertos para limpar a tela
-                document.querySelectorAll('.reply-form').forEach(f => f.classList.add('hidden'));
-                
-                // Abre o formulário deste comentário
-                form.classList.remove('hidden');
-                
-                // Foca no campo de texto
+                document.querySelectorAll('.reply-form').forEach(f => f.classList.add('hidden')); // Fecha outros
+                form.classList.remove('hidden'); // Abre este
                 const area = form.querySelector('textarea');
                 if (area) setTimeout(() => area.focus(), 100);
-            } else {
-                console.error("Erro: Formulário .reply-form não encontrado dentro do container.");
             }
-        } else {
-            console.error(`Erro: Container #comment-${commentId} não encontrado.`);
         }
     }
     
@@ -76,54 +74,46 @@ document.addEventListener('click', function(event) {
 });
 
 // ============================================================================
-// 2. INTERCEPTAÇÃO DE FORMULÁRIOS (LIKES E COMENTÁRIOS)
+// 3. INTERCEPTAÇÃO DE FORMULÁRIOS (BLINDAGEM CONTRA RELOAD)
 // ============================================================================
 document.addEventListener('submit', function(e) {
     const form = e.target;
     
-    // --- LÓGICA DE LIKE (BLINDAGEM CONTRA RELOAD) ---
+    // --- LÓGICA DE LIKE ---
     if (form.classList.contains('like-form')) {
-        e.preventDefault(); // PARE! Não recarregue a página.
+        e.preventDefault(); // IMPEDE RELOAD
         e.stopImmediatePropagation();
         
-        console.log("Like interceptado via JS");
-
+        console.log("Like interceptado via JS (V5)");
         const btn = form.querySelector('button[type="submit"]');
         const icon = btn.querySelector('i');
         const countSpan = btn.querySelector('.like-count-text');
         
-        // Feedback Visual Imediato (Troca o ícone na hora)
+        // UI Otimista
         if (icon) {
             if (icon.classList.contains('fas')) { 
-                icon.classList.replace('fas', 'far'); // Descurtiu
+                icon.classList.replace('fas', 'far'); 
                 btn.classList.remove('text-blue-600', 'font-bold');
             } else { 
-                icon.classList.replace('far', 'fas'); // Curtiu
+                icon.classList.replace('far', 'fas'); 
                 btn.classList.add('text-blue-600', 'font-bold');
             }
         }
 
-        // Envia para o servidor em segundo plano
         fetch(form.action, {
             method: 'POST',
-            headers: { 
-                'X-CSRFToken': getCsrfToken(), 
-                'X-Requested-With': 'XMLHttpRequest'
-            }
+            headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(res => res.json())
         .then(data => {
-            if (data.success && countSpan) {
-                // Atualiza o número se o servidor confirmar
-                countSpan.innerText = data.like_count > 0 ? data.like_count : '';
-            }
+            if (data.success && countSpan) countSpan.innerText = data.like_count > 0 ? data.like_count : '';
         })
-        .catch(err => console.error("Erro no like:", err));
+        .catch(err => console.error("Erro Like:", err));
         
         return false;
     }
 
-    // --- LÓGICA DE ENVIO DE COMENTÁRIO ---
+    // --- LÓGICA DE COMENTÁRIOS ---
     if (form.id === 'comment-form' || form.classList.contains('reply-form')) {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -132,31 +122,21 @@ document.addEventListener('submit', function(e) {
         if (btn) {
             btn.dataset.original = btn.innerHTML;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Enviando...';
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>';
         }
 
         fetch(form.action, {
             method: 'POST',
-            headers: { 
-                'X-CSRFToken': getCsrfToken(),
-                'X-Requested-With': 'XMLHttpRequest'
-            },
+            headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
             body: new FormData(form)
         })
         .then(res => {
-            if (res.ok) {
-                window.location.reload(); // Recarrega para mostrar o novo comentário
-            } else {
-                throw new Error('Erro na resposta do servidor');
-            }
+            if (res.ok) window.location.reload();
+            else throw new Error('Erro servidor');
         })
         .catch(err => {
-            console.error(err);
-            alert("Erro ao enviar comentário. Tente novamente.");
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = btn.dataset.original;
-            }
+            alert("Erro ao enviar.");
+            if (btn) { btn.disabled = false; btn.innerHTML = btn.dataset.original; }
         });
         
         return false;
@@ -164,56 +144,29 @@ document.addEventListener('submit', function(e) {
 });
 
 // ============================================================================
-// 3. UI GLOBAIS (MENU, BUSCA, IMAGENS)
+// 4. UI GLOBAIS
 // ============================================================================
-
 window.toggleMobileSearch = function() {
-    const searchBar = document.getElementById('mobile-search-bar');
-    if (searchBar) {
-        searchBar.classList.toggle('hidden');
-        if (!searchBar.classList.contains('hidden')) {
-            const input = searchBar.querySelector('input');
-            if(input) input.focus();
-        }
-    }
+    const sb = document.getElementById('mobile-search-bar');
+    if(sb) { sb.classList.toggle('hidden'); if(!sb.classList.contains('hidden')) sb.querySelector('input')?.focus(); }
 };
 
 window.closeDrawer = function() {
-    const drawer = document.getElementById('mobile-drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    if (drawer) {
-        drawer.classList.remove('drawer-open');
-        drawer.classList.add('drawer-closed');
-    }
-    if (overlay) overlay.classList.add('hidden');
+    document.getElementById('mobile-drawer')?.classList.remove('drawer-open');
+    document.getElementById('mobile-drawer')?.classList.add('drawer-closed');
+    document.getElementById('drawer-overlay')?.classList.add('hidden');
     document.body.style.overflow = 'visible';
 };
 
 window.toggleDrawer = function() {
-    const drawer = document.getElementById('mobile-drawer');
-    const overlay = document.getElementById('drawer-overlay');
-    if (!drawer) return;
-    
-    if (drawer.classList.contains('drawer-closed')) {
-        drawer.classList.remove('drawer-closed');
-        drawer.classList.add('drawer-open');
-        if (overlay) overlay.classList.remove('hidden');
-        document.body.style.overflow = 'hidden'; 
-    } else {
-        closeDrawer();
-    }
+    const d = document.getElementById('mobile-drawer');
+    const o = document.getElementById('drawer-overlay');
+    if(!d) return;
+    if(d.classList.contains('drawer-closed')) {
+        d.classList.remove('drawer-closed'); d.classList.add('drawer-open');
+        o?.classList.remove('hidden'); document.body.style.overflow = 'hidden';
+    } else { closeDrawer(); }
 };
 
-// Loading bar do HTMX
-document.addEventListener('htmx:beforeRequest', function(evt) {
-    const loader = document.getElementById('page-loader');
-    if(loader) { loader.style.width = '30%'; loader.style.opacity = '1'; }
-    closeDrawer();
-});
-document.addEventListener('htmx:afterSwap', function(evt) {
-    const loader = document.getElementById('page-loader');
-    if(loader) {
-        loader.style.width = '100%';
-        setTimeout(() => { loader.style.opacity = '0'; loader.style.width = '0%'; }, 300);
-    }
-});
+document.addEventListener('htmx:beforeRequest', () => { document.getElementById('page-loader').style.width='30%'; document.getElementById('page-loader').style.opacity='1'; closeDrawer(); });
+document.addEventListener('htmx:afterSwap', () => { const l=document.getElementById('page-loader'); l.style.width='100%'; setTimeout(()=>{l.style.opacity='0';l.style.width='0%'},300); });
