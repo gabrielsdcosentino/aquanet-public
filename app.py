@@ -304,6 +304,7 @@ class User(db.Model, UserMixin):
     def leave_community(self,community):
         if self.is_member(community): self.joined_communities.remove(community); db.session.commit()
     def is_member(self,community): return community in self.joined_communities
+badges = db.relationship('Badge', secondary=user_badges, backref='owners', lazy='subquery')
     
 class Community(db.Model):
     id = db.Column(db.Integer, primary_key=True); slug = db.Column(db.String(100), unique=True, nullable=False)
