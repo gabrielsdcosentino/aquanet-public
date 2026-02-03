@@ -163,7 +163,7 @@ community_members = db.Table(
     db.Column('community_id',db.Integer,db.ForeignKey('community.id',ondelete='CASCADE'),primary_key=True)
 )
 
-# --- TABELA DE MEDALHAS DO USUÁRIO (NOVO) ---
+# --- TABELA DE MEDALHAS DO USUÁRIO ---
 user_badges = db.Table(
     'user_badges',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
@@ -252,7 +252,7 @@ def send_reset_email(user, mail_app):
     try: mail_app.send(msg)
     except Exception as e: print(f"ERRO EMAIL: {e}")
 
-# --- MODELO DE MEDALHAS (NOVO) ---
+# --- MODELO DE MEDALHAS ---
 class Badge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     slug = db.Column(db.String(50), unique=True, nullable=False) # ex: cientista-1
@@ -281,7 +281,7 @@ class User(db.Model, UserMixin):
         'User', secondary=followers_table, primaryjoin=(followers_table.c.follower_id==id),
         secondaryjoin=(followers_table.c.followed_id==id), backref=db.backref('followers',lazy='dynamic'), lazy='dynamic'
     )
-    # --- RELAÇÃO DE MEDALHAS (NOVO) ---
+    # --- RELAÇÃO DE MEDALHAS ---
     badges = db.relationship('Badge', secondary=user_badges, backref='owners', lazy='subquery')
 
     def get_reset_token(self,expires_sec=1800):
@@ -433,7 +433,7 @@ def send_push_notification(user, title, body, url='/'):
                 db.session.commit()
             print(f"Erro Push: {ex}")
 
-# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL E PUSH ---
+# --- FUNÇÃO CREATE_NOTIFICATION COM EMAIL E PUSH (ATUALIZADA) ---
 def create_notification(recipient, action, sender=None, post=None, comment=None):
     if sender and recipient == sender: return
     recipient_id = recipient.id if recipient else None
@@ -453,16 +453,20 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
         notif = Notification(recipient_id=recipient_id, sender_id=sender_id, action=action, post_id=post.id if post else None, comment_id=comment.id if comment else None, count=1)
         db.session.add(notif); db.session.commit()
 
-    msg_text = f"@{sender.username} interagiu com você"
-    if action == 'mention': msg_text = f"@{sender.username} te marcou em um post"
-    elif action == 'comment': msg_text = f"@{sender.username} comentou no seu post"
-    elif action == 'reply': msg_text = f"@{sender.username} respondeu seu comentário"
-    elif action == 'follow': msg_text = f"@{sender.username} começou a te seguir"
-    elif action == 'like_post': msg_text = f"@{sender.username} curtiu seu post"
-    elif action == 'like_comment': msg_text = f"@{sender.username} curtiu seu comentário"
+    msg_text = "Nova interação"
+    sender_name = sender.username if sender else "AquaNet"
+    
+    if action == 'mention': msg_text = f"@{sender_name} te marcou em um post"
+    elif action == 'comment': msg_text = f"@{sender_name} comentou no seu post"
+    elif action == 'reply': msg_text = f"@{sender_name} respondeu seu comentário"
+    elif action == 'follow': msg_text = f"@{sender_name} começou a te seguir"
+    elif action == 'like_post': msg_text = f"@{sender_name} curtiu seu post"
+    elif action == 'like_comment': msg_text = f"@{sender_name} curtiu seu comentário"
+    elif action == 'badge': msg_text = f"🏅 Você ganhou a medalha {comment.name}!" # Hack: usando comment para passar o objeto medalha
 
-    target_url = url_for('post_detail', post_id=post.id, _external=True) if post else url_for('profile', username=sender.username, _external=True)
-
+    target_url = url_for('profile', username=recipient.username, _external=True)
+    if post: target_url = url_for('post_detail', post_id=post.id, _external=True)
+    
     try:
         send_push_notification(recipient, "AquaNet", msg_text, target_url)
     except Exception as e:
@@ -475,10 +479,10 @@ def create_notification(recipient, action, sender=None, post=None, comment=None)
             <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                 <h2 style="color: #2563EB; margin-bottom: 20px;">Olá {recipient.username},</h2>
                 <p style="font-size: 16px; line-height: 1.5;">
-                    <b>@{sender.username}</b> interagiu com você no AquaNet:
+                    <b>@{sender_name}</b> interagiu com você no AquaNet:
                 </p>
                 <div style="background-color: #f9fafb; padding: 15px; border-left: 4px solid #2563EB; margin: 20px 0; font-style: italic; color: #555;">
-                    "{comment.text if comment else post.content if post else '...'}"
+                    "{comment.text if comment and hasattr(comment, 'text') else post.content if post else '...'}"
                 </div>
                 <div style="text-align: center; margin-top: 30px;">
                     <a href="{target_url}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">Ver Publicação</a>
@@ -501,16 +505,17 @@ def process_mentions(content, sender, post, comment=None):
         if user and user != sender:
             create_notification(user, 'mention', sender, post, comment)
 
-# --- SISTEMA DE GAMIFICAÇÃO (NOVO) ---
+# --- SISTEMA DE GAMIFICAÇÃO ---
 def assign_badge(user, slug):
     badge = Badge.query.filter_by(slug=slug).first()
     if badge and badge not in user.badges:
         user.badges.append(badge)
         db.session.commit()
-        # Aqui você poderia chamar create_notification para avisar o usuário
+        # Notifica o usuário da conquista (usando o badge no lugar do comentário para passar o nome)
+        create_notification(recipient=user, action='badge', sender=None, comment=badge)
 
 def check_badges(user):
-    # 1. CIENTISTA (Logs de Parâmetros)
+    # 1. BIÓLOGO (Logs de Parâmetros) - Atualizado
     log_count = ParameterLog.query.join(Aquarium).filter(Aquarium.user_id == user.id).count()
     if log_count >= 1: assign_badge(user, 'cientista-iniciante')
     if log_count >= 10: assign_badge(user, 'cientista-dedicado')
@@ -705,7 +710,9 @@ def delete_community(community_slug):
 def profile(username):
     user = User.query.filter_by(username=username).first_or_404()
     posts = Post.query.filter_by(author=user).order_by(Post.timestamp.desc()).all()
-    return render_template('profile.html', user=user, posts=posts, popular_communities=get_popular_communities())
+    # PASSAR TODAS AS MEDALHAS PARA O TEMPLATE
+    all_badges = Badge.query.all()
+    return render_template('profile.html', user=user, posts=posts, popular_communities=get_popular_communities(), all_badges=all_badges)
 
 @app.route('/edit_profile', methods=['GET', 'POST'])
 @login_required
@@ -1036,15 +1043,16 @@ def manifest(): return send_from_directory(app.static_folder, 'manifest.json')
 @app.route('/icon-512.png')
 def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 
-# --- ROTA PARA INICIAR AS MEDALHAS ---
+# --- ROTA PARA INICIAR/ATUALIZAR AS MEDALHAS ---
 @app.route('/init_badges')
 @login_required
 def init_badges():
     if current_user.username != 'bielcosen14': return "Acesso negado"
     
+    # Atualizado com novos nomes (Biólogo)
     badges_data = [
-        {'slug': 'cientista-iniciante', 'name': 'Cientista Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
-        {'slug': 'cientista-dedicado', 'name': 'Cientista Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'purple'},
+        {'slug': 'cientista-iniciante', 'name': 'Biólogo Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
+        {'slug': 'cientista-dedicado', 'name': 'Biólogo Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'purple'},
         {'slug': 'tagarela-junior', 'name': 'Tagarela', 'desc': 'Fez 5 comentários.', 'icon': 'fas fa-comments', 'color': 'blue'},
         {'slug': 'tagarela-senior', 'name': 'Debatedor', 'desc': 'Fez 50 comentários.', 'icon': 'fas fa-bullhorn', 'color': 'orange'},
         {'slug': 'criador-conteudo', 'name': 'Criador', 'desc': 'Fez a primeira postagem.', 'icon': 'fas fa-pen-nib', 'color': 'red'},
@@ -1052,24 +1060,19 @@ def init_badges():
     ]
     
     for b in badges_data:
-        if not Badge.query.filter_by(slug=b['slug']).first():
+        badge = Badge.query.filter_by(slug=b['slug']).first()
+        if not badge:
+            # Cria se não existir
             db.session.add(Badge(slug=b['slug'], name=b['name'], description=b['desc'], icon=b['icon'], color=b['color']))
+        else:
+            # Atualiza se já existir (para mudar o nome de Cientista para Biólogo)
+            badge.name = b['name']
+            badge.description = b['desc']
+            badge.icon = b['icon']
+            badge.color = b['color']
     
     db.session.commit()
-    return "Medalhas criadas com sucesso!"
-
-@app.route('/update_all_badges')
-@login_required
-def update_all_badges():
-    # Só você pode rodar isso
-    if current_user.username != 'bielcosen14': 
-        return "Acesso negado", 403
-    
-    users = User.query.all()
-    for user in users:
-        check_badges(user)
-    
-    return f"Sucesso! Medalhas verificadas e entregues para {len(users)} usuários."
+    return "Medalhas atualizadas com sucesso (Cientista virou Biólogo)!"
 
 if __name__ == '__main__':
     app.run(debug=False)
