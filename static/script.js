@@ -1,67 +1,63 @@
 // ============================================================================
-// AQUANET SCRIPT - V7 (PWA INTELIGENTE + CORREÇÕES)
+// AQUANET SCRIPT - V8 (PWA BLINDADO + CORREÇÕES UI)
 // ============================================================================
-console.log(">>> SCRIPT AQUANET V7 <<<");
+console.log(">>> SCRIPT AQUANET V8 <<<");
 
 let deferredPrompt; 
 
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- LÓGICA DE INSTALAÇÃO PWA INTELIGENTE ---
+    // --- LÓGICA DE INSTALAÇÃO PWA ---
     const installCard = document.getElementById('pwa-install-card');
     const installBtn = document.getElementById('pwa-install-btn');
     const closeBtn = document.getElementById('pwa-close-btn');
 
-    // Verifica se o usuário já recusou ou instalou antes
-    const pwaDismissed = localStorage.getItem('aquanet_pwa_dismissed');
-    const pwaInstalled = localStorage.getItem('aquanet_pwa_installed');
+    // Verifica status no LocalStorage
+    const isDismissed = localStorage.getItem('aquanet_pwa_dismissed') === 'true';
+    const isInstalled = localStorage.getItem('aquanet_pwa_installed') === 'true';
 
-    // 1. O navegador avisa que pode instalar
+    // Se já instalou ou recusou, remove o card do HTML imediatamente para garantir
+    if ((isDismissed || isInstalled) && installCard) {
+        installCard.remove();
+    }
+
     window.addEventListener('beforeinstallprompt', (e) => {
-        e.preventDefault(); // Impede barra nativa feia
+        e.preventDefault();
         deferredPrompt = e;
         
-        // Só mostra se o usuário não recusou antes E não instalou
-        if (!pwaDismissed && !pwaInstalled && installCard) {
-            setTimeout(() => {
+        // Verificação dupla antes de mostrar
+        if (!localStorage.getItem('aquanet_pwa_dismissed') && !localStorage.getItem('aquanet_pwa_installed')) {
+            if(installCard) {
                 installCard.classList.remove('hidden');
-                installCard.classList.add('flex');
-            }, 5000); // Espera 5s para não assustar o usuário
+                installCard.classList.add('flex'); // Mostra flexbox
+            }
         }
     });
 
-    // 2. Clique no Instalar
     if (installBtn) {
         installBtn.addEventListener('click', async () => {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                console.log(`Resultado: ${outcome}`);
-                
                 if (outcome === 'accepted') {
                     localStorage.setItem('aquanet_pwa_installed', 'true');
                 }
-                
                 deferredPrompt = null;
-                installCard.classList.add('hidden');
+                if(installCard) installCard.classList.add('hidden');
             }
         });
     }
 
-    // 3. Clique no Fechar (X) - "Não me mostre mais"
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            // Salva na memória para não mostrar mais
             localStorage.setItem('aquanet_pwa_dismissed', 'true');
-            installCard.classList.add('hidden');
+            if(installCard) installCard.classList.add('hidden');
         });
     }
 
-    // 4. Detectar se foi instalado com sucesso
     window.addEventListener('appinstalled', () => {
         localStorage.setItem('aquanet_pwa_installed', 'true');
-        if (installCard) installCard.classList.add('hidden');
-        console.log('AquaNet instalado com sucesso!');
+        if(installCard) installCard.classList.add('hidden');
     });
 });
 
@@ -120,11 +116,12 @@ document.addEventListener('submit', function(e) {
         const countSpan = btn.querySelector('.like-count-text');
         
         if (icon) {
+            // Lógica para alternar ícone (Joinha)
             if (icon.classList.contains('fas')) { 
-                icon.classList.replace('fas', 'far'); 
+                icon.classList.replace('fas', 'far'); // Descurtiu
                 btn.classList.remove('text-blue-600', 'font-bold');
             } else { 
-                icon.classList.replace('far', 'fas'); 
+                icon.classList.replace('far', 'fas'); // Curtiu
                 btn.classList.add('text-blue-600', 'font-bold');
             }
         }
