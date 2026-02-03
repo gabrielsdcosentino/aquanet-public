@@ -1058,5 +1058,18 @@ def init_badges():
     db.session.commit()
     return "Medalhas criadas com sucesso!"
 
+@app.route('/update_all_badges')
+@login_required
+def update_all_badges():
+    # Só você pode rodar isso
+    if current_user.username != 'bielcosen14': 
+        return "Acesso negado", 403
+    
+    users = User.query.all()
+    for user in users:
+        check_badges(user)
+    
+    return f"Sucesso! Medalhas verificadas e entregues para {len(users)} usuários."
+
 if __name__ == '__main__':
     app.run(debug=False)
