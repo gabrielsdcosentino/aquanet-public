@@ -252,6 +252,14 @@ def send_reset_email(user, mail_app):
     except Exception as e: print(f"ERRO EMAIL: {e}")
 
 # MODELS
+class Badge(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    slug = db.Column(db.String(50), unique=True, nullable=False) # ex: cientista-1
+    name = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(200), nullable=False)
+    icon = db.Column(db.String(50), nullable=False) # Classe do FontAwesome
+    color = db.Column(db.String(20), default='blue') # blue, yellow, red...
+
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer,primary_key=True)
     username = db.Column(db.String(80),unique=True,nullable=False)
