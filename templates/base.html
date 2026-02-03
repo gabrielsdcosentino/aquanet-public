@@ -48,11 +48,11 @@
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
     
-    {# Carrega o script completo com versão nova #}
-    <script src="{{ url_for('static', filename='script.js') }}?v=FULL_RESTORE_V1" defer></script>
+    {# Carrega o script completo #}
+    <script src="{{ url_for('static', filename='script.js') }}?v=FULL_RESTORE_V2" defer></script>
 </head>
 
-<body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-boost="true" hx-target="body" hx-swap="outerHTML show:top">
+<body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-target="body" hx-swap="outerHTML show:top">
     
     <div id="page-loader"></div>
     <div id="drawer-overlay" onclick="toggleDrawer()" class="fixed inset-0 bg-slate-900/60 backdrop-blur-[2px] z-[60] hidden opacity-0"></div>
@@ -155,6 +155,10 @@
                     <li><a href="{{ url_for('home') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-globe w-6"></i> Global</a></li>
                     <li><a href="{{ url_for('feed') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-rss w-6"></i> Seguindo</a></li>
                     <li><a href="{{ url_for('my_aquariums') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-fish w-6"></i> Meus Aquários</a></li>
+                    
+                    <li><a href="{{ url_for('encyclopedia') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-book w-6"></i> Enciclopédia</a></li>
+                    <li><a href="{{ url_for('calculators') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-calculator w-6"></i> Ferramentas</a></li>
+                    
                     <li><a href="{{ url_for('communities_directory') }}" class="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-600 rounded-2xl font-bold transition-all"><i class="fas fa-users w-6"></i> Comunidades</a></li>
                 </ul>
             </div>
@@ -168,7 +172,33 @@
         </main>
         
         <aside class="md:col-span-3 hidden md:block h-fit sticky top-24">
-             </aside>
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-slate-100">
+                <h3 class="font-bold text-slate-800 mb-4 px-2 flex items-center gap-2"><i class="fas fa-fire text-orange-500"></i> Populares</h3>
+                {% if popular_communities %}
+                    <ul class="space-y-3">
+                        {% for community in popular_communities %}
+                        <li>
+                            <a href="{{ url_for('community_feed', community_slug=community.slug) }}" class="flex items-center justify-between group p-2 hover:bg-slate-50 rounded-xl transition-all">
+                                <div class="flex items-center gap-3 overflow-hidden">
+                                    <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                        {{ community.name[:2].upper() }}
+                                    </div>
+                                    <span class="text-slate-600 group-hover:text-blue-600 font-medium truncate text-sm">{{ community.name }}</span>
+                                </div>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-sm text-slate-400 px-2">Nenhuma comunidade ainda.</p>
+                {% endif %}
+                <a href="{{ url_for('communities_directory') }}" class="block mt-4 text-center text-xs font-bold text-blue-600 hover:text-blue-700 bg-blue-50 py-2 rounded-lg transition-colors">Ver todas</a>
+            </div>
+
+            <div class="mt-6 text-center">
+                <p class="text-xs text-slate-400 font-medium">© 2026 AquaNet <br> Feito com 💙 por Gabriel Cosentino</p>
+            </div>
+        </aside>
     </div>
     {% block scripts %}{% endblock %}
 
