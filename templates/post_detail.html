@@ -24,11 +24,11 @@
                     <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" class="like-form inline-flex" hx-boost="false">
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                          <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
-                            <span class="mr-1">{{ 'Curtido' if current_user.has_liked_comment(comment) else 'Curtir' }}</span>
-                            {% if comment.likes|length > 0 %}
-                                <i class="fas fa-thumbs-up text-[10px] mr-1"></i>
-                                <span class="like-count-text">{{ comment.likes|length }}</span>
-                            {% endif %}
+                            <i class="{{ 'fas' if current_user.has_liked_comment(comment) else 'far' }} fa-thumbs-up text-[10px] mr-1"></i>
+                            
+                            <span class="like-count-text">{{ comment.likes|length if comment.likes|length > 0 else '' }}</span>
+                            
+                            <span class="ml-1">{{ 'Curtido' if current_user.has_liked_comment(comment) else 'Curtir' }}</span>
                          </button>
                     </form>
 
@@ -109,7 +109,6 @@
             </div>
         </div>
         <hr class="border-gray-100 h-1 bg-gray-50">
-        
         <div class="bg-white p-4 border-b border-gray-100">
              <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" id="comment-form" class="flex items-start space-x-3" hx-boost="false">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -122,7 +121,6 @@
                 </div>
             </form>
         </div>
-        
         <div class="bg-white px-4 pb-4">
             <h3 class="text-sm font-bold text-gray-700 mt-4 mb-2">Comentários</h3>
             <div id="comment-list">
