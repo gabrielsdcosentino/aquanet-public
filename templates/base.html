@@ -34,21 +34,10 @@
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
     </style>
 
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    console.log('Limpando SW antigo:', registration);
-                    registration.unregister();
-                }
-            });
-        }
-    </script>
-    
     <link rel="apple-touch-icon" href="{{ url_for('app_icon') }}?v=4">
     <link rel="icon" type="image/png" href="{{ url_for('app_icon') }}?v=4">
     
-    <script src="{{ url_for('static', filename='script.js') }}?v=NO_SW_V5" defer></script>
+    <script src="{{ url_for('static', filename='script.js') }}?v=FINAL_FIX" defer></script>
 </head>
 
 <body class="bg-slate-50 text-slate-800 font-sans pb-24 md:pb-0 selection:bg-blue-100 selection:text-blue-900" hx-target="body" hx-swap="outerHTML show:top">
