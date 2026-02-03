@@ -1070,47 +1070,61 @@ def manifest(): return send_from_directory(app.static_folder, 'manifest.json')
 @app.route('/icon-512.png')
 def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 
-# --- ROTA PARA INICIAR AS MEDALHAS ---
-@app.route('/init_badges')
+# --- ROTA PARA CORRIGIR E ATUALIZAR MEDALHAS ---
+@app.route('/fix_badges')
 @login_required
 def init_badges():
     if current_user.username != 'bielcosen14': return "Acesso negado"
     
-    badges_data = [
-        {'slug': 'aquarista-iniciante', 'name': 'Aquarista Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
-        {'slug': 'aquarista-dedicado', 'name': 'Aquarista Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'teal'},
-        {'slug': 'aquarista-master', 'name': 'Aquarista Master', 'desc': 'Registrou parâmetros 50 vezes.', 'icon': 'fas fa-dna', 'color': 'purple'},
-        
+    # 1. CORRIGIR NOMES ANTIGOS (Quem tem "Cientista" vira "Aquarista")
+    # Mantemos o slug antigo (cientista-...) mas mudamos o nome visível
+    corrections = {
+        'cientista-iniciante': {'name': 'Aquarista Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
+        'cientista-dedicado': {'name': 'Aquarista Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'teal'},
+        'cientista-master': {'name': 'Aquarista Master', 'desc': 'Registrou parâmetros 50 vezes.', 'icon': 'fas fa-dna', 'color': 'purple'}
+    }
+    
+    msg = []
+    
+    # Aplica as correções nas medalhas antigas
+    for slug, data in corrections.items():
+        badge = Badge.query.filter_by(slug=slug).first()
+        if badge:
+            badge.name = data['name']
+            badge.description = data['desc']
+            badge.icon = data['icon']
+            badge.color = data['color']
+            msg.append(f"Atualizado: {slug} -> {data['name']}")
+
+    # 2. LIMPAR DUPLICATAS (Se eu criei slugs 'aquarista-...' por engano, apagar)
+    # Isso evita ter duas medalhas iguais (uma cientista renomeada e uma aquarista nova)
+    duplicates = ['aquarista-iniciante', 'aquarista-dedicado', 'aquarista-master']
+    for dup in duplicates:
+        bad_badge = Badge.query.filter_by(slug=dup).first()
+        if bad_badge:
+            # Antes de apagar, verifique se alguém tem ela (opcional, mas seguro apagar se foi erro recente)
+            db.session.delete(bad_badge)
+            msg.append(f"Removido duplicata: {dup}")
+
+    # 3. CRIAR AS NOVAS (Se ainda não existirem)
+    new_badges = [
         {'slug': 'tagarela-junior', 'name': 'Tagarela', 'desc': 'Fez 5 comentários.', 'icon': 'fas fa-comments', 'color': 'blue'},
         {'slug': 'tagarela-senior', 'name': 'Debatedor', 'desc': 'Fez 50 comentários.', 'icon': 'fas fa-bullhorn', 'color': 'orange'},
-        
         {'slug': 'criador-conteudo', 'name': 'Criador', 'desc': 'Fez a primeira postagem.', 'icon': 'fas fa-pen-nib', 'color': 'red'},
         {'slug': 'influenciador', 'name': 'Influenciador', 'desc': 'Fez 20 postagens.', 'icon': 'fas fa-star', 'color': 'yellow'},
-        
         {'slug': 'fotografo', 'name': 'Fotógrafo', 'desc': 'Postou 5 fotos.', 'icon': 'fas fa-camera', 'color': 'pink'},
-        
         {'slug': 'colecionador', 'name': 'Colecionador', 'desc': 'Tem 3 ou mais aquários.', 'icon': 'fas fa-layer-group', 'color': 'cyan'},
-        
         {'slug': 'popular', 'name': 'Popular', 'desc': 'Tem 10 seguidores.', 'icon': 'fas fa-crown', 'color': 'indigo'},
-        
         {'slug': 'veterano', 'name': 'Veterano', 'desc': 'Membro fundador.', 'icon': 'fas fa-medal', 'color': 'gray'},
     ]
     
-    count = 0
-    for b in badges_data:
-        badge = Badge.query.filter_by(slug=b['slug']).first()
-        if not badge:
+    for b in new_badges:
+        if not Badge.query.filter_by(slug=b['slug']).first():
             db.session.add(Badge(slug=b['slug'], name=b['name'], description=b['desc'], icon=b['icon'], color=b['color']))
-            count += 1
-        else:
-            # Atualiza se já existir (para garantir os nomes novos)
-            badge.name = b['name']
-            badge.description = b['desc']
-            badge.icon = b['icon']
-            badge.color = b['color']
-    
+            msg.append(f"Criado novo: {b['name']}")
+            
     db.session.commit()
-    return f"Sucesso! {count} medalhas novas criadas e as antigas atualizadas."
+    return f"Limpeza concluída:<br>" + "<br>".join(msg)
 
 @app.route('/update_all_badges')
 @login_required
