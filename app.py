@@ -166,6 +166,12 @@ community_members = db.Table(
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+# --- TABELA DE MEDALHAS DO USUÁRIO ---
+user_badges = db.Table(
+    'user_badges',
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
+    db.Column('badge_id', db.Integer, db.ForeignKey('badge.id', ondelete='CASCADE'), primary_key=True)
+)
 
 # UTILS
 _cache_popular = {'data': [], 'timestamp': 0}
