@@ -163,15 +163,16 @@ community_members = db.Table(
     db.Column('community_id',db.Integer,db.ForeignKey('community.id',ondelete='CASCADE'),primary_key=True)
 )
 
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
-# --- TABELA DE MEDALHAS DO USUÁRIO ---
+# --- TABELA DE MEDALHAS DO USUÁRIO (NOVO) ---
 user_badges = db.Table(
     'user_badges',
     db.Column('user_id', db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True),
     db.Column('badge_id', db.Integer, db.ForeignKey('badge.id', ondelete='CASCADE'), primary_key=True)
 )
+
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
 
 # UTILS
 _cache_popular = {'data': [], 'timestamp': 0}
@@ -251,7 +252,7 @@ def send_reset_email(user, mail_app):
     try: mail_app.send(msg)
     except Exception as e: print(f"ERRO EMAIL: {e}")
 
-# MODELS
+# --- MODELO DE MEDALHAS (NOVO) ---
 class Badge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     slug = db.Column(db.String(50), unique=True, nullable=False) # ex: cientista-1
@@ -260,6 +261,7 @@ class Badge(db.Model):
     icon = db.Column(db.String(50), nullable=False) # Classe do FontAwesome
     color = db.Column(db.String(20), default='blue') # blue, yellow, red...
 
+# MODELS
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer,primary_key=True)
     username = db.Column(db.String(80),unique=True,nullable=False)
@@ -279,6 +281,9 @@ class User(db.Model, UserMixin):
         'User', secondary=followers_table, primaryjoin=(followers_table.c.follower_id==id),
         secondaryjoin=(followers_table.c.followed_id==id), backref=db.backref('followers',lazy='dynamic'), lazy='dynamic'
     )
+    # --- RELAÇÃO DE MEDALHAS (NOVO) ---
+    badges = db.relationship('Badge', secondary=user_badges, backref='owners', lazy='subquery')
+
     def get_reset_token(self,expires_sec=1800):
         s = Serializer(current_app.config['SECRET_KEY']); return s.dumps({'user_id': self.id})
     @staticmethod
@@ -304,7 +309,6 @@ class User(db.Model, UserMixin):
     def leave_community(self,community):
         if self.is_member(community): self.joined_communities.remove(community); db.session.commit()
     def is_member(self,community): return community in self.joined_communities
-badges = db.relationship('Badge', secondary=user_badges, backref='owners', lazy='subquery')
     
 class Community(db.Model):
     id = db.Column(db.Integer, primary_key=True); slug = db.Column(db.String(100), unique=True, nullable=False)
@@ -497,16 +501,18 @@ def process_mentions(content, sender, post, comment=None):
         if user and user != sender:
             create_notification(user, 'mention', sender, post, comment)
 
-with app.app_context():
-    db.create_all()
+# --- SISTEMA DE GAMIFICAÇÃO (NOVO) ---
+def assign_badge(user, slug):
+    badge = Badge.query.filter_by(slug=slug).first()
+    if badge and badge not in user.badges:
+        user.badges.append(badge)
+        db.session.commit()
+        # Aqui você poderia chamar create_notification para avisar o usuário
 
-# --- SISTEMA DE GAMIFICAÇÃO ---
 def check_badges(user):
-    badges_earned = []
-    
     # 1. CIENTISTA (Logs de Parâmetros)
-    log_count = ParameterLog.query.filter_by(aquarium_id=Aquarium.id).join(Aquarium).filter(Aquarium.user_id==user.id).count()
-    if log_count >= 1: assign_badge(user, 'cientista-Iniciante')
+    log_count = ParameterLog.query.join(Aquarium).filter(Aquarium.user_id == user.id).count()
+    if log_count >= 1: assign_badge(user, 'cientista-iniciante')
     if log_count >= 10: assign_badge(user, 'cientista-dedicado')
     
     # 2. TAGARELA (Comentários)
@@ -519,15 +525,8 @@ def check_badges(user):
     if len(user.posts) > 0:
         assign_badge(user, 'criador-conteudo')
 
-    return badges_earned
-
-def assign_badge(user, slug):
-    badge = Badge.query.filter_by(slug=slug).first()
-    if badge and badge not in user.badges:
-        user.badges.append(badge)
-        db.session.commit()
-        # Opcional: Criar notificação de conquista aqui
-        print(f"🏅 CONQUISTA: {user.username} ganhou {badge.name}!")
+with app.app_context():
+    db.create_all()
 
 # --- ROTAS ---
 @app.route('/login/google')
@@ -654,6 +653,9 @@ def community_feed(community_slug):
         
         process_mentions(content, current_user, post=new_post)
         
+        # CHECAR CONQUISTAS (POST)
+        check_badges(current_user)
+        
         return redirect(url_for('community_feed', community_slug=community.slug))
     page = request.args.get('page', 1, type=int)
     posts = Post.query.filter_by(community=community).options(joinedload(Post.author), joinedload(Post.community)).order_by(Post.timestamp.desc()).paginate(page=page, per_page=10)
@@ -779,6 +781,9 @@ def api_add_comment(post_id):
     create_notification(post.author, 'comment', current_user, post=post, comment=new_comment)
     if parent_comment: create_notification(parent_comment.comment_author, 'reply', current_user, post=post, comment=new_comment)
     process_mentions(text, current_user, post=post, comment=new_comment)
+    
+    # CHECAR CONQUISTAS (COMENTÁRIO)
+    check_badges(current_user)
     
     if is_ajax: return jsonify({'success': True, 'comment': {'id': new_comment.id, 'text': new_comment.text, 'author_username': new_comment.comment_author.username, 'author_profile_url': url_for('profile', username=new_comment.comment_author.username)}, 'total_comments': Comment.query.filter_by(post_id=post.id).count()})
     return redirect(url_for('post_detail', post_id=post.id))
@@ -938,7 +943,12 @@ def log_parameters(aquarium_id):
         elif ph > 8.5 or (ph < 6.4 and ph > 0): flash('⚠️ Atenção ao pH.', 'warning')
         else: flash('✅ Parâmetros ótimos!', 'success')
         db.session.add(ParameterLog(aquarium_id=aquarium_id, ph=ph, ammonia=ammonia, nitrite=nitrite, nitrate=float(request.form.get('nitrate') or 0), temperature=float(request.form.get('temperature') or 0), notes=request.form.get('notes')))
-        db.session.commit(); return redirect(url_for('aquarium_dashboard', aquarium_id=aquarium_id))
+        db.session.commit()
+        
+        # CHECAR CONQUISTAS (LOG)
+        check_badges(current_user)
+        
+        return redirect(url_for('aquarium_dashboard', aquarium_id=aquarium_id))
     return render_template('log_parameters.html', aquarium=Aquarium.query.get(aquarium_id))
 
 @app.route('/aquarium/<int:aquarium_id>/log_maintenance', methods=['GET', 'POST'])
@@ -1026,6 +1036,27 @@ def manifest(): return send_from_directory(app.static_folder, 'manifest.json')
 @app.route('/icon-512.png')
 def app_icon(): return send_from_directory(app.static_folder, 'icon-512.png')
 
+# --- ROTA PARA INICIAR AS MEDALHAS ---
+@app.route('/init_badges')
+@login_required
+def init_badges():
+    if current_user.username != 'bielcosen14': return "Acesso negado"
+    
+    badges_data = [
+        {'slug': 'cientista-iniciante', 'name': 'Cientista Iniciante', 'desc': 'Registrou o primeiro parâmetro.', 'icon': 'fas fa-vial', 'color': 'green'},
+        {'slug': 'cientista-dedicado', 'name': 'Cientista Dedicado', 'desc': 'Registrou parâmetros 10 vezes.', 'icon': 'fas fa-flask', 'color': 'purple'},
+        {'slug': 'tagarela-junior', 'name': 'Tagarela', 'desc': 'Fez 5 comentários.', 'icon': 'fas fa-comments', 'color': 'blue'},
+        {'slug': 'tagarela-senior', 'name': 'Debatedor', 'desc': 'Fez 50 comentários.', 'icon': 'fas fa-bullhorn', 'color': 'orange'},
+        {'slug': 'criador-conteudo', 'name': 'Criador', 'desc': 'Fez a primeira postagem.', 'icon': 'fas fa-pen-nib', 'color': 'red'},
+        {'slug': 'veterano', 'name': 'Veterano', 'desc': 'Membro fundador.', 'icon': 'fas fa-star', 'color': 'yellow'},
+    ]
+    
+    for b in badges_data:
+        if not Badge.query.filter_by(slug=b['slug']).first():
+            db.session.add(Badge(slug=b['slug'], name=b['name'], description=b['desc'], icon=b['icon'], color=b['color']))
+    
+    db.session.commit()
+    return "Medalhas criadas com sucesso!"
 
 if __name__ == '__main__':
     app.run(debug=False)
