@@ -1,93 +1,59 @@
 {% extends 'base.html' %}
-{% block title %}Criar Postagem - AquaNet{% endblock %}
+
+{% block title %}Criar Publicação - AquaNet{% endblock %}
 
 {% block content %}
-<div class="p-4 md:p-6 lg:p-8 max-w-2xl mx-auto">
-    <h1 class="text-3xl font-bold text-gray-800 mb-8 flex items-center">
-        <i class="fas fa-plus-square mr-3 text-green-600"></i> Criar Nova Postagem
-    </h1>
-
-    <div class="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
-        <h2 class="text-xl font-semibold mb-6 text-gray-700 border-b pb-3">Escolha a Comunidade</h2>
-
-        <input type="hidden" id="hidden_sos_content" value="{{ prefilled_content or '' }}">
-
-        {% if communities %}
-        <div class="space-y-6">
+<div class="max-w-2xl mx-auto pb-20">
+    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+        <h1 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <i class="fas fa-pen-nib text-blue-600"></i> Criar Publicação
+        </h1>
+        
+        <form id="create-post-form" class="post-form space-y-6" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
             <div>
-                <label for="community_slug_selector" class="block text-sm font-medium text-gray-700 mb-2">Publicar em uma comunidade existente:</label>
-                
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Onde publicar?</label>
                 <div class="relative">
-                    <select id="community_slug_selector" class="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 outline-none transition-all appearance-none bg-white font-medium text-gray-700">
-                        <option value="" disabled selected>-- Selecione --</option>
+                    <select name="community_slug" id="community-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" onchange="updateFormAction(this.value)" required>
+                        <option value="" disabled selected>Escolha uma comunidade...</option>
                         {% for community in communities %}
-                        <option value="{{ community.slug }}">{{ community.name }}</option>
+                            <option value="{{ community.slug }}">{{ community.name }}</option>
                         {% endfor %}
                     </select>
-                    <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-gray-500">
-                        <i class="fas fa-chevron-down text-xs"></i>
-                    </div>
+                    <i class="fas fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none"></i>
                 </div>
             </div>
-            
-            <button type="button" onclick="goToCommunity()" id="submitBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl transition-all flex items-center justify-center shadow-md active:scale-95">
-                <span id="btnText"><i class="fas fa-arrow-right mr-2"></i> Continuar para Postagem</span>
-            </button>
 
-            <div class="relative flex py-2 items-center">
-                <div class="flex-grow border-t border-gray-200"></div>
-                <span class="flex-shrink-0 mx-4 text-gray-400 text-sm font-medium">OU</span>
-                <div class="flex-grow border-t border-gray-200"></div>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Conteúdo</label>
+                <textarea name="content" rows="6" placeholder="Escreva algo interessante..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" required>{{ prefilled_content if prefilled_content else '' }}</textarea>
             </div>
 
-            <a href="{{ url_for('create_community') }}" class="block w-full text-center py-3.5 rounded-xl border-2 border-dashed border-gray-300 text-gray-500 font-bold hover:border-blue-500 hover:text-blue-600 hover:bg-blue-50 transition-all">
-                <i class="fas fa-plus-circle mr-2"></i> Criar uma Nova Comunidade
-            </a>
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Imagem (Opcional)</label>
+                <label class="flex items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors group">
+                    <div class="text-center">
+                        <i class="fas fa-image text-2xl text-slate-300 group-hover:text-blue-500 mb-2 transition-colors"></i>
+                        <p class="text-xs text-slate-400 font-medium">Toque para adicionar</p>
+                    </div>
+                    <input type="file" name="image" class="hidden" accept="image/*">
+                </label>
+                <div id="preview-image" class="mt-3 hidden"></div>
+            </div>
 
-        </div>
-        
-        <p class="text-sm text-gray-500 mt-6 text-center">Você será redirecionado para a página da comunidade para inserir o conteúdo.</p>
-        {% else %}
-        <div class="text-center py-8">
-            <div class="mb-4 text-gray-300 text-5xl"><i class="fas fa-users-slash"></i></div>
-            <p class="text-gray-600 mb-4">Nenhuma comunidade disponível ainda.</p>
-            <a href="{{ url_for('create_community') }}" class="inline-block bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl transition-colors">
-                <i class="fas fa-plus mr-2"></i> Crie a Primeira Comunidade!
-            </a>
-        </div>
-        {% endif %}
+            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 text-lg flex justify-center items-center">
+                Publicar
+            </button>
+        </form>
     </div>
 </div>
 
 <script>
-    function goToCommunity() {
-        const selector = document.getElementById('community_slug_selector');
-        const slug = selector.value;
-        const btn = document.getElementById('submitBtn');
-        const btnText = document.getElementById('btnText');
-        
-        if (!slug) {
-            alert("Por favor, selecione uma comunidade da lista ou crie uma nova!");
-            return;
-        }
-
-        // Animação de carregamento
-        btn.disabled = true;
-        btnText.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i> Processando...';
-
-        // Pega o conteúdo de SOS (se existir)
-        const sosContent = document.getElementById('hidden_sos_content').value;
-        
-        // Monta a URL correta: /c/slug-da-comunidade
-        let targetUrl = "{{ url_for('home') }}c/" + slug;
-        
-        // Se tiver SOS, adiciona na URL para a próxima página ler
-        if (sosContent) {
-            targetUrl += "?auto_content=" + encodeURIComponent(sosContent);
-        }
-
-        // Redireciona
-        window.location.href = targetUrl;
+    function updateFormAction(slug) {
+        const form = document.getElementById('create-post-form');
+        // Atualiza a URL de destino do formulário dinamicamente
+        form.action = "/c/" + slug;
     }
 </script>
 {% endblock %}
