@@ -3,10 +3,15 @@
 {% block title %}Post de {{ post.author.username }} - AquaNet{% endblock %}
 
 {% macro render_comment_with_replies(comment, post, current_user, level=0) %}
+    {% set is_deep = level > 3 %}
+    {% set container_padding = "pl-2 md:pl-6" if not is_deep else "pl-0" %}
+    {% set border_style = "border-l-2 border-slate-100 pl-2" if is_deep else "" %}
+    
     {% set container_class = "mt-3" if level == 0 else "mt-2" %}
-    <div class="comment-node {{ container_class }}" id="comment-{{ comment.id }}">
+    
+    <div class="comment-node {{ container_class }} {{ border_style }}" id="comment-{{ comment.id }}">
         <div class="flex items-start group">
-            <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="flex-shrink-0 mr-2.5">
+            <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="flex-shrink-0 mr-2">
                  <img src="{{ comment.comment_author.profile_pic_url }}" class="{{ 'w-8 h-8' if level == 0 else 'w-6 h-6' }} rounded-full object-cover border border-gray-100">
             </a>
 
@@ -15,7 +20,7 @@
                     <span class="font-bold text-gray-900 mr-1">
                         <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="hover:underline">{{ comment.comment_author.username }}</a>
                     </span>
-                    <span class="text-gray-800 break-words leading-snug whitespace-pre-wrap">{{ comment.text | link_mentions }}</span>
+                    <span class="text-gray-800 break-words max-w-full leading-snug whitespace-pre-wrap">{{ comment.text | link_mentions }}</span>
                 </div>
 
                 <div class="flex items-center mt-1 space-x-3 text-xs text-gray-500 font-semibold">
@@ -25,9 +30,7 @@
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                          <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
                             <i class="{{ 'fas' if current_user.has_liked_comment(comment) else 'far' }} fa-thumbs-up text-[10px] mr-1"></i>
-                            
                             <span class="like-count-text">{{ comment.likes|length if comment.likes|length > 0 else '' }}</span>
-                            
                             <span class="ml-1">{{ 'Curtido' if current_user.has_liked_comment(comment) else 'Curtir' }}</span>
                          </button>
                     </form>
@@ -63,7 +66,8 @@
                 </form>
             </div>
         </div>
-        <div class="replies-container {{ 'hidden' if level == 0 else '' }} pl-8 md:pl-12" id="replies-for-{{ comment.id }}">
+        
+        <div class="replies-container {{ 'hidden' if level == 0 else '' }} {{ container_padding }}" id="replies-for-{{ comment.id }}">
             {% for reply in comment.replies %}
                 {{ render_comment_with_replies(reply, post, current_user, level=level+1) }}
             {% endfor %}
@@ -110,7 +114,7 @@
         </div>
         <hr class="border-gray-100 h-1 bg-gray-50">
         <div class="bg-white p-4 border-b border-gray-100">
-             <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" id="comment-form" class="flex items-start space-x-3" hx-boost="false">
+             <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" id="comment-form" class="flex items-start space-x-3 post-form" hx-boost="false">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full border border-gray-200 mt-1 hidden sm:block object-cover">
                 <div class="flex-grow">
@@ -123,7 +127,7 @@
         </div>
         <div class="bg-white px-4 pb-4">
             <h3 class="text-sm font-bold text-gray-700 mt-4 mb-2">Comentários</h3>
-            <div id="comment-list">
+            <div id="comment-list" class="overflow-x-hidden">
                 {% for comment in top_level_comments %}
                     {{ render_comment_with_replies(comment, post, current_user, level=0) }}
                 {% else %}
