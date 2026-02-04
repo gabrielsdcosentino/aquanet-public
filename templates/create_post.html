@@ -13,7 +13,14 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Onde publicar?</label>
+                <div class="flex justify-between items-end mb-2">
+                    <label class="block text-xs font-bold text-slate-500 uppercase">Onde publicar?</label>
+                    
+                    <a href="{{ url_for('create_community') }}" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors flex items-center">
+                        <i class="fas fa-plus-circle mr-1"></i> Nova Comunidade
+                    </a>
+                </div>
+                
                 <div class="relative">
                     <select name="community_slug" id="community-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" onchange="updateFormAction(this.value)" required>
                         <option value="" disabled selected>Escolha uma comunidade...</option>
