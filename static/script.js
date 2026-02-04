@@ -1,7 +1,7 @@
 // ============================================================================
-// AQUANET SCRIPT - V9 (PWA CORRIGIDO + UI)
+// AQUANET SCRIPT - V10 (ANTI-DUPLICAÇÃO + PWA + UI)
 // ============================================================================
-console.log(">>> SCRIPT AQUANET V9 <<<");
+console.log(">>> SCRIPT AQUANET V10 <<<");
 
 let deferredPrompt; 
 
@@ -12,22 +12,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const installBtn = document.getElementById('pwa-install-btn');
     const closeBtn = document.getElementById('pwa-close-btn');
 
-    // VERIFICAÇÃO RIGOROSA: Se já recusou ou instalou, REMOVE do HTML
     const isDismissed = localStorage.getItem('aquanet_pwa_dismissed') === 'true';
     const isInstalled = localStorage.getItem('aquanet_pwa_installed') === 'true';
 
-    if (isDismissed || isInstalled) {
-        if (installCard) installCard.remove(); // Destrói o elemento
+    if ((isDismissed || isInstalled) && installCard) {
+        installCard.remove();
     }
 
     window.addEventListener('beforeinstallprompt', (e) => {
         e.preventDefault();
         deferredPrompt = e;
-        
-        // Só mostra se os itens NÃO existirem no localStorage
         if (!localStorage.getItem('aquanet_pwa_dismissed') && !localStorage.getItem('aquanet_pwa_installed')) {
             if(installCard) {
-                // Pequeno delay para garantir que o layout carregou
                 setTimeout(() => {
                     installCard.classList.remove('hidden');
                     installCard.classList.add('flex');
@@ -52,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            console.log("PWA recusado pelo usuário.");
             localStorage.setItem('aquanet_pwa_dismissed', 'true');
             if(installCard) installCard.remove();
         });
@@ -64,10 +59,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Helper CSRF e Funcionalidades Globais (Likes, Comentários, etc)
+// Helper CSRF
 const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 document.addEventListener('htmx:configRequest', (evt) => evt.detail.headers['X-CSRFToken'] = getCsrfToken());
 
+// Eventos Globais
 document.addEventListener('click', function(event) {
     const toggleBtn = event.target.closest('.toggle-replies-btn');
     if (toggleBtn) {
@@ -88,8 +84,11 @@ document.addEventListener('click', function(event) {
     if (cancelBtn) cancelBtn.closest('.reply-form')?.classList.add('hidden');
 });
 
+// --- INTERCEPTAÇÃO DE FORMULÁRIOS (AQUI ESTÁ A MÁGICA ANTI-DUPLICAÇÃO) ---
 document.addEventListener('submit', function(e) {
     const form = e.target;
+    
+    // Like (AJAX)
     if (form.classList.contains('like-form')) {
         e.preventDefault(); e.stopImmediatePropagation();
         const btn = form.querySelector('button');
@@ -105,13 +104,42 @@ document.addEventListener('submit', function(e) {
             .then(data => { if (data.success && countSpan) countSpan.innerText = data.like_count > 0 ? data.like_count : ''; });
         return false;
     }
-    if (form.id === 'comment-form' || form.classList.contains('reply-form')) {
-        e.preventDefault(); e.stopImmediatePropagation();
+
+    // Comentários E POSTAGENS (Bloqueia o botão)
+    // Agora verifica se é comentário OU se tem a classe 'post-form'
+    if (form.id === 'comment-form' || form.classList.contains('reply-form') || form.classList.contains('post-form')) {
+        
+        // Se for postagem normal (sem AJAX), não previne o default, apenas bloqueia visualmente
+        const isAjax = form.id === 'comment-form' || form.classList.contains('reply-form');
+        
         const btn = form.querySelector('button[type="submit"]');
-        if(btn) { btn.dataset.original = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i>'; }
+        if(btn) { 
+            // Salva o texto original
+            btn.dataset.original = btn.innerHTML; 
+            // Bloqueia clique
+            btn.disabled = true; 
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            // Muda o texto
+            btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Publicando...'; 
+        }
+
+        // Se for Postagem (NÃO AJAX), deixa o navegador enviar o form normalmente após bloquear o botão
+        if (!isAjax) {
+            return true; 
+        }
+
+        // Se for Comentário (AJAX), processa manualmente
+        e.preventDefault(); e.stopImmediatePropagation();
         fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }, body: new FormData(form) })
             .then(res => { if (res.ok) window.location.reload(); else throw new Error('Erro'); })
-            .catch(() => { alert("Erro ao enviar."); if(btn) { btn.disabled = false; btn.innerHTML = btn.dataset.original; } });
+            .catch(() => { 
+                alert("Erro ao enviar."); 
+                if(btn) { 
+                    btn.disabled = false; 
+                    btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                    btn.innerHTML = btn.dataset.original; 
+                } 
+            });
         return false;
     }
 });
