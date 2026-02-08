@@ -1,37 +1,60 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-6 border-t-4 border-orange-500">
-    <h2 class="text-xl font-bold mb-2 text-gray-800">🐠 Adicionar Habitante</h2>
-    <p class="text-sm text-gray-500 mb-6">Aquário: {{ aquarium.name }}</p>
+<div class="container mx-auto px-4 mt-8 max-w-md pb-10">
     
-    <form method="POST">
-        <div class="mb-4">
-            <label class="block text-gray-700 font-bold mb-1 text-sm">Nome / Espécie</label>
-            <input type="text" name="name" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="Ex: Neon Cardinal, Anúbia..." required>
-        </div>
-
-        <div class="flex gap-4 mb-6">
-            <div class="w-1/2">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">Tipo</label>
-                <select name="fauna_type" class="w-full px-3 py-2 border rounded bg-gray-50">
-                    <option value="Peixe">🐟 Peixe</option>
-                    <option value="Planta">🌿 Planta</option>
-                    <option value="Invertebrado">🐌 Invertebrado</option>
-                    <option value="Coral">🪸 Coral</option>
-                </select>
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden border-t-4 border-orange-500">
+        <div class="p-8">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 shadow-sm">
+                    🐠
+                </div>
+                <h2 class="text-2xl font-black text-gray-800">Adicionar Habitante</h2>
+                <p class="text-gray-400 text-sm mt-1">Aquário: <span class="font-bold text-orange-500">{{ aquarium.name }}</span></p>
             </div>
-            <div class="w-1/2">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">Quantidade</label>
-                <input type="number" name="quantity" value="1" min="1" class="w-full px-3 py-2 border rounded bg-gray-50">
-            </div>
-        </div>
 
-        <div class="flex gap-2">
-            <a href="{{ url_for('aquarium_dashboard', aquarium_id=aquarium.id) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">Cancelar</a>
-            <button type="submit" class="flex-1 bg-orange-500 text-white font-bold py-2 px-4 rounded hover:bg-orange-600 transition">
-                Adicionar
-            </button>
+            <form method="POST" class="prevent-double-submit">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="space-y-5">
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 text-xs uppercase tracking-wide ml-1">Nome / Espécie</label>
+                        <input type="text" name="name" required 
+                               placeholder="Ex: Neon Cardinal, Anúbia..." 
+                               class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50 transition-all font-semibold text-gray-800">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-xs uppercase tracking-wide ml-1">Tipo</label>
+                            <div class="relative">
+                                <select name="fauna_type" class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 appearance-none font-semibold text-gray-600">
+                                    <option value="Peixe">🐟 Peixe</option>
+                                    <option value="Planta">🌿 Planta</option>
+                                    <option value="Invertebrado">🐌 Invertebrado</option>
+                                    <option value="Coral">🪸 Coral</option>
+                                </select>
+                                <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-500">
+                                    <i class="fas fa-chevron-down text-xs"></i>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-xs uppercase tracking-wide ml-1">Qtd.</label>
+                            <input type="number" name="quantity" value="1" min="1" 
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:ring-4 focus:ring-orange-50 transition-all font-bold text-center text-gray-800">
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex gap-3">
+                        <a href="{{ url_for('aquarium_dashboard', aquarium_id=aquarium.id) }}" class="flex-1 py-3.5 bg-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-200 text-center transition-colors text-sm">Cancelar</a>
+                        <button type="submit" class="flex-[2] bg-orange-500 text-white font-bold py-3.5 rounded-xl hover:bg-orange-600 shadow-lg hover:shadow-orange-200 transition-all transform active:scale-95 text-sm">
+                            Salvar Habitante
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 {% endblock %}
