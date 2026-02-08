@@ -1,48 +1,68 @@
 {% extends "base.html" %}
+
 {% block content %}
-<div class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-md mt-6 border-t-4 border-blue-500">
-    <h2 class="text-xl font-bold mb-2 text-gray-800">🧪 Registrar Parâmetros</h2>
-    <p class="text-sm text-gray-500 mb-6">Aquário: {{ aquarium.name }}</p>
+<div class="container mx-auto px-4 mt-8 max-w-md pb-10">
     
-    <form method="POST" class="prevent-double-submit">
+    <div class="bg-white rounded-3xl shadow-xl overflow-hidden border-t-4 border-blue-500">
+        <div class="p-8">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mx-auto mb-4 shadow-sm">
+                    🧪
+                </div>
+                <h2 class="text-2xl font-black text-gray-800">Registrar Parâmetros</h2>
+                <p class="text-gray-400 text-sm mt-1">Aquário: <span class="font-bold text-blue-500">{{ aquarium.name }}</span></p>
+            </div>
 
-        <div class="flex gap-4 mb-4">
-            <div class="w-1/2">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">pH</label>
-                <input type="number" step="0.1" name="ph" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="7.0">
-            </div>
-            <div class="w-1/2">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">Temp (°C)</label>
-                <input type="number" step="0.1" name="temperature" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="26">
-            </div>
-        </div>
+            <form method="POST" class="prevent-double-submit">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-        <div class="flex gap-4 mb-4">
-            <div class="w-1/3">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">Amônia (ppm)</label>
-                <input type="number" step="0.01" name="ammonia" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="0.00">
-            </div>
-            <div class="w-1/3">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">Nitrito (ppm)</label>
-                <input type="number" step="0.01" name="nitrite" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="0.00">
-            </div>
-            <div class="w-1/3">
-                <label class="block text-gray-700 font-bold mb-1 text-sm">Nitrato (ppm)</label>
-                <input type="number" step="0.01" name="nitrate" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="0.00">
-            </div>
-        </div>
+                <div class="space-y-5">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-xs uppercase tracking-wide ml-1">pH</label>
+                            <input type="number" step="0.1" name="ph" placeholder="7.0"
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-bold text-center text-gray-800">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-xs uppercase tracking-wide ml-1">Temp (°C)</label>
+                            <input type="number" step="0.1" name="temperature" placeholder="26"
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-bold text-center text-gray-800">
+                        </div>
+                    </div>
 
-        <div class="mb-6">
-            <label class="block text-gray-700 font-bold mb-1 text-sm">Observações (Opcional)</label>
-            <textarea name="notes" rows="2" class="w-full px-3 py-2 border rounded bg-gray-50" placeholder="Peixes parecem ofegantes..."></textarea>
-        </div>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-[10px] uppercase tracking-wide text-center">Amônia</label>
+                            <input type="number" step="0.01" name="ammonia" placeholder="0.00"
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-3 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-50 transition-all font-bold text-center text-gray-800 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-[10px] uppercase tracking-wide text-center">Nitrito</label>
+                            <input type="number" step="0.01" name="nitrite" placeholder="0.00"
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-3 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-50 transition-all font-bold text-center text-gray-800 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-gray-700 font-bold mb-2 text-[10px] uppercase tracking-wide text-center">Nitrato</label>
+                            <input type="number" step="0.01" name="nitrate" placeholder="0.00"
+                                   class="w-full bg-gray-50 border border-gray-200 rounded-xl px-2 py-3 outline-none focus:border-red-500 focus:ring-4 focus:ring-red-50 transition-all font-bold text-center text-gray-800 text-sm">
+                        </div>
+                    </div>
 
-        <div class="flex gap-2">
-            <a href="{{ url_for('aquarium_dashboard', aquarium_id=aquarium.id) }}" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm">Cancelar</a>
-            <button type="submit" class="flex-1 bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
-                Salvar Registro 💾
-            </button>
+                    <div>
+                        <label class="block text-gray-700 font-bold mb-2 text-xs uppercase tracking-wide ml-1">Observações (Opcional)</label>
+                        <textarea name="notes" rows="2" placeholder="Peixes parecem ofegantes..." 
+                                  class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 transition-all font-semibold text-gray-700 resize-none"></textarea>
+                    </div>
+
+                    <div class="pt-4 flex gap-3">
+                        <a href="{{ url_for('aquarium_dashboard', aquarium_id=aquarium.id) }}" class="flex-1 py-3.5 bg-gray-100 text-gray-500 font-bold rounded-xl hover:bg-gray-200 text-center transition-colors text-sm">Cancelar</a>
+                        <button type="submit" class="flex-[2] bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 shadow-lg hover:shadow-blue-200 transition-all transform active:scale-95 text-sm">
+                            Salvar Registro 💾
+                        </button>
+                    </div>
+                </div>
+            </form>
         </div>
-    </form>
+    </div>
 </div>
 {% endblock %}
