@@ -1,0 +1,11 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.aquanet.app",
+    "sha256_cert_fingerprints": [
+      "EF:5C:4F:EA:E8:C2:8F:F9:87:0A:01:F8:03:18:F3:BC:F9:69:BB:08:E6:CF:FB:93:3D:55:05:20:1B:AC:2E:65"
+    ]
+  }
+}]
+
