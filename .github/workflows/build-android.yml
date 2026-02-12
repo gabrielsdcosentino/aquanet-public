@@ -26,23 +26,12 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # --- O TRUQUE COMEÇA AQUI ---
-      # Criamos uma pasta www falsa para o Capacitor não reclamar
       - name: Create Dummy Web Assets
         run: |
           mkdir -p www
           echo "<h1>Carregando...</h1>" > www/index.html
 
-      # Garantimos que o config use a pasta certa
-      - name: Fix Capacitor Config
-        run: |
-          # Isso garante que o webDir seja 'www' mesmo se você digitou errado antes
-          sed -i 's/"webDir": ".*"/"webDir": "www"/' capacitor.config.json
-      # --- FIM DO TRUQUE ---
-
-      - name: Add Capacitor Android
-        run: npx cap add android
-
+      # Removemos o "npx cap add android" daqui pois a pasta já existe no seu GitHub
       - name: Sync Capacitor
         run: npx cap sync android
 
