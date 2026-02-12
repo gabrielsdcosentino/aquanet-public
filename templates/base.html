@@ -36,6 +36,29 @@
 
         @media (min-width: 768px) { #mobile-drawer, .mobile-bottom-nav, #mobile-search-bar { display: none !important; } }
         .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        /* --- CORREÇÃO PARA APP (SAFE AREA) --- */
+        
+        /* Empurra o cabeçalho para baixo da barra de status (hora/bateria) */
+        header {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        /* O header ficou maior, então empurramos o conteúdo do site para baixo também */
+        .container.pt-16 {
+            padding-top: calc(4rem + env(safe-area-inset-top)) !important;
+        }
+
+        /* Ajusta o Menu Lateral (Drawer) para não cortar o título */
+        #mobile-drawer {
+            padding-top: env(safe-area-inset-top);
+        }
+
+        /* Se tiver barra de navegação embaixo (iPhone X+), dá um respiro */
+        nav.mobile-bottom-nav {
+            padding-bottom: env(safe-area-inset-bottom);
+            height: calc(4rem + env(safe-area-inset-bottom));
+        }
+
     </style>
 
     <script>
