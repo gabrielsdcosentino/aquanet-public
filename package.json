@@ -1,0 +1,26 @@
+{
+  "name": "aquanet-public",
+  "version": "1.0.0",
+  "description": "��#\u0000 \u0000A\u0000Q\u0000U\u0000A\u0000N\u0000E\u0000T\u00001\u0000\r\u0000 \u0000",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gabrielsdcosentino/aquanet-public.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/gabrielsdcosentino/aquanet-public/issues"
+  },
+  "homepage": "https://github.com/gabrielsdcosentino/aquanet-public#readme",
+  "dependencies": {
+    "@capacitor/android": "^8.1.0",
+    "@capacitor/cli": "^8.1.0",
+    "@capacitor/core": "^8.1.0"
+  }
+}

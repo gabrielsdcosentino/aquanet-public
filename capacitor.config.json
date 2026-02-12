@@ -1,0 +1,14 @@
+{
+  "appId": "com.aquanet.app",
+  "appName": "AquaNet",
+  "webDir": "www",
+  "bundledWebRuntime": false,
+  "server": {
+    "url": "https://aquanet.app.br",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true
+  }
+}
+
