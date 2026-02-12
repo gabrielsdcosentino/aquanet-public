@@ -1,3 +1,5 @@
+from flask import send_from_directory
+import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app, send_from_directory
 from sqlalchemy.orm import joinedload
 from flask_sqlalchemy import SQLAlchemy
@@ -1139,5 +1141,11 @@ def update_all_badges():
     
     return f"Sucesso! Medalhas verificadas e entregues para {len(users)} usuários."
 
+# Adicione esta rota ao final do seu arquivo, antes do app.run()
+@app.route('/.well-known/assetlinks.json')
+def serve_assetlinks():
+    return send_from_directory(os.path.join(app.root_path, '.well-known'),
+                               'assetlinks.json', 
+                               mimetype='application/json')
 if __name__ == '__main__':
     app.run(debug=False)
