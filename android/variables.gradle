@@ -13,4 +13,5 @@ ext {
     androidxJunitVersion = '1.3.0'
     androidxEspressoCoreVersion = '3.7.0'
     cordovaAndroidVersion = '14.0.1'
+    androidxMaterialVersion = '1.10.0' // Adicione ou verifique esta linha
 }
