@@ -105,51 +105,69 @@
         &copy; 2026 AquaNet. Feito para aquaristas.
     </footer>
 
+<div id="loading-overlay" class="fixed inset-0 bg-white/95 z-[9999] hidden flex flex-col items-center justify-center transition-opacity duration-300">
+    <div class="relative w-20 h-20 mb-4">
+        <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-100 rounded-full"></div>
+        <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
+        <div class="absolute inset-0 flex items-center justify-center text-blue-600 text-2xl">
+            <i class="fas fa-fish"></i>
+        </div>
+    </div>
+    <p class="text-blue-600 font-bold text-lg animate-pulse">Entrando no AquaNet...</p>
+</div>
+
 <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.js"></script>
 
 <script>
     async function handleGoogleLogin() {
-        console.log("Botão clicado! Iniciando verificação...");
-
-        // Verifica se é App Nativo (Android/iOS)
+        console.log("Iniciando login Google...");
+        
+        // Verifica se é App Nativo (Android)
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
         
         if (isNative) {
             try {
-                // 1. Carrega e Inicializa o Plugin
+                // Carrega o plugin dinamicamente
                 const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
                 await GoogleAuth.initialize();
 
-                // 2. Abre a janela nativa do Google
+                // Chama o login nativo do Android
                 const user = await GoogleAuth.signIn();
                 
-                // Se chegou aqui, o usuário escolheu a conta!
-                // Vamos enviar o token para o backend
+                // Se chegou aqui, o usuário escolheu a conta e deu certo.
+                // 1. MOSTRA A TELA DE CARREGAMENTO IMEDIATAMENTE
+                document.getElementById('loading-overlay').classList.remove('hidden');
+
+                // 2. Envia o token para o seu servidor validar e logar
                 const response = await fetch('/google-native', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ token: user.authentication.idToken })
                 });
 
-                // Tenta ler a resposta JSON do servidor
                 const data = await response.json();
 
                 if (response.ok) {
-                    // SUCESSO! Redireciona para a home
+                    // Sucesso! Redireciona para a home
                     window.location.href = "{{ url_for('home') }}";
                 } else {
-                    // ERRO NO SERVIDOR: Mostra o alerta para você saber o que houve
-                    // Ex: "Erro 400: Token ausente" ou "Erro CSRF"
-                    alert('Erro Backend (' + response.status + '): ' + (data.error || JSON.stringify(data)));
+                    // Erro no servidor: esconde o loading e mostra o erro
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                    alert('Erro no Login: ' + (data.error || response.statusText));
                 }
 
             } catch (error) {
-                // ERRO NO PLUGIN OU NA REDE
-                console.error("Erro Auth Nativa:", error);
-                alert('Erro App: ' + (error.message || JSON.stringify(error)));
+                // Erro no plugin ou cancelamento: esconde o loading
+                console.error("Erro Auth:", error);
+                document.getElementById('loading-overlay')?.classList.add('hidden');
+                
+                // Só mostra alerta se for um erro real, não se o usuário só cancelou
+                if (error.error !== 'popup_closed_by_user') {
+                   // alert('Erro: ' + JSON.stringify(error)); // Descomente para debugar
+                }
             }
         } else {
-            // Se for Navegador (PC/Chrome), segue o fluxo normal do Flask
+            // Se for no PC/Navegador, usa o fluxo web normal
             window.location.href = "{{ url_for('login_google') }}";
         }
     }
