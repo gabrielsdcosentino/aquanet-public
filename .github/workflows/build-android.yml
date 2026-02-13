@@ -11,7 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # Node 22 (Para o Capacitor novo)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -20,7 +19,7 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # Java 21 (Compatível com sua Keystore)
+      # Java 21 (Obrigatório para sua chave nova)
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
@@ -33,29 +32,45 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # 1. Decodifica a Keystore dos Secrets para um arquivo físico
-      - name: Decode Keystore
-        env:
-          ENCODED_STRING: ${{ secrets.ANDROID_KEYSTORE_FILE }}
+      # --- ETAPA CRÍTICA: PREPARAÇÃO DA CHAVE ---
+      - name: Prepare Keystore
+        id: prepare_key
         run: |
-          echo $ENCODED_STRING > keystore-b64.txt
-          base64 -d keystore-b64.txt > release.jks
+          # 1. Tenta achar o arquivo original no repositório
+          if [ -f "android/app/my-release-key.keystore" ]; then
+            echo "✅ Arquivo de chave encontrado no projeto!"
+            cp android/app/my-release-key.keystore release.jks
+          
+          # 2. Se não achar, tenta usar o Segredo (Base64)
+          elif [ -n "${{ secrets.ANDROID_KEYSTORE_FILE }}" ]; then
+            echo "⚠️ Arquivo não encontrado. Tentando decodificar do Secret..."
+            printf "%s" "${{ secrets.ANDROID_KEYSTORE_FILE }}" | base64 --decode > release.jks
+          
+          else
+            echo "❌ Nenhuma chave encontrada! (Nem arquivo, nem secret)"
+            exit 1
+          fi
 
-      # 2. Constrói o APK (Release)
+          # 3. TESTE DE FOGO: Verifica se a chave é válida antes de continuar
+          echo "🔍 Testando integridade da chave..."
+          if keytool -list -keystore release.jks -storepass "${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" -alias "${{ secrets.ANDROID_KEY_ALIAS }}" > /dev/null; then
+            echo "🏆 SUCESSO: A chave é válida e a senha funcionou!"
+          else
+            echo "🔥 ERRO FATAL: O arquivo da chave está corrompido ou a senha/alias estão errados."
+            echo "Verifique os Secrets no GitHub."
+            exit 1
+          fi
+
       - name: Build Android Release
         run: cd android && ./gradlew assembleRelease
 
-      # 3. ASSINATURA MANUAL (A Solução Definitiva)
-      # Usa as ferramentas modernas (34.0.0) que entendem sua chave nova
       - name: Sign APK Manually
         run: |
-          # Define caminhos das ferramentas
           BUILD_TOOLS_VERSION="34.0.0"
           ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
           ZIPALIGN="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/zipalign"
           APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/apksigner"
           
-          # Caminhos dos arquivos
           APK_PATH="android/app/build/outputs/apk/release/app-release-unsigned.apk"
           ALIGNED_APK="app-release-aligned.apk"
           SIGNED_APK="app-release-signed.apk"
@@ -73,7 +88,6 @@ jobs:
 
           echo "✅ APK Assinado com Sucesso!"
 
-      # 4. Upload do arquivo final
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
