@@ -11,6 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Node 22 (Para o Capacitor novo)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -32,7 +33,7 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # 1. Decodifica a Keystore dos Secrets para um arquivo real
+      # 1. Decodifica a Keystore dos Secrets para um arquivo físico
       - name: Decode Keystore
         env:
           ENCODED_STRING: ${{ secrets.ANDROID_KEYSTORE_FILE }}
@@ -44,10 +45,11 @@ jobs:
       - name: Build Android Release
         run: cd android && ./gradlew assembleRelease
 
-      # 3. Assina Manualmente (Usando ferramentas novas 34.0.0)
+      # 3. ASSINATURA MANUAL (A Solução Definitiva)
+      # Usa as ferramentas modernas (34.0.0) que entendem sua chave nova
       - name: Sign APK Manually
         run: |
-          # Define caminhos das ferramentas modernas
+          # Define caminhos das ferramentas
           BUILD_TOOLS_VERSION="34.0.0"
           ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
           ZIPALIGN="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/zipalign"
