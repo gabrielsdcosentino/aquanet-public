@@ -51,9 +51,15 @@
                 <p class="text-gray-500">Acesse seu diário e suas comunidades.</p>
             </div>
             
-            <a id="google-login-btn" href="javascript:void(0)" onclick="handleGoogleLogin()" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm cursor-pointer">
-                <i class="fab fa-google mr-2 text-xl text-red-600"></i>
-                Continuar com o Google
+            <a id="google-login-btn" href="javascript:void(0)" onclick="handleGoogleLogin()" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm cursor-pointer relative overflow-hidden">
+                <span id="btn-content" class="flex items-center">
+                    <i class="fab fa-google mr-2 text-xl text-red-600"></i>
+                    Continuar com o Google
+                </span>
+                <span id="btn-loading" class="hidden items-center text-gray-500">
+                    <i class="fas fa-circle-notch fa-spin mr-2 text-blue-600"></i>
+                    Conectando...
+                </span>
             </a>
             
             <div class="relative flex items-center justify-center mb-6">
@@ -105,40 +111,30 @@
         &copy; 2026 AquaNet. Feito para aquaristas.
     </footer>
 
-<div id="loading-overlay" class="fixed inset-0 bg-white/95 z-[9999] hidden flex flex-col items-center justify-center transition-opacity duration-300">
-    <div class="relative w-20 h-20 mb-4">
-        <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-100 rounded-full"></div>
-        <div class="absolute top-0 left-0 w-full h-full border-4 border-blue-600 rounded-full border-t-transparent animate-spin"></div>
-        <div class="absolute inset-0 flex items-center justify-center text-blue-600 text-2xl">
-            <i class="fas fa-fish"></i>
-        </div>
-    </div>
-    <p class="text-blue-600 font-bold text-lg animate-pulse">Entrando no AquaNet...</p>
-</div>
-
 <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.js"></script>
 
 <script>
     async function handleGoogleLogin() {
-        console.log("Iniciando login Google...");
-        
-        // Verifica se é App Nativo (Android)
+        const btn = document.getElementById('google-login-btn');
+        const content = document.getElementById('btn-content');
+        const loading = document.getElementById('btn-loading');
+
+        // Estado Visual: Carregando
+        btn.classList.add('bg-gray-50', 'cursor-not-allowed');
+        content.classList.add('hidden');
+        loading.classList.remove('hidden');
+        loading.classList.add('flex'); // Garante que o flex apareça
+
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
         
         if (isNative) {
             try {
-                // Carrega o plugin dinamicamente
                 const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
                 await GoogleAuth.initialize();
 
-                // Chama o login nativo do Android
                 const user = await GoogleAuth.signIn();
                 
-                // Se chegou aqui, o usuário escolheu a conta e deu certo.
-                // 1. MOSTRA A TELA DE CARREGAMENTO IMEDIATAMENTE
-                document.getElementById('loading-overlay').classList.remove('hidden');
-
-                // 2. Envia o token para o seu servidor validar e logar
+                // Envia token para o backend
                 const response = await fetch('/google-native', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -148,26 +144,28 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Sucesso! Redireciona para a home
+                    // Redireciona (Aqui o Android vai mostrar a barra nativa azul por ~1s)
                     window.location.href = "{{ url_for('home') }}";
                 } else {
-                    // Erro no servidor: esconde o loading e mostra o erro
-                    document.getElementById('loading-overlay').classList.add('hidden');
-                    alert('Erro no Login: ' + (data.error || response.statusText));
+                    throw new Error(data.error || 'Falha na validação do servidor');
                 }
 
             } catch (error) {
-                // Erro no plugin ou cancelamento: esconde o loading
-                console.error("Erro Auth:", error);
-                document.getElementById('loading-overlay')?.classList.add('hidden');
+                console.error("Erro Login:", error);
                 
-                // Só mostra alerta se for um erro real, não se o usuário só cancelou
+                // Só mostra alerta se NÃO for cancelamento do usuário
                 if (error.error !== 'popup_closed_by_user') {
-                   // alert('Erro: ' + JSON.stringify(error)); // Descomente para debugar
+                   alert('Erro: ' + (error.message || JSON.stringify(error)));
                 }
+
+                // Reseta o botão para o estado normal se der erro
+                btn.classList.remove('bg-gray-50', 'cursor-not-allowed');
+                content.classList.remove('hidden');
+                loading.classList.add('hidden');
+                loading.classList.remove('flex');
             }
         } else {
-            // Se for no PC/Navegador, usa o fluxo web normal
+            // PC
             window.location.href = "{{ url_for('login_google') }}";
         }
     }
