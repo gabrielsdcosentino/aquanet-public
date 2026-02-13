@@ -56,9 +56,12 @@
                     <i class="fab fa-google mr-2 text-xl text-red-600"></i>
                     Continuar com o Google
                 </span>
-                <span id="btn-loading" class="hidden items-center text-gray-500">
-                    <i class="fas fa-circle-notch fa-spin mr-2 text-blue-600"></i>
-                    Conectando...
+                <span id="btn-loading" class="hidden items-center justify-center w-full">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span class="text-sm font-semibold text-gray-500">Conectando...</span>
                 </span>
             </a>
             
@@ -119,11 +122,11 @@
         const content = document.getElementById('btn-content');
         const loading = document.getElementById('btn-loading');
 
-        // Estado Visual: Carregando
-        btn.classList.add('bg-gray-50', 'cursor-not-allowed');
+        // Estado Visual: Carregando (Desabilita o clique)
+        btn.classList.add('bg-gray-50', 'pointer-events-none');
         content.classList.add('hidden');
         loading.classList.remove('hidden');
-        loading.classList.add('flex'); // Garante que o flex apareça
+        loading.classList.add('flex');
 
         const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
         
@@ -144,22 +147,22 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Redireciona (Aqui o Android vai mostrar a barra nativa azul por ~1s)
                     window.location.href = "{{ url_for('home') }}";
                 } else {
-                    throw new Error(data.error || 'Falha na validação do servidor');
+                    // Reverte o botão se o servidor recusar
+                    btn.classList.remove('bg-gray-50', 'pointer-events-none');
+                    content.classList.remove('hidden');
+                    loading.classList.add('hidden');
+                    loading.classList.remove('flex');
+                    // Erro silencioso ou log, sem alert chato
+                    console.error(data.error);
                 }
 
             } catch (error) {
                 console.error("Erro Login:", error);
                 
-                // Só mostra alerta se NÃO for cancelamento do usuário
-                if (error.error !== 'popup_closed_by_user') {
-                   alert('Erro: ' + (error.message || JSON.stringify(error)));
-                }
-
-                // Reseta o botão para o estado normal se der erro
-                btn.classList.remove('bg-gray-50', 'cursor-not-allowed');
+                // Reseta o botão para o estado normal (se der erro ou cancelar)
+                btn.classList.remove('bg-gray-50', 'pointer-events-none');
                 content.classList.remove('hidden');
                 loading.classList.add('hidden');
                 loading.classList.remove('flex');
