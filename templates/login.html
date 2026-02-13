@@ -52,7 +52,7 @@
                 <p class="text-gray-500">Acesse seu diário e suas comunidades.</p>
             </div>
             
-            <a href="{{ url_for('login_google') }}" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm">
+            <a id="google-login-btn" href="{{ url_for('login_google') }}" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm cursor-pointer">
                 <i class="fab fa-google mr-2 text-xl text-red-600"></i>
                 Continuar com o Google
             </a>
@@ -105,34 +105,49 @@
     <footer class="bg-white border-t border-gray-200 text-center text-xs text-gray-500 py-4 mt-auto">
         &copy; 2026 AquaNet. Feito para aquaristas.
     </footer>
+
+<script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.js"></script>
+
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    const googleBtn = document.getElementById('google-login-btn'); // Dê esse ID ao seu botão <a>
+    const googleBtn = document.getElementById('google-login-btn');
     
-    // Se estiver rodando como APP (Capacitor nativo)
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-      googleBtn.addEventListener('click', async (e) => {
-        e.preventDefault(); // Bloqueia o link normal (que dá erro 403)
-        
-        try {
-            // Importa e chama o plugin nativo
-            const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
-            await GoogleAuth.initialize();
-            const user = await GoogleAuth.signIn();
+    // Verifica se o botão existe antes de tentar adicionar evento (evita erros no console)
+    if (googleBtn) {
+        googleBtn.addEventListener('click', async (e) => {
             
-            // Envia o token para sua rota "google native" no Python
-            const response = await fetch('/google-native', { // Confirme se o nome da rota é esse mesmo
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: user.authentication.idToken })
-            });
-            
-            if (response.ok) window.location.reload(); 
-            
-        } catch (error) {
-            console.error("Erro Auth Nativa:", error);
-        }
-      });
+            // A mágica acontece aqui: Se for Nativo, PREVINE o link padrão
+            if (window.Capacitor && window.Capacitor.getPlatform() !== 'web') {
+                e.preventDefault(); 
+                
+                try {
+                    // Importa plugin nativo
+                    const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
+                    await GoogleAuth.initialize();
+                    
+                    // Chama a tela nativa do Google (sem erro 403!)
+                    const user = await GoogleAuth.signIn();
+                    
+                    // Manda pro backend validar
+                    const response = await fetch('/google-native', { 
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token: user.authentication.idToken })
+                    });
+                    
+                    if (response.ok) {
+                        window.location.href = "{{ url_for('home') }}"; 
+                    } else {
+                        alert('Falha na validação do login.');
+                    }
+                    
+                } catch (error) {
+                    console.error("Erro Auth Nativa:", error);
+                    // Se der erro, não faz nada (ou mostra alerta), mas NÃO deixa abrir o link web
+                }
+            }
+            // Se NÃO for nativo (for Chrome/PC), ele ignora esse if e segue o href normal do Flask
+        });
     }
   });
 </script>
