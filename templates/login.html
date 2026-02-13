@@ -10,7 +10,6 @@
         body { font-family: 'Inter', sans-serif; background-color: #DAE0E6; }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         
-        /* Estilos Flash */
         .flashes { margin-bottom: 1rem; }
         .flash-success { background-color: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
         .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
@@ -52,7 +51,7 @@
                 <p class="text-gray-500">Acesse seu diário e suas comunidades.</p>
             </div>
             
-            <a id="google-login-btn" href="{{ url_for('login_google') }}" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm cursor-pointer">
+            <a id="google-login-btn" href="javascript:void(0)" onclick="handleGoogleLogin()" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm cursor-pointer">
                 <i class="fab fa-google mr-2 text-xl text-red-600"></i>
                 Continuar com o Google
             </a>
@@ -109,47 +108,52 @@
 <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.js"></script>
 
 <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    const googleBtn = document.getElementById('google-login-btn');
-    
-    // Verifica se o botão existe antes de tentar adicionar evento (evita erros no console)
-    if (googleBtn) {
-        googleBtn.addEventListener('click', async (e) => {
-            
-            // A mágica acontece aqui: Se for Nativo, PREVINE o link padrão
-            if (window.Capacitor && window.Capacitor.getPlatform() !== 'web') {
-                e.preventDefault(); 
+    async function handleGoogleLogin() {
+        console.log("Botão clicado! Iniciando verificação...");
+
+        // Verifica se é App Nativo (Android/iOS)
+        const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
+        
+        if (isNative) {
+            try {
+                // 1. Carrega e Inicializa o Plugin
+                const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
+                await GoogleAuth.initialize();
+
+                // 2. Abre a janela nativa do Google
+                const user = await GoogleAuth.signIn();
                 
-                try {
-                    // Importa plugin nativo
-                    const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
-                    await GoogleAuth.initialize();
-                    
-                    // Chama a tela nativa do Google (sem erro 403!)
-                    const user = await GoogleAuth.signIn();
-                    
-                    // Manda pro backend validar
-                    const response = await fetch('/google-native', { 
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ token: user.authentication.idToken })
-                    });
-                    
-                    if (response.ok) {
-                        window.location.href = "{{ url_for('home') }}"; 
-                    } else {
-                        alert('Falha na validação do login.');
-                    }
-                    
-                } catch (error) {
-                    console.error("Erro Auth Nativa:", error);
-                    // Se der erro, não faz nada (ou mostra alerta), mas NÃO deixa abrir o link web
+                // Se chegou aqui, o usuário escolheu a conta!
+                // Vamos enviar o token para o backend
+                const response = await fetch('/google-native', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: user.authentication.idToken })
+                });
+
+                // Tenta ler a resposta JSON do servidor
+                const data = await response.json();
+
+                if (response.ok) {
+                    // SUCESSO! Redireciona para a home
+                    window.location.href = "{{ url_for('home') }}";
+                } else {
+                    // ERRO NO SERVIDOR: Mostra o alerta para você saber o que houve
+                    // Ex: "Erro 400: Token ausente" ou "Erro CSRF"
+                    alert('Erro Backend (' + response.status + '): ' + (data.error || JSON.stringify(data)));
                 }
+
+            } catch (error) {
+                // ERRO NO PLUGIN OU NA REDE
+                console.error("Erro Auth Nativa:", error);
+                alert('Erro App: ' + (error.message || JSON.stringify(error)));
             }
-            // Se NÃO for nativo (for Chrome/PC), ele ignora esse if e segue o href normal do Flask
-        });
+        } else {
+            // Se for Navegador (PC/Chrome), segue o fluxo normal do Flask
+            window.location.href = "{{ url_for('login_google') }}";
+        }
     }
-  });
 </script>
+
 </body>
 </html>
