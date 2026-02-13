@@ -19,7 +19,7 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # Mantemos Java 21 pois seu projeto exige
+      # Java 21 (Compatível com sua Keystore)
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
@@ -29,29 +29,51 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      # --- CORREÇÃO AQUI: Instalamos a versão antiga que o assinador exige ---
-      - name: Install Build Tools 29.0.3
-        run: sdkmanager "build-tools;29.0.3"
-
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # 1. Decodifica a Keystore dos Secrets para um arquivo real
+      - name: Decode Keystore
+        env:
+          ENCODED_STRING: ${{ secrets.ANDROID_KEYSTORE_FILE }}
+        run: |
+          echo $ENCODED_STRING > keystore-b64.txt
+          base64 -d keystore-b64.txt > release.jks
+
+      # 2. Constrói o APK (Release)
       - name: Build Android Release
         run: cd android && ./gradlew assembleRelease
 
-      - name: Sign APK
-        id: sign_app
-        uses: r0adkll/sign-android-release@v1
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_FILE }}
-          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        # Removemos o buildToolsVersion daqui pois a ação não suporta
+      # 3. Assina Manualmente (Usando ferramentas novas 34.0.0)
+      - name: Sign APK Manually
+        run: |
+          # Define caminhos das ferramentas modernas
+          BUILD_TOOLS_VERSION="34.0.0"
+          ANDROID_SDK_ROOT=${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}
+          ZIPALIGN="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/zipalign"
+          APKSIGNER="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/apksigner"
+          
+          # Caminhos dos arquivos
+          APK_PATH="android/app/build/outputs/apk/release/app-release-unsigned.apk"
+          ALIGNED_APK="app-release-aligned.apk"
+          SIGNED_APK="app-release-signed.apk"
 
+          echo "🔍 Alinhando APK..."
+          $ZIPALIGN -v -p 4 $APK_PATH $ALIGNED_APK
+
+          echo "✍️ Assinando APK..."
+          $APKSIGNER sign --ks release.jks \
+            --ks-key-alias "${{ secrets.ANDROID_KEY_ALIAS }}" \
+            --ks-pass "pass:${{ secrets.ANDROID_KEYSTORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.ANDROID_KEY_PASSWORD }}" \
+            --out $SIGNED_APK \
+            $ALIGNED_APK
+
+          echo "✅ APK Assinado com Sucesso!"
+
+      # 4. Upload do arquivo final
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release-signed
-          path: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          path: app-release-signed.apk
