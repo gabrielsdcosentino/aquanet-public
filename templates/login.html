@@ -52,10 +52,49 @@
                 <p class="text-gray-500">Acesse seu diário e suas comunidades.</p>
             </div>
             
-            <a href="{{ url_for('login_google') }}" class="w-full flex items-center justify-center bg-white text-gray-700 font-bold py-3.5 px-4 rounded-xl border border-gray-300 hover:bg-gray-50 transition mb-4 shadow-sm">
-                <i class="fab fa-google mr-2 text-xl text-red-600"></i>
-                Continuar com o Google
-            </a>
+            <a id="google-login-btn" href="{{ url_for('login_google') }}" class="w-full flex items-center ...">
+    <i class="fab fa-google mr-2 text-xl text-red-600"></i>
+    Continuar com o Google
+</a>
+
+<script type="module">
+    // Importante: Para usar o plugin via script tag no HTML puro, 
+    // o Capacitor precisa estar devidamente configurado.
+    
+    const googleBtn = document.getElementById('google-login-btn');
+
+    googleBtn.addEventListener('click', async (e) => {
+        // Verifica se está rodando dentro do APK (Android/iOS)
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+            e.preventDefault(); // Impede o redirecionamento padrão que dá o erro 403
+            
+            try {
+                // Chama o login nativo (aquele que abre a janelinha do Android)
+                // Certifique-se de que o plugin @codetrix-studio/capacitor-google-auth está instalado
+                const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
+                
+                const user = await GoogleAuth.signIn();
+                
+                // O Google te deu um idToken. Agora você precisa enviar esse token para o seu Flask
+                // Você pode criar uma rota nova no Flask chamada /login-google-app
+                const response = await fetch('/login-google-app', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: user.authentication.idToken })
+                });
+
+                if (response.ok) {
+                    window.location.href = '/home'; // Sucesso!
+                }
+            } catch (err) {
+                console.error('Erro no login nativo:', err);
+                alert('Erro ao conectar com o Google no App.');
+            }
+        }
+        // Se não for Native (for o navegador Chrome/Safari), ele segue o href normal do Flask
+    });
+</script>
+
             
             <div class="relative flex items-center justify-center mb-6">
                 <div class="w-full border-t border-gray-200"></div>
