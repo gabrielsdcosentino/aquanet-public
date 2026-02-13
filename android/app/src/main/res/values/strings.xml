@@ -4,4 +4,6 @@
     <string name="title_activity_main">AquaNet</string>
     <string name="package_name">com.aquanet.app</string>
     <string name="custom_url_scheme">com.aquanet.app</string>
+    
+    <string name="server_client_id">601074892036-k72kp3f9rj9q129qhgbua1g56rm8r9um.apps.googleusercontent.com</string>
 </resources>
