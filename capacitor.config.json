@@ -5,10 +5,21 @@
   "bundledWebRuntime": false,
   "server": {
     "url": "https://aquanet.app.br",
-    "cleartext": true
+    "cleartext": true,
+    "allowNavigation": [
+      "aquanet.app.br",
+      "*.aquanet.app.br",
+      "accounts.google.com"
+    ]
+  },
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": ["profile", "email"],
+      "serverClientId": "601074892036-k72kp3f9rj9q129qhgbua1g56rm8r9um.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
   },
   "android": {
     "allowMixedContent": true
   }
 }
-
