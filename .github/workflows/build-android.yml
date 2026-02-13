@@ -11,7 +11,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      # Node 22 (Exigido pelo Capacitor novo)
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
@@ -20,7 +19,7 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      # CORREÇÃO AQUI: Mudamos de 17 para 21
+      # Mantemos Java 21 pois seu projeto exige
       - name: Setup Java
         uses: actions/setup-java@v3
         with:
@@ -29,6 +28,10 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+
+      # --- CORREÇÃO AQUI: Instalamos a versão antiga que o assinador exige ---
+      - name: Install Build Tools 29.0.3
+        run: sdkmanager "build-tools;29.0.3"
 
       - name: Sync Capacitor
         run: npx cap sync android
@@ -45,7 +48,7 @@ jobs:
           alias: ${{ secrets.ANDROID_KEY_ALIAS }}
           keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          buildToolsVersion: 34.0.0
+        # Removemos o buildToolsVersion daqui pois a ação não suporta
 
       - name: Upload Signed APK
         uses: actions/upload-artifact@v4
