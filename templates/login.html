@@ -105,5 +105,36 @@
     <footer class="bg-white border-t border-gray-200 text-center text-xs text-gray-500 py-4 mt-auto">
         &copy; 2026 AquaNet. Feito para aquaristas.
     </footer>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const googleBtn = document.getElementById('google-login-btn'); // Dê esse ID ao seu botão <a>
+    
+    // Se estiver rodando como APP (Capacitor nativo)
+    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+      googleBtn.addEventListener('click', async (e) => {
+        e.preventDefault(); // Bloqueia o link normal (que dá erro 403)
+        
+        try {
+            // Importa e chama o plugin nativo
+            const { GoogleAuth } = await import('https://esm.run/@codetrix-studio/capacitor-google-auth');
+            await GoogleAuth.initialize();
+            const user = await GoogleAuth.signIn();
+            
+            // Envia o token para sua rota "google native" no Python
+            const response = await fetch('/google-native', { // Confirme se o nome da rota é esse mesmo
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: user.authentication.idToken })
+            });
+            
+            if (response.ok) window.location.reload(); 
+            
+        } catch (error) {
+            console.error("Erro Auth Nativa:", error);
+        }
+      });
+    }
+  });
+</script>
 </body>
 </html>
