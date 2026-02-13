@@ -1,6 +1,8 @@
 from flask import send_from_directory
 import os
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash, current_app, send_from_directory
+from google.oauth2 import id_token
+from google.auth.transport import requests as google_requests
 from sqlalchemy.orm import joinedload
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_, func
@@ -1147,5 +1149,69 @@ def serve_assetlinks():
     return send_from_directory(os.path.join(app.root_path, '.well-known'),
                                'assetlinks.json', 
                                mimetype='application/json')
+# --- ROTA PARA LOGIN NATIVO (APP) ---
+@app.route('/google-native', methods=['POST'])
+@csrf.exempt  # Importante: O App não tem token CSRF de sessão, então isentamos esta rota
+def google_native_login():
+    token = request.json.get('token')
+    
+    if not token:
+        return jsonify({'error': 'Token ausente'}), 400
+
+    try:
+        # Valida o token recebido do Android
+        # O Client ID deve ser o WEB (o mesmo que está no strings.xml e no topo do app.py)
+        idinfo = id_token.verify_oauth2_token(
+            token, 
+            google_requests.Request(), 
+            app.config['GOOGLE_CLIENT_ID']
+        )
+
+        # Se chegou aqui, o Google confirmou que o usuário é real
+        google_id = idinfo['sub']
+        google_email = idinfo['email']
+        profile_pic_url = idinfo.get('picture')
+        
+        # Lógica idêntica ao seu auth_google existente:
+        user = User.query.filter_by(google_id=google_id).first()
+        
+        if user is None:
+            # Tenta achar por email se não achou pelo ID do Google
+            user_by_email = User.query.filter_by(email=google_email).first()
+            if user_by_email:
+                user_by_email.google_id = google_id
+                user_by_email.profile_pic_url = user_by_email.profile_pic_url or profile_pic_url
+                db.session.commit()
+                user = user_by_email
+            else:
+                # Cria novo usuário
+                google_username = google_email.split('@')[0]
+                base = google_username
+                count = 1
+                while User.query.filter_by(username=google_username).first():
+                    google_username = f"{base}_{count}"
+                    count += 1
+                
+                user = User(
+                    username=google_username, 
+                    email=google_email,
+                    password_hash=bcrypt.generate_password_hash(secrets.token_hex(16)).decode('utf-8'),
+                    profile_pic_url=profile_pic_url, 
+                    google_id=google_id
+                )
+                db.session.add(user)
+                db.session.commit()
+        
+        # Loga o usuário no Flask
+        login_user(user, remember=True)
+        return jsonify({'status': 'success'}), 200
+
+    except ValueError as e:
+        print(f"Erro token inválido: {e}")
+        return jsonify({'error': 'Token inválido'}), 401
+    except Exception as e:
+        print(f"Erro no login nativo: {e}")
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=False)
