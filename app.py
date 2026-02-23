@@ -1223,5 +1223,59 @@ def google_native_login():
         print(f"Erro no login nativo: {e}")
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/cron/check_maintenance')
+def cron_check_maintenance():
+    # Uma senha simples na URL para ninguém disparar emails no seu lugar
+    chave = request.args.get('key')
+    if chave != 'aquanet_cron_secreto_123':
+        return "Acesso negado", 403
+
+    aquarios = Aquarium.query.all()
+    hoje = now_br().date()
+    emails_enviados = 0
+
+    for aqua in aquarios:
+        owner = aqua.owner
+        # Se o usuário não tem email cadastrado, pula para o próximo
+        if not owner or not owner.email:
+            continue
+
+        # Busca a última manutenção deste aquário
+        latest_maint = MaintenanceLog.query.filter_by(aquarium_id=aqua.id).order_by(MaintenanceLog.date.desc()).first()
+
+        if latest_maint:
+            # Calcula os dias
+            dias = (hoje - latest_maint.date.date()).days
+            
+            # Escolha os dias exatos para notificar (ex: no 7º dia e no 15º dia)
+            # Usamos "==" para não mandar email repetido todo santo dia
+            if dias == 7:
+                subject = f"Atenção: Limpeza do {aqua.name} 🧽"
+                body = f"""
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2 style="color: #F59E0B;">Olá {owner.username}!</h2>
+                    <p>Já faz <b>7 dias</b> desde a última manutenção do seu aquário <b>{aqua.name}</b>.</p>
+                    <p>Que tal dar uma checada na água hoje?</p>
+                    <a href="{url_for('aquarium_dashboard', aquarium_id=aqua.id, _external=True)}" style="background: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; mt-10">Ver Aquário no AquaNet</a>
+                </div>
+                """
+                send_email_notification(owner.email, subject, body)
+                emails_enviados += 1
+
+            elif dias == 15:
+                subject = f"ALERTA CRÍTICO: Limpeza do {aqua.name} 🚨"
+                body = f"""
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <h2 style="color: #DC2626;">Olá {owner.username}!</h2>
+                    <p>Atenção! O aquário <b>{aqua.name}</b> está há <b>15 dias</b> sem manutenção registrada.</p>
+                    <p>A qualidade da água pode estar tóxica para seus habitantes. Recomendamos uma troca parcial de água (TPA) urgente.</p>
+                    <a href="{url_for('log_maintenance', aquarium_id=aqua.id, _external=True)}" style="background: #16A34A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; mt-10">Registrar Manutenção</a>
+                </div>
+                """
+                send_email_notification(owner.email, subject, body)
+                emails_enviados += 1
+
+    return jsonify({"status": "sucesso", "emails_disparados": emails_enviados})
+
 if __name__ == '__main__':
     app.run(debug=False)
