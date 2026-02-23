@@ -1225,55 +1225,85 @@ def google_native_login():
 
 @app.route('/api/cron/check_maintenance')
 def cron_check_maintenance():
-    # Uma senha simples na URL para ninguém disparar emails no seu lugar
     chave = request.args.get('key')
     if chave != 'aquanet_cron_secreto_123':
         return "Acesso negado", 403
 
-    aquarios = Aquarium.query.all()
     hoje = now_br().date()
+    dia_do_ano = hoje.timetuple().tm_yday # Pega o número do dia (1 a 365)
     emails_enviados = 0
 
+    # ==========================================
+    # 1. ALERTAS DE MANUTENÇÃO (Por Aquário)
+    # ==========================================
+    aquarios = Aquarium.query.all()
     for aqua in aquarios:
         owner = aqua.owner
-        # Se o usuário não tem email cadastrado, pula para o próximo
-        if not owner or not owner.email:
-            continue
+        if not owner or not owner.email: continue
 
-        # Busca a última manutenção deste aquário
         latest_maint = MaintenanceLog.query.filter_by(aquarium_id=aqua.id).order_by(MaintenanceLog.date.desc()).first()
-
         if latest_maint:
-            # Calcula os dias
             dias = (hoje - latest_maint.date.date()).days
             
-            # Escolha os dias exatos para notificar (ex: no 7º dia e no 15º dia)
-            # Usamos "==" para não mandar email repetido todo santo dia
             if dias == 7:
                 subject = f"Atenção: Limpeza do {aqua.name} 🧽"
-                body = f"""
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                body = f"""<div style="font-family: Arial, sans-serif; padding: 20px;">
                     <h2 style="color: #F59E0B;">Olá {owner.username}!</h2>
                     <p>Já faz <b>7 dias</b> desde a última manutenção do seu aquário <b>{aqua.name}</b>.</p>
-                    <p>Que tal dar uma checada na água hoje?</p>
-                    <a href="{url_for('aquarium_dashboard', aquarium_id=aqua.id, _external=True)}" style="background: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; mt-10">Ver Aquário no AquaNet</a>
-                </div>
-                """
+                    <a href="{url_for('aquarium_dashboard', aquarium_id=aqua.id, _external=True)}" style="background: #2563EB; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Ver Aquário</a>
+                </div>"""
                 send_email_notification(owner.email, subject, body)
                 emails_enviados += 1
 
             elif dias == 15:
                 subject = f"ALERTA CRÍTICO: Limpeza do {aqua.name} 🚨"
-                body = f"""
-                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                body = f"""<div style="font-family: Arial, sans-serif; padding: 20px;">
                     <h2 style="color: #DC2626;">Olá {owner.username}!</h2>
-                    <p>Atenção! O aquário <b>{aqua.name}</b> está há <b>15 dias</b> sem manutenção registrada.</p>
-                    <p>A qualidade da água pode estar tóxica para seus habitantes. Recomendamos uma troca parcial de água (TPA) urgente.</p>
-                    <a href="{url_for('log_maintenance', aquarium_id=aqua.id, _external=True)}" style="background: #16A34A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; mt-10">Registrar Manutenção</a>
-                </div>
-                """
+                    <p>Atenção! O aquário <b>{aqua.name}</b> está há <b>15 dias</b> sem manutenção.</p>
+                    <a href="{url_for('log_maintenance', aquarium_id=aqua.id, _external=True)}" style="background: #16A34A; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 10px;">Registrar Limpeza</a>
+                </div>"""
                 send_email_notification(owner.email, subject, body)
                 emails_enviados += 1
+
+    # ==========================================
+    # 2. EMAILS DE ENGAJAMENTO (Por Usuário)
+    # ==========================================
+    usuarios = User.query.all()
+    for user in usuarios:
+        if not user.email: continue
+        
+        # O TRUQUE: O resto da divisão por 10 garante que ele cai aqui 1 vez a cada 10 dias.
+        if (user.id + dia_do_ano) % 10 == 0:
+            
+            # Escolhemos um template diferente baseado no ID do usuário para variar o assunto
+            tipo_email = user.id % 3 
+            
+            if tipo_email == 0:
+                assunto = "Novidades rolando no AquaNet! 🌊"
+                corpo = f"E aí, {user.username}! Tem muita coisa legal acontecendo nas comunidades de aquarismo hoje. Entre para trocar experiências e ver as novas postagens da galera."
+            elif tipo_email == 1:
+                assunto = "Sua Sala de Troféus aguarda! 🏆"
+                corpo = f"Sabia que você pode ganhar medalhas exclusivas registrando medições e interagindo? Acesse o AquaNet hoje e mostre que você é um Aquarista de respeito!"
+            else:
+                assunto = "Como estão seus peixes hoje? 🐟"
+                corpo = f"Olá {user.username}! Já faz um tempinho que não vemos atualizações suas. Que tal tirar uma foto legal do seu aquário hoje e postar para a comunidade ver?"
+
+            # Envelopa com um visual bacana
+            html_body = f"""
+            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 10px;">
+                <h2 style="color: #2563EB; text-align: center;">AquaNet</h2>
+                <p style="color: #4b5563; font-size: 16px; line-height: 1.5; text-align: center;">{corpo}</p>
+                <div style="text-align: center; margin-top: 30px;">
+                    <a href="{url_for('home', _external=True)}" style="background-color: #2563EB; color: white; padding: 12px 24px; text-decoration: none; border-radius: 50px; font-weight: bold; display: inline-block;">Abrir o AquaNet</a>
+                </div>
+                <p style="text-align: center; margin-top: 30px; font-size: 11px; color: #9ca3af;">
+                    AquaNet - A Rede Social do Aquarismo
+                </p>
+            </div>
+            """
+            
+            send_email_notification(user.email, assunto, html_body)
+            emails_enviados += 1
 
     return jsonify({"status": "sucesso", "emails_disparados": emails_enviados})
 
