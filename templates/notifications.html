@@ -29,7 +29,7 @@
         </a>
 
         {% else %}
-        <a href="{{ url_for('post_detail', post_id=n.post_id) if n.post_id else url_for('profile', username=n.sender.username) }}" class="block p-4 rounded-3xl shadow-sm border transition-all {{ 'bg-white border-slate-100 opacity-75' if n.is_read else 'bg-blue-50/50 border-blue-100' }}">
+        <a href="{{ url_for('post_detail', post_id=n.post_id) if n.post_id else url_for('profile', username=n.sender.username) }}" class="block p-4 rounded-3xl shadow-sm border transition-all {{ 'bg-blue-50 border-blue-200' if n.id in unread_ids else 'bg-white border-slate-100' }}">
             <div class="flex items-start gap-3">
                 <img src="{{ n.sender.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border border-slate-100 shrink-0">
                 

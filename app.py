@@ -362,6 +362,9 @@ class Notification(db.Model):
     is_read = db.Column(db.Boolean, default=False)
     count = db.Column(db.Integer, default=1)
     sender = db.relationship('User', foreign_keys=[sender_id], backref='sent_notifications')
+    # ADICIONE ESTAS DUAS LINHAS:
+    post = db.relationship('Post', foreign_keys=[post_id])
+    comment = db.relationship('Comment', foreign_keys=[comment_id])
 
 # --- NOVO MODELO PARA PUSH NOTIFICATIONS ---
 class PushSubscription(db.Model):
@@ -1023,8 +1026,15 @@ def calculators(): return render_template('calculators.html', popular_communitie
 @login_required
 def notifications():
     notifs = current_user.notifications.order_by(Notification.timestamp.desc()).all()
+    
+    # Salva quais eram novas ANTES de atualizar
+    unread_ids = [n.id for n in notifs if not n.is_read]
+    
     for n in notifs: n.is_read = True
-    db.session.commit(); return render_template('notifications.html', notifications=notifs, popular_communities=get_popular_communities())
+    db.session.commit()
+    
+    # Passamos a lista 'unread_ids' para o HTML
+    return render_template('notifications.html', notifications=notifs, unread_ids=unread_ids, popular_communities=get_popular_communities())
 
 @app.route('/communities')
 @login_required
