@@ -1,0 +1,5 @@
+site.db
+release.jks
+key_base64.txt
+keystore_b64.txt
+.env
