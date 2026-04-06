@@ -25,6 +25,13 @@ from pywebpush import webpush, WebPushException
 import textwrap
 import tempfile
 import base64
+import os
+from dotenv import load_dotenv
+
+load_dotenv() # Carrega as variáveis do arquivo .env
+
+# app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY')
 
 # --- DEFINIÇÃO DE CAMINHOS ---
 base_dir = os.path.abspath(os.path.dirname(__file__))
