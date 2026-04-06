@@ -10,8 +10,8 @@ from flask_bcrypt import Bcrypt
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
-from markupsafe import Markup
-from flask import escape
+from markupsafe import Markup, escape
+
 import secrets, os, datetime, unicodedata, re, json
 import cloudinary, cloudinary.uploader, cloudinary.api
 from authlib.integrations.flask_client import OAuth
