@@ -550,11 +550,11 @@ def check_badges(user):
     # Evita erros de Proxy pegando o ID real do usuário
     user_id = user.id
     
-    # 1. AQUARISTA (Logs de Parâmetros)
+    # 1. AQUARISTA (Logs de Parâmetros) -> AQUI ESTAVA O ERRO!
     log_count = ParameterLog.query.join(Aquarium).filter(Aquarium.user_id == user_id).count()
-    if log_count >= 1: assign_badge(user, 'aquarista-iniciante')
-    if log_count >= 10: assign_badge(user, 'aquarista-dedicado')
-    if log_count >= 50: assign_badge(user, 'aquarista-master')
+    if log_count >= 1: assign_badge(user, 'cientista-iniciante')
+    if log_count >= 10: assign_badge(user, 'cientista-dedicado')
+    if log_count >= 50: assign_badge(user, 'cientista-master')
     
     # 2. TAGARELA (Comentários)
     comment_count = Comment.query.filter_by(user_id=user_id).count()
@@ -570,7 +570,7 @@ def check_badges(user):
     photo_count = Post.query.filter_by(user_id=user_id).filter(Post.image_file.isnot(None)).count()
     if photo_count >= 5: assign_badge(user, 'fotografo')
 
-    # 5. COLECIONADOR (Qtd Aquários - Protegido sem lazy loading)
+    # 5. COLECIONADOR (Qtd Aquários)
     aqua_count = Aquarium.query.filter_by(user_id=user_id).count()
     if aqua_count >= 3: assign_badge(user, 'colecionador')
 
