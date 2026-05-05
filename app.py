@@ -952,7 +952,12 @@ def create_aquarium():
         if last_aqua and (now_br() - last_aqua.created_at).total_seconds() < 30: flash('Duplicado.', 'warning'); return redirect(url_for('my_aquariums'))
         dt = datetime.datetime.strptime(request.form.get('setup_date'), '%Y-%m-%d').date() if request.form.get('setup_date') else None
         db.session.add(Aquarium(name=name, aquarium_type=request.form.get('aquarium_type'), volume=float(request.form.get('volume') or 0), description=request.form.get('description'), setup_date=dt, owner=current_user))
-        db.session.commit(); return redirect(url_for('my_aquariums'))
+        db.session.commit()
+        
+        # GATILHO ADICIONADO: CHECAR CONQUISTAS (COLECIONADOR)
+        check_badges(current_user)
+        
+        return redirect(url_for('my_aquariums'))
     return render_template('create_aquarium.html')
 
 @app.route('/aquarium/<int:aquarium_id>/edit', methods=['GET', 'POST'])
@@ -1055,7 +1060,13 @@ def create_post(): return render_template('create_post.html', communities=Commun
 @login_required
 def follow(username):
     user = User.query.filter_by(username=username).first_or_404()
-    if user != current_user: current_user.follow_user(user); create_notification(user, 'follow', current_user)
+    if user != current_user: 
+        current_user.follow_user(user)
+        create_notification(user, 'follow', current_user)
+        
+        # GATILHO ADICIONADO: CHECAR CONQUISTAS DO USUÁRIO SEGUIDO (POPULAR)
+        check_badges(user)
+        
     return redirect(url_for('profile', username=username))
 
 @app.route('/unfollow/<username>', methods=['POST'])
