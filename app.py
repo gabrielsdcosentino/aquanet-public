@@ -519,17 +519,26 @@ def process_mentions(content, sender, post, comment=None):
         if user and user != sender:
             create_notification(user, 'mention', sender, post, comment)
 
+from werkzeug.local import LocalProxy
+
 # --- SISTEMA DE GAMIFICAÇÃO ---
 def assign_badge(user, slug):
+    # Proteção 1: Extrai o usuário real do SQLAlchemy, ignorando o Proxy do Flask-Login
+    if isinstance(user, LocalProxy):
+        user = user._get_current_object()
+
     badge = Badge.query.filter_by(slug=slug).first()
-    if badge and badge not in user.badges:
+    
+    # Proteção 2: Falha silenciosamente se a medalha ainda não existir no banco
+    if not badge:
+        return
+
+    if badge not in user.badges:
         user.badges.append(badge)
         db.session.commit()
         
         # Cria notificação explícita
-        # Usamos o campo 'action' como 'badge' e 'sender' nulo (Sistema)
         msg = f"Você conquistou: {badge.name}"
-        # Criamos a notificação manualmente para garantir o texto
         notif = Notification(recipient_id=user.id, action='badge', count=1, timestamp=now_br())
         db.session.add(notif)
         db.session.commit()
@@ -538,29 +547,31 @@ def assign_badge(user, slug):
         send_push_notification(user, "Nova Conquista! 🏆", msg, url_for('profile', username=user.username, _external=True))
 
 def check_badges(user):
-    # 1. AQUARISTA (Logs de Parâmetros)
-    log_count = ParameterLog.query.join(Aquarium).filter(Aquarium.user_id == user.id).count()
-    if log_count >= 1: assign_badge(user, 'aquarista-iniciante')
-    if log_count >= 10: assign_badge(user, 'aquarista-dedicado')
-    if log_count >= 50: assign_badge(user, 'aquarista-master')
+    # Evita erros de Proxy pegando o ID real do usuário
+    user_id = user.id
+    
+    # 1. AQUARISTA (Logs de Parâmetros) -> AQUI ESTAVA O ERRO!
+    log_count = ParameterLog.query.join(Aquarium).filter(Aquarium.user_id == user_id).count()
+    if log_count >= 1: assign_badge(user, 'cientista-iniciante')
+    if log_count >= 10: assign_badge(user, 'cientista-dedicado')
+    if log_count >= 50: assign_badge(user, 'cientista-master')
     
     # 2. TAGARELA (Comentários)
-    comment_count = Comment.query.filter_by(user_id=user.id).count()
+    comment_count = Comment.query.filter_by(user_id=user_id).count()
     if comment_count >= 5: assign_badge(user, 'tagarela-junior')
     if comment_count >= 50: assign_badge(user, 'tagarela-senior')
 
     # 3. CRIADOR (Posts)
-    post_count = Post.query.filter_by(user_id=user.id).count()
+    post_count = Post.query.filter_by(user_id=user_id).count()
     if post_count >= 1: assign_badge(user, 'criador-conteudo')
     if post_count >= 20: assign_badge(user, 'influenciador')
 
     # 4. FOTÓGRAFO (Fotos Postadas)
-    # Conta quantos posts do usuário têm imagem (image_file não é None)
-    photo_count = Post.query.filter_by(user_id=user.id).filter(Post.image_file.isnot(None)).count()
+    photo_count = Post.query.filter_by(user_id=user_id).filter(Post.image_file.isnot(None)).count()
     if photo_count >= 5: assign_badge(user, 'fotografo')
 
     # 5. COLECIONADOR (Qtd Aquários)
-    aqua_count = len(user.aquariums)
+    aqua_count = Aquarium.query.filter_by(user_id=user_id).count()
     if aqua_count >= 3: assign_badge(user, 'colecionador')
 
     # 6. POPULAR (Seguidores)
