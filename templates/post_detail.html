@@ -2,86 +2,8 @@
 
 {% block title %}Post de {{ post.author.username }} - AquaNet{% endblock %}
 
+{# Importamos a macro isolada do arquivo de componentes #}
 {% from '_macros.html' import render_comment_with_replies %}
-
-{% block content %}
-    <div class="max-w-xl mx-auto px-0 md:px-0 pb-20"></div>
-    <div class="comment-node {{ container_class }}" id="comment-{{ comment.id }}">
-        <div class="flex items-start group">
-            <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="flex-shrink-0 mr-2">
-                 <img src="{{ comment.comment_author.profile_pic_url }}" class="{{ 'w-8 h-8' if level == 0 else 'w-6 h-6' }} rounded-full object-cover border border-gray-100">
-            </a>
-
-            <div class="flex-grow min-w-0 relative">
-                <div class="text-sm">
-                    <span class="font-bold text-gray-900">
-                        <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="hover:underline">{{ comment.comment_author.username }}</a>
-                    </span>
-                    
-                    {# Lógica visual de reforço de contexto quando o recuo esquerdo está travado #}
-                    {% if is_locked and comment.parent %}
-                        <span class="text-xs text-gray-400 mx-1">▶</span>
-                        <span class="font-semibold text-xs text-blue-600 mr-1">
-                            <a href="{{ url_for('profile', username=comment.parent.comment_author.username) }}" class="hover:underline">@{{ comment.parent.comment_author.username }}</a>
-                        </span>
-                    {% else %}
-                        <span class="mr-1"></span>
-                    {% endif %}
-                    
-                    <span class="text-gray-800 break-words max-w-full leading-snug whitespace-pre-wrap">{{ comment.text | link_mentions }}</span>
-                </div>
-
-                <div class="flex items-center mt-1 space-x-3 text-xs text-gray-500 font-semibold">
-                    <span class="font-normal">{{ comment.timestamp.strftime('%d/%m') }}</span>
-
-                    <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" class="like-form inline-flex" hx-boost="false">
-                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                         <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
-                            <i class="{{ 'fas' if current_user.has_liked_comment(comment) else 'far' }} fa-thumbs-up text-[10px] mr-1"></i>
-                            <span class="like-count-text">{{ comment.likes|length if comment.likes|length > 0 else '' }}</span>
-                            <span class="ml-1">{{ 'Curtido' if current_user.has_liked_comment(comment) else 'Curtir' }}</span>
-                         </button>
-                    </form>
-
-                    <button class="reply-button hover:text-gray-800 transition-colors flex items-center gap-1" data-comment-id="{{ comment.id }}">
-                        <i class="fas fa-reply"></i> Responder
-                    </button>
-
-                    {% if comment.user_id == current_user.id or post.community.creator_id == current_user.id or current_user.username == 'bielcosen14' %}
-                        <a href="{{ url_for('delete_comment', comment_id=comment.id) }}" class="ml-auto text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash-alt"></i></a>
-                    {% endif %}
-                </div>
-
-                {% if level == 0 and comment.replies.count() > 0 %}
-                    <div class="mt-1">
-                        <button class="toggle-replies-btn text-xs font-bold text-gray-400 flex items-center hover:text-gray-600 transition-colors" data-target="replies-for-{{ comment.id }}">
-                            <div class="w-6 border-t border-gray-300 mr-2"></div>
-                            <span class="reply-count-label">Ver respostas</span>
-                        </button>
-                    </div>
-                {% endif %}
-
-                <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" class="reply-form hidden mt-2 mb-2" hx-boost="false">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="parent_id" value="{{ comment.id }}">
-                    <div class="flex items-start space-x-2">
-                        <textarea name="comment_text" required class="flex-grow bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none h-12" placeholder="Sua resposta..."></textarea>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-2">
-                        <button type="button" class="cancel-reply-button text-xs text-gray-500 font-bold px-2 py-1">Cancelar</button>
-                        <button type="submit" class="bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full hover:bg-blue-700">Enviar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-        
-        <div class="replies-container {{ 'hidden' if level == 0 else '' }} {{ container_padding }}" id="replies-for-{{ comment.id }}">
-            {% for reply in comment.replies %}
-                {{ render_comment_with_replies(reply, post, current_user, level=level+1) }}
-            {% endfor %}
-        </div>
-    </div>
-{% endmacro %}
 
 {% block content %}
     <div class="max-w-xl mx-auto px-0 md:px-0 pb-20">
