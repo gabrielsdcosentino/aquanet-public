@@ -1,2 +1,14 @@
 {% from '_macros.html' import render_comment_with_replies %}
-{{ render_comment_with_replies(comment, post, current_user, level=0 if not comment.parent_id else 1) }}
+
+{# Watson deduzindo o nível correto baseado na existência de ancestrais #}
+{% if comment.parent %}
+    {% if comment.parent.parent %}
+        {% set calc_level = 2 %}
+    {% else %}
+        {% set calc_level = 1 %}
+    {% endif %}
+{% else %}
+    {% set calc_level = 0 %}
+{% endif %}
+
+{{ render_comment_with_replies(comment, post, current_user, level=calc_level) }}
