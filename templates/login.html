@@ -10,10 +10,9 @@
         body { font-family: 'Inter', sans-serif; background-color: #DAE0E6; }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
         
-        .flashes { margin-bottom: 1rem; }
-        .flash-success { background-color: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
-        .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
-        .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 0.5rem; }
+        .flash-success { background-color: #d1fae5; color: #065f46; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 1rem; }
+        .flash-danger { background-color: #fee2e2; color: #991b1b; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 1rem; }
+        .flash-info { background-color: #dbeafe; color: #1e40af; padding: 0.75rem 1rem; border-radius: 0.375rem; margin-bottom: 1rem; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans flex flex-col min-h-screen">
@@ -31,18 +30,19 @@
     <main class="flex-grow flex items-center justify-center container mx-auto px-4 py-12">
         <div class="bg-white p-8 rounded-3xl shadow-xl border border-gray-100 w-full max-w-md transform transition-all hover:shadow-2xl">
             
+            {# Bloco de Flashes Filtrado: Ignora a mensagem em inglês e evita sobras de margem #}
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
-                    <div class="flashes mb-6 space-y-2">
                     {% for category, message in messages %}
-                        <div class="flash-{{ category }} shadow-sm flex items-center">
-                            {% if category == 'success' %}<i class="fas fa-check-circle mr-2"></i>
-                            {% elif category == 'danger' %}<i class="fas fa-exclamation-circle mr-2"></i>
-                            {% else %}<i class="fas fa-info-circle mr-2"></i>{% endif %}
-                            {{ message }}
-                        </div>
+                        {% if message != "Please log in to access this page." %}
+                            <div class="flash-{{ category }} shadow-sm flex items-center">
+                                {% if category == 'success' %}<i class="fas fa-check-circle mr-2"></i>
+                                {% elif category == 'danger' %}<i class="fas fa-exclamation-circle mr-2"></i>
+                                {% else %}<i class="fas fa-info-circle mr-2"></i>{% endif %}
+                                {{ message }}
+                            </div>
+                        {% endif %}
                     {% endfor %}
-                    </div>
                 {% endif %}
             {% endwith %}
 
@@ -154,7 +154,6 @@
                     content.classList.remove('hidden');
                     loading.classList.add('hidden');
                     loading.classList.remove('flex');
-                    // Erro silencioso ou log, sem alert chato
                     console.error(data.error);
                 }
 
