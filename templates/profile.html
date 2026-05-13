@@ -5,7 +5,10 @@
 {% block content %}
     <section class="bg-white p-6 rounded-lg shadow mb-5 text-center">
         <img src="{{ user.profile_pic_url }}" alt="Foto de Perfil de {{ user.username }}" class="w-24 h-24 md:w-32 md:h-32 rounded-full mx-auto border-4 border-gray-200 mb-4 object-cover">
-        <h2 class="text-2xl font-semibold">@{{ user.username }}</h2>
+        
+        {# Título ajustado com truncate para não vazar na tela do mobile #}
+        <h2 class="text-2xl font-semibold truncate max-w-full px-4" title="@{{ user.username }}">@{{ user.username }}</h2>
+        
         <div class="flex justify-center gap-6 my-4">
             <div><span class="font-bold text-lg">{{ user.followers.count() }}</span> <span class="text-gray-600">Seguidores</span></div>
             <div><span class="font-bold text-lg">{{ user.followed.count() }}</span> <span class="text-gray-600">Seguindo</span></div>
@@ -19,7 +22,8 @@
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                          <button type="submit" class="text-sm bg-gray-300 hover:bg-gray-400 text-gray-800 font-semibold py-2 px-4 rounded-full">Deixar de Seguir</button>
                     </form>
-                {% else %}  <form action="{{ url_for('follow', username=user.username) }}" method="POST" class="inline-block">
+                {% else %}  
+                    <form action="{{ url_for('follow', username=user.username) }}" method="POST" class="inline-block">
                          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                          <button type="submit" class="text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-full">Seguir</button>
                     </form>
