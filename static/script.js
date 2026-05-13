@@ -1,42 +1,34 @@
 // ============================================================================
-// AQUANET SCRIPT - V11 (PWA: MODO "NÃO PERTURBE")
+// AQUANET SCRIPT - V12 (PWA & INJEÇÃO COM SCROLL FOCADO NO CENTRO)
 // ============================================================================
-console.log(">>> SCRIPT AQUANET V11 <<<");
+console.log(">>> SCRIPT AQUANET V12 <<<");
 
 let deferredPrompt; 
 
 document.addEventListener('DOMContentLoaded', function() {
-    
     // --- LÓGICA DE INSTALAÇÃO PWA ---
     const installCard = document.getElementById('pwa-install-card');
     const installBtn = document.getElementById('pwa-install-btn');
     const closeBtn = document.getElementById('pwa-close-btn');
 
-    // 1. CHECAGEM INICIAL: Se já estiver rodando como APP, esconde tudo e para.
     if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
         if (installCard) installCard.remove();
-        return; // Encerra o script PWA aqui
+        return;
     }
 
-    // 2. MEMÓRIA: Verifica se o usuário já recusou ou instalou antes
     const isDismissed = localStorage.getItem('aquanet_pwa_dismissed') === 'true';
     const isInstalled = localStorage.getItem('aquanet_pwa_installed') === 'true';
 
-    // Se já recusou/instalou, remove o HTML para garantir que não apareça
     if ((isDismissed || isInstalled) && installCard) {
         installCard.remove();
     }
 
-    // 3. EVENTO DO NAVEGADOR
     window.addEventListener('beforeinstallprompt', (e) => {
-        // Impede que o Chrome mostre a barra nativa (nós queremos usar a nossa)
         e.preventDefault();
         deferredPrompt = e;
         
-        // Só mostra o card se o usuário NUNCA tiver fechado ou instalado antes
         if (!localStorage.getItem('aquanet_pwa_dismissed') && !localStorage.getItem('aquanet_pwa_installed')) {
             if(installCard) {
-                // Pequeno delay para não ser intrusivo logo no carregamento
                 setTimeout(() => {
                     installCard.classList.remove('hidden');
                     installCard.classList.add('flex');
@@ -45,7 +37,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Ação do Botão INSTALAR
     if (installBtn) {
         installBtn.addEventListener('click', async () => {
             if (deferredPrompt) {
@@ -60,18 +51,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Ação do Botão FECHAR (X) - O MAIS IMPORTANTE AGORA
     if (closeBtn) {
         closeBtn.addEventListener('click', () => {
-            console.log("PWA recusado. Não mostrará mais neste navegador.");
-            // Grava na memória permanente do navegador
+            console.log("PWA recusado.");
             localStorage.setItem('aquanet_pwa_dismissed', 'true');
-            // Remove o card visualmente
             if(installCard) installCard.remove();
         });
     }
 
-    // Se a instalação ocorrer com sucesso (detectado pelo sistema)
     window.addEventListener('appinstalled', () => {
         localStorage.setItem('aquanet_pwa_installed', 'true');
         if(installCard) installCard.remove();
@@ -124,7 +111,7 @@ document.addEventListener('submit', function(e) {
         return false;
     }
 
-    // COMENTÁRIOS E POSTAGENS (Bloqueia clique duplo, injeta sem reload e guia o foco visual)
+    // COMENTÁRIOS E POSTAGENS (Injeta e guia a visão com precisão mecânica)
     if (form.id === 'comment-form' || form.classList.contains('reply-form') || form.classList.contains('post-form')) {
         const isAjax = form.id === 'comment-form' || form.classList.contains('reply-form');
         const btn = form.querySelector('button[type="submit"]');
@@ -136,7 +123,7 @@ document.addEventListener('submit', function(e) {
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Processando...'; 
         }
 
-        if (!isAjax) return true; // Post normal de nova publicação: deixa enviar nativamente
+        if (!isAjax) return true;
 
         e.preventDefault(); e.stopImmediatePropagation();
         
@@ -148,52 +135,47 @@ document.addEventListener('submit', function(e) {
         .then(res => res.json())
         .then(data => {
             if (data.success) {
-                // 1. Onde vamos injetar o HTML?
                 if (data.parent_id) {
-                    // É uma resposta a outro comentário
                     const parentContainer = document.getElementById(`comment-${data.parent_id}`);
                     if (parentContainer) {
                         const repliesDiv = parentContainer.querySelector('.replies-container');
                         if (repliesDiv) {
-                            // Garante que o container de respostas esteja visível
                             repliesDiv.classList.remove('hidden');
-                            // Injeta o novo comentário no final da lista de respostas
                             repliesDiv.insertAdjacentHTML('beforeend', data.html);
                             
-                            // Deduz a localização exata do novo elemento e rola a tela suavemente até ele
-                            const newElement = repliesDiv.lastElementChild;
-                            if (newElement) {
-                                newElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                            }
+                            // Dedução de Watson: Esperar 100ms pela pintura mecânica e focar no centro
+                            setTimeout(() => {
+                                const newElement = repliesDiv.lastElementChild;
+                                if (newElement) {
+                                    newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                }
+                            }, 100);
                         }
-                        // Esconde o formulário de resposta que acabou de ser usado
                         parentContainer.querySelector('.reply-form')?.classList.add('hidden');
                     }
                 } else {
-                    // É um comentário raiz (comentário direto no post)
                     const commentList = document.getElementById('comment-list');
                     const noCommentsMsg = document.getElementById('no-comments-message');
-                    if (noCommentsMsg) noCommentsMsg.remove(); // Tira a mensagem de "Seja o primeiro"
+                    if (noCommentsMsg) noCommentsMsg.remove();
                     
                     if (commentList) {
                         commentList.insertAdjacentHTML('beforeend', data.html);
                         
-                        // Deduz a localização exata do novo comentário raiz e rola a tela suavemente até ele
-                        const newElement = commentList.lastElementChild;
-                        if (newElement) {
-                            newElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                        }
+                        // Dedução de Watson: Deslizar de forma óbvia para o centro do ecrã
+                        setTimeout(() => {
+                            const newElement = commentList.lastElementChild;
+                            if (newElement) {
+                                newElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            }
+                        }, 100);
                     }
                 }
 
-                // 2. Atualiza os contadores de comentários na interface
                 const countElem = document.getElementById('post-comment-count');
                 if (countElem) countElem.innerText = data.total_comments;
 
-                // 3. Limpa a caixa de texto
                 form.reset();
 
-                // 4. Restaura o botão
                 if (btn) {
                     btn.disabled = false;
                     btn.classList.remove('opacity-70', 'cursor-not-allowed');
