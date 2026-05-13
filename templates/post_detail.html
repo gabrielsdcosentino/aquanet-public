@@ -2,138 +2,151 @@
 
 {% block title %}Post de {{ post.author.username }} - AquaNet{% endblock %}
 
-{% macro render_comment_with_replies(comment, post, current_user, level=0) %}
-    {% set is_deep = level > 3 %}
-    {% set container_padding = "pl-2 md:pl-6" if not is_deep else "pl-0" %}
-    {% set border_style = "border-l-2 border-slate-100 pl-2" if is_deep else "" %}
-    
-    {% set container_class = "mt-3" if level == 0 else "mt-2" %}
-    
-    <div class="comment-node {{ container_class }} {{ border_style }}" id="comment-{{ comment.id }}">
+{% macro render_comment_with_replies(comment, post, current_user, level=0, parent_author=None) %}
+    {% set is_deep = level >= 2 %}
+    {% set margin_class = "ml-3 md:ml-8" if level > 0 and not is_deep else ("ml-0" if is_deep else "") %}
+    {% set border_class = "border-l-2 border-blue-300 pl-3" if is_deep else ("border-l-2 border-gray-100 pl-3" if level > 0 else "") %}
+    {% set top_margin = "mt-4" if level == 0 else "mt-2" %}
+
+    <div class="comment-node {{ top_margin }} {{ margin_class }} {{ border_class }}" id="comment-{{ comment.id }}">
         <div class="flex items-start group">
-            <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="flex-shrink-0 mr-2">
-                 <img src="{{ comment.comment_author.profile_pic_url }}" class="{{ 'w-8 h-8' if level == 0 else 'w-6 h-6' }} rounded-full object-cover border border-gray-100">
+            <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="flex-shrink-0 mr-2.5 mt-0.5">
+                 <img src="{{ comment.comment_author.profile_pic_url }}" class="{{ 'w-8 h-8' if level == 0 else 'w-6 h-6' }} rounded-full object-cover border border-gray-200 shadow-sm">
             </a>
 
-            <div class="flex-grow min-w-0 relative">
-                <div class="text-sm">
-                    <span class="font-bold text-gray-900 mr-1">
-                        <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="hover:underline">{{ comment.comment_author.username }}</a>
-                    </span>
-                    <span class="text-gray-800 break-words max-w-full leading-snug whitespace-pre-wrap">{{ comment.text | link_mentions }}</span>
+            <div class="flex-grow min-w-0 relative bg-white p-3 rounded-xl border border-gray-100 shadow-xs">
+                <div class="flex items-center justify-between mb-1">
+                    <div class="text-sm flex items-center flex-wrap gap-1">
+                        <span class="font-bold text-gray-900">
+                            <a href="{{ url_for('profile', username=comment.comment_author.username) }}" class="hover:underline">{{ comment.comment_author.username }}</a>
+                        </span>
+                        
+                        {% if is_deep and parent_author %}
+                            <span class="text-xs bg-blue-50 text-blue-700 font-semibold px-2 py-0.5 rounded-full inline-flex items-center">
+                                <svg class="w-2.5 h-2.5 mr-0.5 inline" fill="currentColor" viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8.5 10.5a1.5 1.5 0 113 0 1.5 1.5 0 01-3 0zm5.2 2.8a5.5 5.5 0 00-7.4 0 1 1 0 01-1.3-1.4 7.5 7.5 0 0110 0 1 1 0 01-1.3 1.4z"></path></svg>
+                                @{{ parent_author }}
+                            </span>
+                        {% endif %}
+                    </div>
+                    <span class="text-xs text-gray-400 ml-2">{{ comment.date_posted|timeago if comment.date_posted else 'agora' }}</span>
                 </div>
-
-                <div class="flex items-center mt-1 space-x-3 text-xs text-gray-500 font-semibold">
-                    <span class="font-normal">{{ comment.timestamp.strftime('%d/%m') }}</span>
-
-                    <form action="{{ url_for('api_like_comment', comment_id=comment.id) }}" method="POST" class="like-form inline-flex" hx-boost="false">
-                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                         <button type="submit" class="hover:text-blue-600 transition-colors flex items-center {{ 'text-blue-600 font-bold' if current_user.has_liked_comment(comment) else '' }}">
-                            <i class="{{ 'fas' if current_user.has_liked_comment(comment) else 'far' }} fa-thumbs-up text-[10px] mr-1"></i>
-                            <span class="like-count-text">{{ comment.likes|length if comment.likes|length > 0 else '' }}</span>
-                            <span class="ml-1">{{ 'Curtido' if current_user.has_liked_comment(comment) else 'Curtir' }}</span>
-                         </button>
-                    </form>
-
-                    <button class="reply-button hover:text-gray-800 transition-colors flex items-center gap-1" data-comment-id="{{ comment.id }}">
-                        <i class="fas fa-reply"></i> Responder
+                
+                <p class="text-gray-700 text-sm leading-relaxed">{{ comment.content }}</p>
+                
+                <div class="mt-2 flex items-center gap-3 text-xs text-gray-500">
+                    <button type="button" 
+                            onclick="toggleReplyForm({{ comment.id }}, '{{ comment.comment_author.username }}')" 
+                            class="font-semibold text-blue-600 hover:text-blue-800 transition-colors flex items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"></path></svg>
+                        Responder
                     </button>
-
-                    {% if comment.user_id == current_user.id or post.community.creator_id == current_user.id or current_user.username == 'bielcosen14' %}
-                        <a href="{{ url_for('delete_comment', comment_id=comment.id) }}" class="ml-auto text-red-500 hover:text-red-700 p-1"><i class="fas fa-trash-alt"></i></a>
+                    {% if current_user.id == comment.comment_author.id or current_user.id == post.author.id %}
+                        <form action="{{ url_for('delete_comment', comment_id=comment.id) }}" method="POST" class="inline" onsubmit="return confirm('Tem certeza que deseja apagar este comentário?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="hover:text-red-600 transition-colors">Apagar</button>
+                        </form>
                     {% endif %}
                 </div>
 
-                {% if level == 0 and comment.replies.count() > 0 %}
-                    <div class="mt-1">
-                        <button class="toggle-replies-btn text-xs font-bold text-gray-400 flex items-center hover:text-gray-600 transition-colors" data-target="replies-for-{{ comment.id }}">
-                            <div class="w-6 border-t border-gray-300 mr-2"></div>
-                            <span class="reply-count-label">Ver respostas</span>
-                        </button>
-                    </div>
-                {% endif %}
-
-                <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" class="reply-form hidden mt-2 mb-2" hx-boost="false">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="parent_id" value="{{ comment.id }}">
-                    <div class="flex items-start space-x-2">
-                        <textarea name="comment_text" required class="flex-grow bg-gray-50 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-1 focus:ring-blue-500 focus:outline-none resize-none h-12" placeholder="Sua resposta..."></textarea>
-                    </div>
-                    <div class="flex justify-end space-x-3 mt-2">
-                        <button type="button" class="cancel-reply-button text-xs text-gray-500 font-bold px-2 py-1">Cancelar</button>
-                        <button type="submit" class="bg-blue-600 text-white text-xs font-bold px-4 py-1.5 rounded-full hover:bg-blue-700">Enviar</button>
-                    </div>
-                </form>
+                <div id="reply-form-{{ comment.id }}" class="hidden mt-3">
+                    <form action="{{ url_for('add_comment', post_id=post.id) }}" method="POST" class="flex gap-2">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="parent_id" value="{{ comment.id }}">
+                        <textarea name="comment_text" rows="1" placeholder="Respondendo a @{{ comment.comment_author.username }}..." required class="flex-grow bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"></textarea>
+                        <button type="submit" class="bg-blue-600 text-white font-bold text-xs px-3 py-1.5 rounded-lg hover:bg-blue-700 transition-colors self-end">Enviar</button>
+                    </form>
+                </div>
             </div>
         </div>
-        
-        <div class="replies-container {{ 'hidden' if level == 0 else '' }} {{ container_padding }}" id="replies-for-{{ comment.id }}">
-            {% for reply in comment.replies %}
-                {{ render_comment_with_replies(reply, post, current_user, level=level+1) }}
-            {% endfor %}
-        </div>
+
+        {% if comment.replies %}
+            <div class="nested-replies-container">
+                {% for reply in comment.replies %}
+                    {{ render_comment_with_replies(reply, post, current_user, level=level + 1, parent_author=comment.comment_author.username) }}
+                {% endfor %}
+            </div>
+        {% endif %}
     </div>
 {% endmacro %}
 
 {% block content %}
-    <div class="max-w-xl mx-auto px-0 md:px-0 pb-20">
-        <div class="bg-white sticky top-0 z-20 border-b border-gray-100 px-4 py-3 flex items-center shadow-sm">
-            <a href="{{ url_for('community_feed', community_slug=post.community.slug) }}" class="mr-4 text-gray-800"><i class="fas fa-arrow-left text-lg"></i></a>
-            <h1 class="text-lg font-bold text-gray-900">Post</h1>
-        </div>
-        <div class="bg-white p-4">
-            <div class="flex items-center mb-3">
-                <img src="{{ post.author.profile_pic_url }}" class="w-10 h-10 rounded-full border border-gray-100 mr-3 object-cover">
-                <div class="flex-grow">
-                    <span class="font-bold text-sm text-gray-900 block">{{ post.author.username }}</span>
-                    <span class="text-xs text-gray-500">{{ post.timestamp.strftime('%d de %B às %H:%M') }}</span>
+<div class="max-w-3xl mx-auto px-4 py-6">
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden mb-6">
+        <div class="p-4 sm:p-6 border-b border-gray-50 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="{{ url_for('profile', username=post.author.username) }}">
+                    <img src="{{ post.author.profile_pic_url }}" class="w-10 h-10 rounded-full object-cover border border-gray-200">
+                </a>
+                <div>
+                    <h4 class="font-bold text-sm text-gray-900">
+                        <a href="{{ url_for('profile', username=post.author.username) }}" class="hover:underline">{{ post.author.username }}</a>
+                    </h4>
+                    <span class="text-xs text-gray-400">{{ post.date_posted|timeago if post.date_posted else '' }}</span>
                 </div>
-                {% if post.user_id == current_user.id or post.community.creator_id == current_user.id or current_user.username == 'bielcosen14' %}
-                    <a href="{{ url_for('delete_post', post_id=post.id) }}" class="ml-auto text-gray-400 hover:text-red-500 p-1" onclick="return confirm('Excluir este post?')"><i class="fas fa-trash-alt text-sm"></i></a>
-                {% endif %}
             </div>
-            <p class="text-gray-900 text-base leading-relaxed mb-3 whitespace-pre-wrap">{{ post.content | link_mentions }}</p>
-            {% if post.image_file %}
-                <div class="rounded-lg overflow-hidden mb-3 border border-gray-100">
-                    <img src="{{ post.image_file }}" class="w-full object-cover max-h-[500px]">
+            {% if current_user.id == post.author.id %}
+                <div class="flex gap-2">
+                    <form action="{{ url_for('delete_post', post_id=post.id) }}" method="POST" onsubmit="return confirm('Deseja realmente excluir este post?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="text-gray-400 hover:text-red-600 text-xs font-semibold p-1 transition-colors">Excluir</button>
+                    </form>
                 </div>
             {% endif %}
-            <div class="flex items-center space-x-4 text-sm text-gray-500 pt-2 border-t border-gray-50 mt-2">
-                <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form" hx-boost="false">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="like-button flex items-center space-x-1 {{ 'text-blue-600' if current_user.has_liked_post(post) else 'hover:text-blue-600' }}">
-                        <i class="{{ 'fas' if current_user.has_liked_post(post) else 'far' }} fa-thumbs-up text-lg"></i>
-                        <span class="like-count-text font-bold">{{ post.likes|length }}</span>
-                    </button>
-                </form>
-                <div class="flex items-center space-x-1">
-                    <i class="far fa-comment-alt text-lg"></i>
-                    <span id="post-comment-count" class="font-bold">{{ post.comments|length }}</span>
-                </div>
-            </div>
         </div>
-        <hr class="border-gray-100 h-1 bg-gray-50">
-        <div class="bg-white p-4 border-b border-gray-100">
-             <form method="POST" action="{{ url_for('api_add_comment', post_id=post.id) }}" id="comment-form" class="flex items-start space-x-3 post-form" hx-boost="false">
+
+        <div class="p-4 sm:p-6">
+            <p class="text-gray-800 leading-relaxed whitespace-pre-wrap text-sm sm:text-base">{{ post.content }}</p>
+            {% if post.image_file %}
+                <div class="mt-4 rounded-xl overflow-hidden bg-gray-50 border border-gray-100">
+                    <img src="{{ url_for('static', filename='post_pics/' + post.image_file) }}" class="w-full object-contain max-h-96">
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div class="p-4 sm:p-6 border-b border-gray-50 bg-slate-50/50">
+            <form action="{{ url_for('add_comment', post_id=post.id) }}" method="POST" class="flex gap-3 items-start" hx-boost="false">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <img src="{{ current_user.profile_pic_url }}" class="w-8 h-8 rounded-full border border-gray-200 mt-1 hidden sm:block object-cover">
                 <div class="flex-grow">
-                    <textarea name="comment_text" id="comment-textarea" placeholder="Adicione um comentário..." required class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-12 min-h-[48px]"></textarea>
+                    <textarea name="comment_text" id="comment-textarea" placeholder="Adicione um comentário..." required class="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-12 min-h-[48px] shadow-xs"></textarea>
                     <div class="text-right mt-2">
-                        <button type="submit" class="bg-blue-600 text-white font-bold text-xs px-4 py-1.5 rounded-full shadow-sm hover:bg-blue-700 transition-colors">Comentar</button>
+                        <button type="submit" class="bg-blue-600 text-white font-bold text-xs px-5 py-2 rounded-full shadow-sm hover:bg-blue-700 transition-colors">Comentar</button>
                     </div>
                 </div>
             </form>
         </div>
-        <div class="bg-white px-4 pb-4">
-            <h3 class="text-sm font-bold text-gray-700 mt-4 mb-2">Comentários</h3>
-            <div id="comment-list" class="overflow-x-hidden">
+
+        <div class="p-4 sm:p-6">
+            <h3 class="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+                Comentários 
+                <span class="text-xs font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ top_level_comments|length }}</span>
+            </h3>
+            
+            <div id="comment-list" class="overflow-x-hidden space-y-4">
                 {% for comment in top_level_comments %}
                     {{ render_comment_with_replies(comment, post, current_user, level=0) }}
                 {% else %}
-                    <div id="no-comments-message" class="text-center py-6"><p class="text-gray-400 text-sm">Seja o primeiro a comentar!</p></div>
+                    <div id="no-comments-message" class="text-center py-8 text-gray-400 text-sm">
+                        Nenhum comentário ainda. Seja o primeiro a comentar!
+                    </div>
                 {% endfor %}
             </div>
         </div>
     </div>
+</div>
+
+<script>
+function toggleReplyForm(commentId, authorName) {
+    const formDiv = document.getElementById('reply-form-' + commentId);
+    if (formDiv) {
+        formDiv.classList.toggle('hidden');
+        const textarea = formDiv.querySelector('textarea');
+        if (!formDiv.classList.contains('hidden') && textarea) {
+            textarea.focus();
+        }
+    }
+}
+</script>
 {% endblock %}
