@@ -1,3 +1,6 @@
+{# 1. O arquivo importa a si mesmo para permitir a recursão limpa #}
+{% from '_macros.html' import render_comment_with_replies %}
+
 {% macro render_comment_with_replies(comment, post, current_user, level=0) %}
     {% set max_indent = 2 %}
     {% set is_locked = level >= max_indent %}
@@ -72,10 +75,10 @@
             </div>
         </div>
         
-       <div class="replies-container {{ 'hidden' if level == 0 else '' }} {{ container_padding }}" id="replies-for-{{ comment.id }}">
+        <div class="replies-container {{ 'hidden' if level == 0 else '' }} {{ container_padding }}" id="replies-for-{{ comment.id }}">
             {% for reply in comment.replies %}
-                {# Usamos _self. para garantir que a macro encontre a si mesma no loop #}
-                {{ _self.render_comment_with_replies(reply, post, current_user, level=level+1) }}
+                {# 2. Chamada recursiva direta e limpa #}
+                {{ render_comment_with_replies(reply, post, current_user, level=level+1) }}
             {% endfor %}
         </div>
     </div>
