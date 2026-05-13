@@ -1,2 +1,2 @@
-{% from 'post_detail.html' import render_comment_with_replies %}
+{% from '_macros.html' import render_comment_with_replies %}
 {{ render_comment_with_replies(comment, post, current_user, level=0 if not comment.parent_id else 1) }}
