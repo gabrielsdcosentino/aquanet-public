@@ -124,7 +124,7 @@ document.addEventListener('submit', function(e) {
         return false;
     }
 
-    // COMENTÁRIOS E POSTAGENS (Bloqueia clique duplo)
+    // COMENTÁRIOS E POSTAGENS (Bloqueia clique duplo e injeta sem reload)
     if (form.id === 'comment-form' || form.classList.contains('reply-form') || form.classList.contains('post-form')) {
         const isAjax = form.id === 'comment-form' || form.classList.contains('reply-form');
         const btn = form.querySelector('button[type="submit"]');
@@ -136,19 +136,70 @@ document.addEventListener('submit', function(e) {
             btn.innerHTML = '<i class="fas fa-circle-notch fa-spin mr-2"></i>Processando...'; 
         }
 
-        if (!isAjax) return true; // Post normal: deixa enviar
+        if (!isAjax) return true; // Post normal de nova publicação: deixa enviar nativamente
 
         e.preventDefault(); e.stopImmediatePropagation();
-        fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }, body: new FormData(form) })
-            .then(res => { if (res.ok) window.location.reload(); else throw new Error('Erro'); })
-            .catch(() => { 
-                alert("Erro ao enviar."); 
-                if(btn) { 
-                    btn.disabled = false; 
+        
+        fetch(form.action, { 
+            method: 'POST', 
+            headers: { 'X-CSRFToken': getCsrfToken(), 'X-Requested-With': 'XMLHttpRequest' }, 
+            body: new FormData(form) 
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                // 1. Onde vamos injetar o HTML?
+                if (data.parent_id) {
+                    // É uma resposta a outro comentário
+                    const parentContainer = document.getElementById(`comment-${data.parent_id}`);
+                    if (parentContainer) {
+                        const repliesDiv = parentContainer.querySelector('.replies-container');
+                        if (repliesDiv) {
+                            // Garante que o container de respostas esteja visível
+                            repliesDiv.classList.remove('hidden');
+                            // Injeta o novo comentário no final da lista de respostas
+                            repliesDiv.insertAdjacentHTML('beforeend', data.html);
+                        }
+                        // Esconde o formulário de resposta que acabou de ser usado
+                        parentContainer.querySelector('.reply-form')?.classList.add('hidden');
+                    }
+                } else {
+                    // É um comentário raiz (comentário direto no post)
+                    const commentList = document.getElementById('comment-list');
+                    const noCommentsMsg = document.getElementById('no-comments-message');
+                    if (noCommentsMsg) noCommentsMsg.remove(); // Tira a mensagem de "Seja o primeiro"
+                    
+                    if (commentList) {
+                        commentList.insertAdjacentHTML('beforeend', data.html);
+                    }
+                }
+
+                // 2. Atualiza os contadores de comentários na interface
+                const countElem = document.getElementById('post-comment-count');
+                if (countElem) countElem.innerText = data.total_comments;
+
+                // 3. Limpa a caixa de texto
+                form.reset();
+
+                // 4. Restaura o botão
+                if (btn) {
+                    btn.disabled = false;
                     btn.classList.remove('opacity-70', 'cursor-not-allowed');
-                    btn.innerHTML = btn.dataset.original; 
-                } 
-            });
+                    btn.innerHTML = btn.dataset.original;
+                }
+            } else {
+                throw new Error(data.error || 'Erro ao processar comentário');
+            }
+        })
+        .catch(err => { 
+            alert("Erro ao enviar comentário."); 
+            if(btn) { 
+                btn.disabled = false; 
+                btn.classList.remove('opacity-70', 'cursor-not-allowed');
+                btn.innerHTML = btn.dataset.original; 
+            } 
+        });
+        
         return false;
     }
 });

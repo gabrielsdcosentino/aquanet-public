@@ -844,7 +844,20 @@ def api_add_comment(post_id):
     # CHECAR CONQUISTAS (COMENTÁRIO)
     check_badges(current_user)
     
-    if is_ajax: return jsonify({'success': True, 'comment': {'id': new_comment.id, 'text': new_comment.text, 'author_username': new_comment.comment_author.username, 'author_profile_url': url_for('profile', username=new_comment.comment_author.username)}, 'total_comments': Comment.query.filter_by(post_id=post.id).count()})
+    if is_ajax: 
+        # Em vez de devolver um JSON, devolvemos o pedaço de HTML já renderizado perfeitamente!
+        comment_html = render_template(
+            'single_comment.html', 
+            comment=new_comment, 
+            post=post
+        )
+        return jsonify({
+            'success': True, 
+            'html': comment_html,
+            'parent_id': parent_id,
+            'total_comments': Comment.query.filter_by(post_id=post.id).count()
+        })
+        
     return redirect(url_for('post_detail', post_id=post.id))
 
 @app.route('/api/like_comment/<int:comment_id>', methods=['POST'])
