@@ -79,7 +79,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ============================================================================
-// HELPER CSRF E FUNÇÕES GLOBAIS (Não alterado)
+// HELPER CSRF E FUNÇÕES GLOBAIS
 // ============================================================================
 const getCsrfToken = () => document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 document.addEventListener('htmx:configRequest', (evt) => evt.detail.headers['X-CSRFToken'] = getCsrfToken());
@@ -124,7 +124,7 @@ document.addEventListener('submit', function(e) {
         return false;
     }
 
-    // COMENTÁRIOS E POSTAGENS (Bloqueia clique duplo e injeta sem reload)
+    // COMENTÁRIOS E POSTAGENS (Bloqueia clique duplo, injeta sem reload e guia o foco visual)
     if (form.id === 'comment-form' || form.classList.contains('reply-form') || form.classList.contains('post-form')) {
         const isAjax = form.id === 'comment-form' || form.classList.contains('reply-form');
         const btn = form.querySelector('button[type="submit"]');
@@ -159,6 +159,12 @@ document.addEventListener('submit', function(e) {
                             repliesDiv.classList.remove('hidden');
                             // Injeta o novo comentário no final da lista de respostas
                             repliesDiv.insertAdjacentHTML('beforeend', data.html);
+                            
+                            // Deduz a localização exata do novo elemento e rola a tela suavemente até ele
+                            const newElement = repliesDiv.lastElementChild;
+                            if (newElement) {
+                                newElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                            }
                         }
                         // Esconde o formulário de resposta que acabou de ser usado
                         parentContainer.querySelector('.reply-form')?.classList.add('hidden');
@@ -171,6 +177,12 @@ document.addEventListener('submit', function(e) {
                     
                     if (commentList) {
                         commentList.insertAdjacentHTML('beforeend', data.html);
+                        
+                        // Deduz a localização exata do novo comentário raiz e rola a tela suavemente até ele
+                        const newElement = commentList.lastElementChild;
+                        if (newElement) {
+                            newElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                        }
                     }
                 }
 
