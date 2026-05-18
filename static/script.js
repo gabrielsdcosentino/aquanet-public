@@ -198,6 +198,61 @@ document.addEventListener('submit', function(e) {
     }
 });
 
+// ============================================================================
+// OTIMIZAÇÃO DE IMAGENS (COMPRESSÃO NO CLIENTE PARA EVITAR PAYLOAD TOO LARGE)
+// ============================================================================
+document.addEventListener('change', async function(e) {
+    // Verifica se o elemento alterado é um campo de envio de arquivo
+    if (e.target && e.target.type === 'file') {
+        const file = e.target.files[0];
+        
+        // Só atua se for realmente uma imagem e se tiver mais de 2MB
+        if (!file || !file.type.startsWith('image/') || file.size <= 2 * 1024 * 1024) return;
+
+        // Procura o botão de enviar do formulário para dar um feedback visual
+        const form = e.target.closest('form');
+        const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
+        let originalBtnText = "";
+
+        if (submitBtn) {
+            originalBtnText = submitBtn.innerHTML;
+            submitBtn.disabled = true; // Trava o botão para o usuário não enviar a foto pesada
+            submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+            submitBtn.innerHTML = '<i class="fas fa-compress-arrows-alt fa-beat mr-2"></i>Otimizando foto...';
+        }
+
+        try {
+            // Configurações da compressão (Alvo: no máximo 1.5MB e 1920px de largura/altura)
+            const options = {
+                maxSizeMB: 1.5,
+                maxWidthOrHeight: 1920,
+                useWebWorker: true
+            };
+
+            // A biblioteca faz a mágica de compressão
+            const compressedFile = await browserImageCompression(file, options);
+            
+            // Cria um novo contêiner de arquivos e substitui o arquivo pesadão original na interface
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(new File([compressedFile], file.name, { type: compressedFile.type }));
+            e.target.files = dataTransfer.files;
+            
+            console.log(`Dedução: Imagem reduzida de ${(file.size/1024/1024).toFixed(2)}MB para ${(compressedFile.size/1024/1024).toFixed(2)}MB`);
+            
+        } catch (error) {
+            console.error("Erro na compressão:", error);
+            alert("Não foi possível otimizar a imagem. Se der erro ao postar, tente uma foto menor.");
+        } finally {
+            // Restaura o botão para o usuário poder clicar em Enviar/Postar
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+                submitBtn.innerHTML = originalBtnText;
+            }
+        }
+    }
+});
+
 window.toggleMobileSearch = function() { const sb = document.getElementById('mobile-search-bar'); if(sb) { sb.classList.toggle('hidden'); sb.querySelector('input')?.focus(); }};
 window.closeDrawer = function() { document.getElementById('mobile-drawer')?.classList.remove('drawer-open'); document.getElementById('mobile-drawer')?.classList.add('drawer-closed'); document.getElementById('drawer-overlay')?.classList.add('hidden'); document.body.style.overflow = ''; };
 window.toggleDrawer = function() { const d = document.getElementById('mobile-drawer'); if(!d) return; if(d.classList.contains('drawer-closed')) { d.classList.remove('drawer-closed'); d.classList.add('drawer-open'); document.getElementById('drawer-overlay')?.classList.remove('hidden'); document.body.style.overflow = 'hidden'; } else { closeDrawer(); }};
