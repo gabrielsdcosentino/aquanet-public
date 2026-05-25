@@ -11,6 +11,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from markupsafe import Markup, escape
+from flask_migrate import Migrate
 
 import secrets, os, datetime, unicodedata, re, json
 import cloudinary, cloudinary.uploader, cloudinary.api
@@ -116,6 +117,7 @@ def contains_bad_words(text):
 
 # INICIALIZAÇÃO
 db = SQLAlchemy()
+migrate = Migrate(app, db)  # <--- ADICIONE ESTA LINHA TAMBÉM
 bcrypt = Bcrypt()
 login_manager = LoginManager()
 oauth = OAuth()
@@ -338,6 +340,12 @@ class Community(db.Model):
             slug = slug.replace('--', '-')
         slug = slug.strip('-')
         return slug
+    
+class PostImage(db.Model):
+    __tablename__ = 'post_image' # Garante que o SQLAlchemy busque o nome correto
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id'), nullable=False)
+    image_url = db.Column(db.String(500), nullable=False)    
 
 class Post(db.Model):
     id = db.Column(db.Integer, primary_key=True); content = db.Column(db.Text, nullable=False)
@@ -346,6 +354,7 @@ class Post(db.Model):
     image_file = db.Column(db.String(200), nullable=True); image_public_id = db.Column(db.String(100), nullable=True)
     comments = db.relationship('Comment', backref='parent_post', lazy=True, cascade="all, delete-orphan")
     community_id = db.Column(db.Integer, db.ForeignKey('community.id', ondelete='CASCADE'), nullable=False)
+    images = db.relationship('PostImage', backref='post', lazy=True, cascade="all, delete-orphan")
 
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True); text = db.Column(db.Text, nullable=False)
