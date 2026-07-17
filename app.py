@@ -28,7 +28,8 @@ import base64
 import os
 from dotenv import load_dotenv
 
-load_dotenv() # Carrega as variáveis do arquivo .env
+if os.path.exists('.env'):
+    load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY')
