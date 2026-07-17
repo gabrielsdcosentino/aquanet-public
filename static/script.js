@@ -186,7 +186,8 @@ document.addEventListener('submit', function(e) {
             }
         })
         .catch(err => { 
-            alert("Erro ao enviar comentário."); 
+            console.error("DEBUG AQUANET - Erro detalhado:", err); 
+            alert("Erro ao enviar comentário: " + err.message); 
             if(btn) { 
                 btn.disabled = false; 
                 btn.classList.remove('opacity-70', 'cursor-not-allowed');
