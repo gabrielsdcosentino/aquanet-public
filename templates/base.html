@@ -12,20 +12,26 @@
     
     <title>{% block title %}AquaNet - Rede de Aquarismo{% endblock %}</title>
     
-    <style>
-        /* 1. ATIVAR TRANSIÇÕES NATIVAS DE TELA (O Segredo) */
-        /* Isso faz o Android/Chrome trocar de página com fade suave em vez de piscar branco */
+   <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
+
+        /* 1. ATIVAR TRANSIÇÕES NATIVAS DE TELA */
         @view-transition {
             navigation: auto;
         }
 
-        /* 2. MATAR A FÍSICA DO NAVEGADOR */
+        /* 2. MATAR A FÍSICA DO NAVEGADOR (SEM CONGELAR) */
+        html {
+            overscroll-behavior-y: none; /* Impede o elástico no lugar certo */
+            overflow-x: hidden;
+        }
+
         body { 
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent; 
-            overscroll-behavior-y: none; /* Impede o elástico na tela inteira */
-            -webkit-user-select: none; /* Proíbe selecionar texto na UI (menus, botões, headers) */
+            -webkit-user-select: none; /* Proíbe selecionar texto em botões/menus */
             user-select: none;
+            overflow-x: hidden;
         }
 
         /* 3. DEVOLVER A SELEÇÃO APENAS ONDE FAZ SENTIDO */
@@ -34,17 +40,16 @@
             user-select: text;
         }
 
-        /* 4. ESCONDER A BARRA DE ROLAGEM GLOBALMENTE */
+        /* 4. ESCONDER A BARRA DE ROLAGEM COM SEGURANÇA */
         ::-webkit-scrollbar {
-            display: none;
+            width: 0px;
+            height: 0px;
+            background: transparent;
         }
         * {
             -ms-overflow-style: none;  /* IE and Edge */
             scrollbar-width: none;  /* Firefox */
         }
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        html, body { overflow-x: hidden; }
 
         .flashes { margin-bottom: 1rem; }
         .flash-success { background-color: #ecfdf5; color: #047857; padding: 1rem; border-radius: 1rem; border: 1px solid #a7f3d0; }
