@@ -31,21 +31,26 @@
                     </button>
                     <!-- Container de Imagens (Sem barra de rolagem) -->
                     <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
+                        {% if post.images %}
+                <!-- NOVO FORMATO: CARROSSEL APRIMORADO -->
+                <div class="relative group mb-3 z-10">
+                    <button type="button" onclick="this.nextElementSibling.scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all">
+                        <i class="fas fa-chevron-left text-sm pointer-events-none"></i>
+                    </button>
+                    <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
                         {% for img in post.images %}
-                            <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
-                                <img src="{{ img.image_file }}" class="w-full object-cover max-h-[500px]">
+                            <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-slate-100 flex justify-center">
+                                <img src="{{ img.image_file }}" class="w-full max-h-[500px] object-contain">
                             </div>
                         {% endfor %}
                     </div>
-                    <!-- Botão Avançar (Desktop) -->
                     <button type="button" onclick="this.previousElementSibling.scrollBy({left: 300, behavior: 'smooth'})" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all">
-                        <i class="fas fa-chevron-right text-sm"></i>
+                        <i class="fas fa-chevron-right text-sm pointer-events-none"></i>
                     </button>
                 </div>
             {% elif post.image_file %}
-                <!-- FORMATO ANTIGO -->
-                <div class="rounded-lg overflow-hidden mb-3 border border-gray-100">
-                    <img src="{{ post.image_file }}" class="w-full object-cover max-h-[500px]">
+                <div class="bg-slate-100 flex justify-center mb-3 rounded-lg overflow-hidden border border-gray-100 relative z-10">
+                    <img src="{{ post.image_file }}" class="w-full max-h-[500px] object-contain">
                 </div>
             {% endif %}
             <div class="flex items-center space-x-4 text-sm text-gray-500 pt-2 border-t border-gray-50 mt-2">
