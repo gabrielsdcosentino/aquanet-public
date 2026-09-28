@@ -1384,5 +1384,14 @@ def cron_check_maintenance():
 
     return jsonify({"status": "sucesso", "emails_disparados": emails_enviados})
 
+# ==========================================
+# REGISTRO DA API REST (MOBILE)
+# ==========================================
+from api_routes import api_bp
+app.register_blueprint(api_bp)
+
+if __name__ == '__main__':
+    app.run(debug=False)
+
 if __name__ == '__main__':
     app.run(debug=False)
