@@ -74,13 +74,21 @@
                     <p class="text-gray-800 text-base mb-3">{{ post.content }}</p>
                 </div>
                 {% if post.images %}
-                    <!-- NOVO FORMATO: CARROSSEL -->
-                    <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 bg-gray-100 custom-scrollbar relative z-10">
-                        {% for img in post.images %}
-                            <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full overflow-hidden">
-                                <img src="{{ img.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
-                            </div>
-                        {% endfor %}
+                    <!-- NOVO FORMATO: CARROSSEL DO PERFIL -->
+                    <div class="relative group bg-gray-100 relative z-10">
+                        <button type="button" onclick="this.nextElementSibling.scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all">
+                            <i class="fas fa-chevron-left text-sm"></i>
+                        </button>
+                        <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
+                            {% for img in post.images %}
+                                <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full overflow-hidden">
+                                    <img src="{{ img.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="button" onclick="this.previousElementSibling.scrollBy({left: 300, behavior: 'smooth'})" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all">
+                            <i class="fas fa-chevron-right text-sm"></i>
+                        </button>
                     </div>
                 {% elif post.image_file %}
                     <!-- FORMATO ANTIGO -->

@@ -23,16 +23,27 @@
             </div>
             <p class="text-gray-900 text-base leading-relaxed mb-3 whitespace-pre-wrap">{{ post.content | link_mentions }}</p>
             {% if post.images %}
-                <!-- NOVO FORMATO: CARROSSEL -->
-                <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 mb-3 pb-2 custom-scrollbar">
-                    {% for img in post.images %}
-                        <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
-                            <img src="{{ img.image_file }}" class="w-full object-cover max-h-[500px]">
-                        </div>
-                    {% endfor %}
+                <!-- NOVO FORMATO: CARROSSEL APRIMORADO -->
+                <div class="relative group mb-3">
+                    <!-- Botão Voltar (Desktop) -->
+                    <button type="button" onclick="this.nextElementSibling.scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all">
+                        <i class="fas fa-chevron-left text-sm"></i>
+                    </button>
+                    <!-- Container de Imagens (Sem barra de rolagem) -->
+                    <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
+                        {% for img in post.images %}
+                            <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
+                                <img src="{{ img.image_file }}" class="w-full object-cover max-h-[500px]">
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <!-- Botão Avançar (Desktop) -->
+                    <button type="button" onclick="this.previousElementSibling.scrollBy({left: 300, behavior: 'smooth'})" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all">
+                        <i class="fas fa-chevron-right text-sm"></i>
+                    </button>
                 </div>
             {% elif post.image_file %}
-                <!-- FORMATO ANTIGO: MANTÉM OS POSTS VELHOS FUNCIONANDO -->
+                <!-- FORMATO ANTIGO -->
                 <div class="rounded-lg overflow-hidden mb-3 border border-gray-100">
                     <img src="{{ post.image_file }}" class="w-full object-cover max-h-[500px]">
                 </div>

@@ -20,21 +20,19 @@
         </div>
     </div>
 
-    {% if post.images %}
-                <!-- NOVO FORMATO: CARROSSEL -->
-                <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 mb-3 pb-2 custom-scrollbar relative z-10">
-                    {% for img in post.images %}
-                        <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
-                            <img src="{{ img.image_file }}" class="w-full object-cover max-h-[500px]">
-                        </div>
-                    {% endfor %}
-                </div>
-            {% elif post.image_file %}
-                <!-- FORMATO ANTIGO: MANTÉM OS POSTS VELHOS FUNCIONANDO -->
-                <div class="rounded-lg overflow-hidden mb-3 border border-gray-100">
-                    <img src="{{ post.image_file }}" class="w-full object-cover max-h-[500px]">
-                </div>
-            {% endif %}
+    {% if post.image_file %}
+        {% if post.image_file.endswith('.mp4') or post.image_file.endswith('.mov') or post.image_file.endswith('.webm') %}
+            <div class="bg-black flex justify-center relative z-10">
+                <video controls class="w-full max-h-[500px] no-click" preload="metadata">
+                    <source src="{{ post.image_file }}" type="video/mp4">
+                    Seu navegador não suporta vídeos.
+                </video>
+            </div>
+        {% else %}
+            <div class="bg-gray-100 flex justify-center">
+                <img src="{{ post.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
+            </div>
+        {% endif %}
     {% endif %}
 
     <div class="px-4 py-2 flex items-center text-sm text-gray-500 font-semibold border-t border-gray-100 bg-gray-50 relative z-10">
