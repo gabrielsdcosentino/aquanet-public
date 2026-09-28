@@ -56,7 +56,9 @@ app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get('GOOGLE_CLIENT_SECRET', 'GOC
 
 uri = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///' + os.path.join(base_dir, 'site.db'))
 if uri and uri.startswith("postgres://"):
-    uri = uri.replace("postgres://", "postgresql://", 1)
+    uri = uri.replace("postgres://", "postgresql+psycopg2://", 1)
+elif uri and uri.startswith("postgresql://") and "psycopg2" not in uri:
+    uri = uri.replace("postgresql://", "postgresql+psycopg2://", 1)
 app.config['SQLALCHEMY_DATABASE_URI'] = uri
 
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'chave-secreta-simples-para-desenvolvimento')
