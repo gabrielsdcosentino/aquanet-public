@@ -50,30 +50,29 @@
                 <div id="preview-container" class="mt-4 grid grid-cols-3 gap-2 hidden"></div>
             </div>
 
-            <script>
+           <script>
                 document.getElementById('image-upload').addEventListener('change', function(event) {
                     const previewContainer = document.getElementById('preview-container');
                     previewContainer.innerHTML = ''; 
                     const files = event.target.files;
                     
-                    if (files.length > 0) {
+                    if (files && files.length > 0) {
                         previewContainer.classList.remove('hidden');
-                        for (let i = 0; i < files.length; i++) {
-                            const file = files[i];
+                        Array.from(files).forEach(file => {
                             const reader = new FileReader();
                             reader.onload = function(e) {
                                 const imgDiv = document.createElement('div');
                                 imgDiv.className = 'aspect-square rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-black flex items-center justify-center';
                                 
-                                if (file.type.startsWith('video/')) {
+                                if (file.type && file.type.startsWith('video/')) {
                                     imgDiv.innerHTML = `<video class="w-full h-full object-cover"><source src="${e.target.result}"></video>`;
                                 } else {
                                     imgDiv.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
                                 }
                                 previewContainer.appendChild(imgDiv);
-                            }
+                            };
                             reader.readAsDataURL(file);
-                        }
+                        });
                     } else {
                         previewContainer.classList.add('hidden');
                     }

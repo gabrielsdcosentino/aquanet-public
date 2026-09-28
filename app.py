@@ -713,9 +713,9 @@ def community_feed(community_slug):
         # Cria o post primeiro para gerar o ID
         new_post = Post(content=content, author=current_user, community_id=community.id)
         db.session.add(new_post)
-        db.session.flush() # Salva no banco temporariamente para obter o new_post.id
+        db.session.flush()
 
-        # Captura arquivos enviados (múltiplas fotos ou vídeo)
+        # Captura todos os arquivos (fotos ou vídeos) enviados
         pics = request.files.getlist('images')
         
         for pic in pics:
@@ -731,13 +731,13 @@ def community_feed(community_slug):
                         transformation=[] if is_video else [{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]
                     )
                     
-                    file_url = uploaded['secure_url']
-                    if is_video:
-                        new_post.image_file = file_url
-                        new_post.image_public_id = uploaded['public_id']
-                    else:
-                        post_img = PostImage(post_id=new_post.id, image_file=file_url, image_public_id=uploaded['public_id'])
-                        db.session.add(post_img)
+                    # Salva TUDO (foto ou vídeo) na tabela PostImage unificada
+                    post_img = PostImage(
+                        post_id=new_post.id, 
+                        image_file=uploaded['secure_url'], 
+                        image_public_id=uploaded['public_id']
+                    )
+                    db.session.add(post_img)
                 except Exception as e: 
                     print(f"Erro no upload de mídia: {e}")
         
