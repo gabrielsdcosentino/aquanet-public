@@ -203,48 +203,42 @@ document.addEventListener('submit', function(e) {
 // OTIMIZAÇÃO DE IMAGENS (COMPRESSÃO NO CLIENTE PARA EVITAR PAYLOAD TOO LARGE)
 // ============================================================================
 document.addEventListener('change', async function(e) {
-    // Verifica se o elemento alterado é um campo de envio de arquivo
     if (e.target && e.target.type === 'file') {
-        const file = e.target.files[0];
-        
-        // Só atua se for realmente uma imagem e se tiver mais de 2MB
-        if (!file || !file.type.startsWith('image/') || file.size <= 2 * 1024 * 1024) return;
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
 
-        // Procura o botão de enviar do formulário para dar um feedback visual
+        const needsCompression = files.some(f => f.type.startsWith('image/') && f.size > 2 * 1024 * 1024);
+        if (!needsCompression) return;
+
         const form = e.target.closest('form');
         const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
         let originalBtnText = "";
 
         if (submitBtn) {
             originalBtnText = submitBtn.innerHTML;
-            submitBtn.disabled = true; // Trava o botão para o usuário não enviar a foto pesada
+            submitBtn.disabled = true;
             submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
-            submitBtn.innerHTML = '<i class="fas fa-compress-arrows-alt fa-beat mr-2"></i>Otimizando foto...';
+            submitBtn.innerHTML = '<i class="fas fa-compress-arrows-alt fa-beat mr-2"></i>Otimizando fotos...';
         }
 
         try {
-            // Configurações da compressão (Alvo: no máximo 1.5MB e 1920px de largura/altura)
-            const options = {
-                maxSizeMB: 1.5,
-                maxWidthOrHeight: 1920,
-                useWebWorker: true
-            };
-
-            // A biblioteca faz a mágica de compressão
-            const compressedFile = await browserImageCompression(file, options);
-            
-            // Cria um novo contêiner de arquivos e substitui o arquivo pesadão original na interface
             const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(new File([compressedFile], file.name, { type: compressedFile.type }));
+            const options = { maxSizeMB: 1.5, maxWidthOrHeight: 1920, useWebWorker: true };
+
+            for (let file of files) {
+                if (file.type.startsWith('image/') && file.size > 2 * 1024 * 1024) {
+                    const compressedFile = await browserImageCompression(file, options);
+                    dataTransfer.items.add(new File([compressedFile], file.name, { type: compressedFile.type }));
+                } else {
+                    dataTransfer.items.add(file);
+                }
+            }
             e.target.files = dataTransfer.files;
-            
-            console.log(`Dedução: Imagem reduzida de ${(file.size/1024/1024).toFixed(2)}MB para ${(compressedFile.size/1024/1024).toFixed(2)}MB`);
             
         } catch (error) {
             console.error("Erro na compressão:", error);
-            alert("Não foi possível otimizar a imagem. Se der erro ao postar, tente uma foto menor.");
+            alert("Erro ao otimizar. Tente fotos menores.");
         } finally {
-            // Restaura o botão para o usuário poder clicar em Enviar/Postar
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');

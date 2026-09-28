@@ -348,6 +348,13 @@ class Post(db.Model):
     comments = db.relationship('Comment', backref='parent_post', lazy=True, cascade="all, delete-orphan")
     community_id = db.Column(db.Integer, db.ForeignKey('community.id', ondelete='CASCADE'), nullable=False)
 
+class PostImage(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('post.id', ondelete='CASCADE'), nullable=False)
+    image_file = db.Column(db.String(200), nullable=False)
+    image_public_id = db.Column(db.String(100), nullable=False)
+    post = db.relationship('Post', backref=db.backref('images', lazy=True, cascade="all, delete-orphan"))
+
 class Comment(db.Model):
     id = db.Column(db.Integer, primary_key=True); text = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, nullable=False, default=now_br) 
@@ -701,13 +708,30 @@ def community_feed(community_slug):
         if contains_bad_words(content): flash('Impróprio.', 'danger'); return redirect(url_for('community_feed', community_slug=community.slug))
         last_post = Post.query.filter_by(author=current_user).order_by(Post.timestamp.desc()).first()
         if last_post and last_post.content == content and (now_br() - last_post.timestamp).total_seconds() < 30: flash('Duplicado.', 'warning'); return redirect(url_for('community_feed', community_slug=community.slug))
-        img_url = None; img_id = None
-        if pic and app.config['CLOUDINARY_API_KEY']:
-            try: uploaded = cloudinary.uploader.upload(pic, folder="aquanet_posts", resource_type="auto", transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]); img_url = uploaded['secure_url']; img_id = uploaded['public_id']
-            except: pass
+        # Cria o post primeiro para gerar o ID
+        new_post = Post(content=content, author=current_user, community_id=community.id)
+        db.session.add(new_post)
+        db.session.flush() # Salva no banco temporariamente para obter o new_post.id
+
+        # Captura múltiplas imagens do HTML
+        pics = request.files.getlist('images')
         
-        new_post = Post(content=content, author=current_user, image_file=img_url, image_public_id=img_id, community_id=community.id)
-        db.session.add(new_post); db.session.commit()
+        for pic in pics:
+            if pic and pic.filename != '' and app.config['CLOUDINARY_API_KEY']:
+                try: 
+                    uploaded = cloudinary.uploader.upload(
+                        pic, 
+                        folder="aquanet_posts", 
+                        resource_type="auto", 
+                        transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]
+                    )
+                    # Salva cada imagem na nova tabela conectada ao post
+                    post_img = PostImage(post_id=new_post.id, image_file=uploaded['secure_url'], image_public_id=uploaded['public_id'])
+                    db.session.add(post_img)
+                except Exception as e: 
+                    print(f"Erro no upload da imagem no carrossel: {e}")
+        
+        db.session.commit()
         
         process_mentions(content, current_user, post=new_post)
         
