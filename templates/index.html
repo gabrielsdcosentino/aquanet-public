@@ -51,7 +51,7 @@
                 </div>
             </div>
             
-            {% if current_user.is_member(current_community) %}
+           {% if current_user.is_member(current_community) %}
                 <form method="POST" action="{{ url_for('community_feed', community_slug=current_community.slug) }}" enctype="multipart/form-data" class="post-form border-t border-gray-100 pt-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
@@ -65,9 +65,10 @@
                             rows="2" maxlength="2500">{{ request.args.get('auto_content', '') }}</textarea>
                             
                             <div class="flex justify-between items-center mt-2 px-1 border-t border-slate-200/50 pt-2">
-                                 <label class="cursor-pointer text-slate-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50 group" title="Adicionar mídia">
-                                     <i class="fas fa-image text-lg group-hover:scale-110 transition-transform"></i>
-                                     <input type="file" name="image" accept="image/*,video/mp4,video/mov,video/webm" class="hidden">
+                                 <label class="cursor-pointer text-slate-400 hover:text-blue-500 transition-colors p-1.5 rounded-full hover:bg-blue-50 group flex items-center gap-1 text-xs font-bold" title="Adicionar fotos ou vídeo">
+                                     <i class="fas fa-photo-video text-lg group-hover:scale-110 transition-transform"></i>
+                                     <span class="hidden sm:inline">Mídia</span>
+                                     <input type="file" name="images" accept="image/*,video/mp4,video/mov,video/webm" class="hidden" multiple>
                                  </label>
                                  
                                  <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-5 rounded-full text-xs shadow-md shadow-blue-200 transform active:scale-95 transition-all">

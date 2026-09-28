@@ -715,23 +715,31 @@ def community_feed(community_slug):
         db.session.add(new_post)
         db.session.flush() # Salva no banco temporariamente para obter o new_post.id
 
-        # Captura múltiplas imagens do HTML
+        # Captura arquivos enviados (múltiplas fotos ou vídeo)
         pics = request.files.getlist('images')
         
         for pic in pics:
             if pic and pic.filename != '' and app.config['CLOUDINARY_API_KEY']:
                 try: 
+                    is_video = pic.content_type and 'video' in pic.content_type
+                    res_type = "video" if is_video else "auto"
+                    
                     uploaded = cloudinary.uploader.upload(
                         pic, 
                         folder="aquanet_posts", 
-                        resource_type="auto", 
-                        transformation=[{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]
+                        resource_type=res_type, 
+                        transformation=[] if is_video else [{'width': 600, 'crop': 'limit', 'quality': 'auto:good', 'fetch_format': 'auto'}]
                     )
-                    # Salva cada imagem na nova tabela conectada ao post
-                    post_img = PostImage(post_id=new_post.id, image_file=uploaded['secure_url'], image_public_id=uploaded['public_id'])
-                    db.session.add(post_img)
+                    
+                    file_url = uploaded['secure_url']
+                    if is_video:
+                        new_post.image_file = file_url
+                        new_post.image_public_id = uploaded['public_id']
+                    else:
+                        post_img = PostImage(post_id=new_post.id, image_file=file_url, image_public_id=uploaded['public_id'])
+                        db.session.add(post_img)
                 except Exception as e: 
-                    print(f"Erro no upload da imagem no carrossel: {e}")
+                    print(f"Erro no upload de mídia: {e}")
         
         db.session.commit()
         
