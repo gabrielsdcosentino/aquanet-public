@@ -16,3 +16,4 @@ SQLAlchemy
 Werkzeug
 MarkupSafe
 psycopg2-binary
+psycopg-binary
