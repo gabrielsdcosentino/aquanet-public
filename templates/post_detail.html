@@ -22,7 +22,17 @@
                 {% endif %}
             </div>
             <p class="text-gray-900 text-base leading-relaxed mb-3 whitespace-pre-wrap">{{ post.content | link_mentions }}</p>
-            {% if post.image_file %}
+            {% if post.images %}
+                <!-- NOVO FORMATO: CARROSSEL -->
+                <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 mb-3 pb-2 custom-scrollbar">
+                    {% for img in post.images %}
+                        <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-gray-50">
+                            <img src="{{ img.image_file }}" class="w-full object-cover max-h-[500px]">
+                        </div>
+                    {% endfor %}
+                </div>
+            {% elif post.image_file %}
+                <!-- FORMATO ANTIGO: MANTÉM OS POSTS VELHOS FUNCIONANDO -->
                 <div class="rounded-lg overflow-hidden mb-3 border border-gray-100">
                     <img src="{{ post.image_file }}" class="w-full object-cover max-h-[500px]">
                 </div>
