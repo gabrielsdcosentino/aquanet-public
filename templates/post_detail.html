@@ -23,20 +23,22 @@
             </div>
             <p class="text-gray-900 text-base leading-relaxed mb-3 whitespace-pre-wrap">{{ post.content | link_mentions }}</p>
            {% if post.images %}
-        <!-- CARROSSEL INTELIGENTE (FOTOS E VÍDEOS MISTURADOS) -->
+        <!-- CARROSSEL INTELIGENTE (FOTOS E VÍDEOS COM VISUAL PROFISSIONAL) -->
         <div class="relative group mb-3 z-10">
             <button type="button" onclick="this.nextElementSibling.scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all no-click">
                 <i class="fas fa-chevron-left text-sm pointer-events-none"></i>
             </button>
             <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
                 {% for media in post.images %}
-                    <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-slate-100 flex justify-center">
+                    <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-slate-100 flex justify-center items-center">
                         {% set url = media.image_file | lower %}
                         {% if '.mp4' in url or '.mov' in url or '.webm' in url or '/video/' in url %}
-                            <video controls class="w-full max-h-[500px] object-contain no-click" preload="metadata">
-                                <source src="{{ media.image_file }}">
-                                Seu navegador não suporta vídeos.
-                            </video>
+                            <div class="w-full bg-black flex justify-center items-center">
+                                <video controls playsinline preload="metadata" class="w-full max-h-[500px] object-contain block no-click">
+                                    <source src="{{ media.image_file }}">
+                                    Seu navegador não suporta vídeos.
+                                </video>
+                            </div>
                         {% else %}
                             <img src="{{ media.image_file }}" class="w-full max-h-[500px] object-contain">
                         {% endif %}
@@ -52,7 +54,7 @@
         {% set old_url = post.image_file | lower %}
         {% if '.mp4' in old_url or '.mov' in old_url or '.webm' in old_url or '/video/' in old_url %}
             <div class="bg-black flex justify-center relative z-10 mb-3 rounded-lg overflow-hidden">
-                <video controls class="w-full max-h-[500px] no-click" preload="metadata">
+                <video controls playsinline preload="metadata" class="w-full max-h-[500px] block no-click">
                     <source src="{{ post.image_file }}">
                     Seu navegador não suporta vídeos.
                 </video>
