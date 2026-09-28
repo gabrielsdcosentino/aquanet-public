@@ -54,3 +54,18 @@ def api_feed():
         'has_next': posts_query.has_next,
         'current_page': page
     })
+
+@api_bp.route('/communities', methods=['GET'])
+@login_required
+def api_communities():
+    communities = Community.query.order_by(Community.name).all()
+    comms_data = []
+    for c in communities:
+        comms_data.append({
+            'id': c.id,
+            'name': c.name,
+            'slug': c.slug,
+            'description': c.description,
+            'initials': c.name[:2].upper()
+        })
+    return jsonify({'communities': comms_data})
