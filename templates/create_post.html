@@ -10,14 +10,14 @@
     </div>
 
     <div class="bg-white p-4 shadow-sm md:rounded-lg mt-0 md:mt-4">
-        <!-- O action começa vazio e será preenchido pelo JavaScript com base na comunidade escolhida -->
-        <form method="POST" enctype="multipart/form-data" hx-boost="false" class="space-y-4" id="post-form">
+        <!-- Mantém a lógica original alterando a action dinamicamente com base na comunidade selecionada -->
+        <form method="POST" action="" enctype="multipart/form-data" hx-boost="false" class="space-y-4" id="post-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
             <!-- Seletor de Comunidade -->
             <div>
-                <label for="community-select" class="block text-xs font-bold text-gray-600 uppercase mb-1">Publicar na comunidade:</label>
-                <select id="community-select" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Publicar na comunidade</label>
+                <select id="community-select" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="document.getElementById('post-form').action = this.value;">
                     <option value="" disabled selected>Selecione uma comunidade...</option>
                     {% for comm in communities %}
                         <option value="{{ url_for('community_feed', community_slug=comm.slug) }}">c/{{ comm.name }}</option>
@@ -37,13 +37,13 @@
                 </label>
                 <input type="file" id="media-input" name="images" multiple accept="image/*,video/*" class="hidden">
                 
-                <!-- Container das miniaturas com botão de exclusão -->
+                <!-- Container das miniaturas corrigido (sem duplicação e com botão de exclusão) -->
                 <div id="preview-container" class="grid grid-cols-3 gap-2 mt-3"></div>
             </div>
 
             <div class="pt-2">
-                <button type="submit" id="submit-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-sm opacity-50 cursor-not-allowed" disabled>
-                    Selecione uma comunidade
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-sm">
+                    Publicar
                 </button>
             </div>
         </form>
@@ -51,23 +51,9 @@
 </div>
 
 <script>
-    const communitySelect = document.getElementById('community-select');
-    const postForm = document.getElementById('post-form');
-    const submitBtn = document.getElementById('submit-btn');
     const mediaInput = document.getElementById('media-input');
     const previewContainer = document.getElementById('preview-container');
-    
     let dt = new DataTransfer();
-
-    // Atualiza o destino do formulário quando o usuário escolhe a comunidade
-    communitySelect.addEventListener('change', function() {
-        if (this.value) {
-            postForm.action = this.value;
-            submitBtn.disabled = false;
-            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
-            submitBtn.textContent = 'Publicar';
-        }
-    });
 
     mediaInput.addEventListener('change', function(e) {
         for (let i = 0; i < this.files.length; i++) {
@@ -82,7 +68,9 @@
     }
 
     function renderPreviews() {
+        // Limpa o container antes de desenhar para evitar o efeito de acumular/duplicar
         previewContainer.innerHTML = '';
+        
         if (dt.files.length === 0) return;
 
         Array.from(dt.files).forEach((file, index) => {
@@ -102,6 +90,7 @@
                     div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
                 }
 
+                // Botão de fechar (X) para remover o arquivo específico da lista
                 const deleteBtn = document.createElement('button');
                 deleteBtn.type = 'button';
                 deleteBtn.className = 'absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md transition-transform active:scale-95';
