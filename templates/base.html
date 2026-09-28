@@ -13,6 +13,35 @@
     <title>{% block title %}AquaNet - Rede de Aquarismo{% endblock %}</title>
     
     <style>
+        /* 1. ATIVAR TRANSIÇÕES NATIVAS DE TELA (O Segredo) */
+        /* Isso faz o Android/Chrome trocar de página com fade suave em vez de piscar branco */
+        @view-transition {
+            navigation: auto;
+        }
+
+        /* 2. MATAR A FÍSICA DO NAVEGADOR */
+        body { 
+            font-family: 'Inter', sans-serif; 
+            -webkit-tap-highlight-color: transparent; 
+            overscroll-behavior-y: none; /* Impede o elástico na tela inteira */
+            -webkit-user-select: none; /* Proíbe selecionar texto na UI (menus, botões, headers) */
+            user-select: none;
+        }
+
+        /* 3. DEVOLVER A SELEÇÃO APENAS ONDE FAZ SENTIDO */
+        p, span, h1, h2, h3, input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        /* 4. ESCONDER A BARRA DE ROLAGEM GLOBALMENTE */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+        * {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap');
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
         html, body { overflow-x: hidden; }
