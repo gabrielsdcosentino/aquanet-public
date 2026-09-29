@@ -11,6 +11,7 @@ from flask_login import LoginManager, UserMixin, login_user, logout_user, login_
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from markupsafe import Markup, escape
+from flask import jsonify
 
 import secrets, os, datetime, unicodedata, re, json
 import cloudinary, cloudinary.uploader, cloudinary.api
@@ -1390,8 +1391,38 @@ def cron_check_maintenance():
 from api_routes import api_bp
 app.register_blueprint(api_bp)
 
-if __name__ == '__main__':
-    app.run(debug=False)
+@app.route('/api/feed', methods=['GET'])
+def api_get_feed():
+    try:
+        # Puxa os 20 posts mais recentes para não pesar o payload do celular
+        posts = Post.query.order_by(Post.timestamp.desc()).limit(20).all()
+        feed_data = []
+
+        for post in posts:
+            # Consolida as mídias (formato novo em lista ou fallback do formato antigo)
+            media_list = []
+            if post.images:
+                media_list = [img.image_file for img in post.images]
+            elif post.image_file:
+                media_list = [post.image_file]
+
+            feed_data.append({
+                'id': post.id,
+                'author': post.author.username,
+                'author_pic': post.author.profile_pic_url,
+                'community': post.community.name if post.community else 'Geral',
+                'content': post.content,
+                'timestamp': post.timestamp.strftime('%d/%m às %H:%M'),
+                'media': media_list,
+                'likes': len(post.likes),
+                'comments': len(post.comments)
+            })
+
+        return jsonify(feed_data), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=False)
+
+
