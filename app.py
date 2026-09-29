@@ -1427,15 +1427,13 @@ def api_get_feed():
 @csrf.exempt
 def api_login():
     try:
-        # Pega os dados que o celular enviou
         data = request.get_json()
-        email = data.get('email')
+        username = data.get('username')  # Alterado de email para username
         password = data.get('password')
         
-        # Busca o usuário no banco de dados
-        user = User.query.filter_by(email=email).first()
+        # Busca pelo nome de usuário igualzinho ao site
+        user = User.query.filter_by(username=username).first()
         
-        # Verifica se o usuário existe e se a senha está correta (usando password_hash)
         if user and bcrypt.check_password_hash(user.password_hash, password):
             return jsonify({
                 'status': 'success',
@@ -1443,12 +1441,11 @@ def api_login():
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    'profile_pic': user.image_file if hasattr(user, 'image_file') else None
+                    'profile_pic': user.profile_pic_url  # Corrigido para pegar a foto de perfil correta
                 }
             }), 200
         else:
-            # Erro 401: Não autorizado
-            return jsonify({'error': 'E-mail ou senha incorretos'}), 401
+            return jsonify({'error': 'Usuário ou senha incorretos'}), 401
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500

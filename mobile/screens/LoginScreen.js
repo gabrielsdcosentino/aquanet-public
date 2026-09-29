@@ -1,14 +1,15 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function LoginScreen({ onLoginSuccess }) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async () => {
-    if (!email || !password) {
+    if (!username || !password) {
       Alert.alert('Erro', 'Preencha todos os campos.');
       return;
     }
@@ -18,18 +19,15 @@ export default function LoginScreen({ onLoginSuccess }) {
       const response = await fetch('https://aquanet.app.br/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ username, password })
       });
 
-      // Pega o texto bruto em vez de tentar transformar em JSON direto
       const responseText = await response.text();
-      console.log("RESPOSTA BRUTA DO SERVIDOR:", responseText);
-
       let data;
       try {
         data = JSON.parse(responseText);
       } catch (e) {
-        throw new Error("O servidor retornou HTML/Texto em vez de JSON. Veja o log acima.");
+        throw new Error("Erro de comunicação com o servidor.");
       }
 
       if (response.ok) {
@@ -39,7 +37,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         Alert.alert('Erro', data.error || 'Credenciais inválidas.');
       }
     } catch (error) {
-      console.error("Erro detalhado:", error);
+      console.error(error);
       Alert.alert('Erro', error.message || 'Não foi possível conectar ao servidor.');
     } finally {
       setLoading(false);
@@ -50,26 +48,31 @@ export default function LoginScreen({ onLoginSuccess }) {
     <SafeAreaView style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>AquaNet</Text>
-        <Text style={styles.subtitle}>Entre na sua conta</Text>
+        <Text style={styles.subtitle}>Bem-vindo de volta! Acesse seu diário.</Text>
 
-        <TextInput
-          style={styles.input}
-          placeholder="E-mail"
-          placeholderTextColor="#94a3b8"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
+        <View style={styles.inputContainer}>
+          <Ionicons name="person-outline" size={20} color="#94a3b8" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Nome de usuário"
+            placeholderTextColor="#94a3b8"
+            value={username}
+            onChangeText={setUsername}
+            autoCapitalize="none"
+          />
+        </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Senha"
-          placeholderTextColor="#94a3b8"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            placeholder="Senha"
+            placeholderTextColor="#94a3b8"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+          />
+        </View>
 
         <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
           {loading ? (
@@ -85,10 +88,12 @@ export default function LoginScreen({ onLoginSuccess }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', padding: 20 },
-  card: { backgroundColor: '#ffffff', padding: 24, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3 },
-  title: { fontSize: 28, fontWeight: '900', color: '#2563eb', textAlign: 'center', marginBottom: 4 },
+  card: { backgroundColor: '#ffffff', padding: 24, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
+  title: { fontSize: 32, fontWeight: '900', color: '#2563eb', textAlign: 'center', marginBottom: 4, letterSpacing: -1 },
   subtitle: { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 24 },
-  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 8, padding: 12, fontSize: 16, color: '#0f172a', marginBottom: 16 },
-  button: { backgroundColor: '#2563eb', padding: 14, borderRadius: 8, alignItems: 'center', marginTop: 8 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, marginBottom: 16, paddingHorizontal: 12 },
+  inputIcon: { marginRight: 8 },
+  input: { flex: 1, paddingVertical: 14, fontSize: 16, color: '#0f172a' },
+  button: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2 },
   buttonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' }
 });
