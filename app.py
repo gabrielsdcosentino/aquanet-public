@@ -1424,6 +1424,7 @@ def api_get_feed():
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/login', methods=['POST'])
+@csrf.exempt
 def api_login():
     try:
         # Pega os dados que o celular enviou
