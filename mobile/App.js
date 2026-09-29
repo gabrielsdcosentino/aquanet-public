@@ -1,20 +1,55 @@
+import { useState, useEffect } from 'react';
+import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons'; // Biblioteca de ícones nativa do Expo
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import FeedScreen from './screens/FeedScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import LoginScreen from './screens/LoginScreen';
 
 const Tab = createBottomTabNavigator();
 
 export default function App() {
+  const [user, setUser] = useState(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+
+  useEffect(() => {
+    checkLocalSession();
+  }, []);
+
+  const checkLocalSession = async () => {
+    try {
+      const savedUser = await AsyncStorage.getItem('userData');
+      if (savedUser) {
+        setUser(JSON.parse(savedUser));
+      }
+    } catch (error) {
+      console.error("Erro ao carregar sessão:", error);
+    } finally {
+      setCheckingSession(false);
+    }
+  };
+
+  if (checkingSession) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#2563eb" />
+      </View>
+    );
+  }
+
+  if (!user) {
+    return <LoginScreen onLoginSuccess={(userData) => setUser(userData)} />;
+  }
+
   return (
     <NavigationContainer>
       <Tab.Navigator
         screenOptions={({ route }) => ({
           tabBarIcon: ({ focused, color, size }) => {
             let iconName;
-            // Define os ícones para cada tela dependendo se estão selecionados
             if (route.name === 'Início') {
               iconName = focused ? 'home' : 'home-outline';
             } else if (route.name === 'Perfil') {
@@ -24,7 +59,7 @@ export default function App() {
           },
           tabBarActiveTintColor: '#2563eb',
           tabBarInactiveTintColor: 'gray',
-          headerShown: false, // Esconde o cabeçalho feio padrão do roteador
+          headerShown: false,
           tabBarStyle: {
             backgroundColor: '#ffffff',
             borderTopWidth: 1,
@@ -35,8 +70,20 @@ export default function App() {
         })}
       >
         <Tab.Screen name="Início" component={FeedScreen} />
-        <Tab.Screen name="Perfil" component={ProfileScreen} />
+        <Tab.Screen 
+          name="Perfil" 
+          children={() => <ProfileScreen user={user} onLogout={() => setUser(null)} />} 
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f1f5f9',
+  }
+});
