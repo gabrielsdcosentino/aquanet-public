@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, Image, TouchableOpacity, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons'; // Trazendo o FontAwesome5 de volta
 
 export default function FeedScreen({ navigation }) {
   const [posts, setPosts] = useState([]);
@@ -85,20 +85,24 @@ export default function FeedScreen({ navigation }) {
             <Text style={styles.videoText}>Assistir Vídeo</Text>
           </TouchableOpacity>
         ) : (
-          <Image source={{ uri: item.media[0] }} style={styles.mediaImage} />
+          {/* resizeMode="contain" garante que a foto nunca será esticada ou cortada */}
+          <View style={styles.mediaContainer}>
+            <Image source={{ uri: item.media[0] }} style={styles.mediaImage} resizeMode="contain" />
+          </View>
         )
       )}
 
       <View style={styles.postFooter}>
         <View style={styles.pillsContainer}>
-          {/* Botão de Curtir com o Joia Azul */}
+          {/* Botão de Curtir com o Joia Exato do Site */}
           <TouchableOpacity 
             style={[styles.actionPill, item.userLiked && { backgroundColor: '#eff6ff' }]} 
             onPress={() => handleLike(item.id)}
           >
-            <Ionicons 
-              name={item.userLiked ? "thumbs-up" : "thumbs-up-outline"} 
-              size={18} 
+            <FontAwesome5 
+              name="thumbs-up" 
+              solid={item.userLiked} 
+              size={16} 
               color={item.userLiked ? "#2563eb" : "#737373"} 
             />
             <Text style={[styles.actionText, item.userLiked && { color: '#2563eb', fontWeight: 'bold' }]}>
@@ -142,7 +146,6 @@ export default function FeedScreen({ navigation }) {
         />
       )}
 
-      {/* Botão Flutuante (FAB) */}
       <TouchableOpacity 
         style={styles.fab} 
         activeOpacity={0.8}
@@ -171,8 +174,10 @@ const styles = StyleSheet.create({
   
   content: { fontSize: 15, color: '#1c1c1c', lineHeight: 22, paddingHorizontal: 16, marginBottom: 12 },
   
-  mediaImage: { width: '100%', height: 350, resizeMode: 'cover' },
-  videoPlaceholder: { width: '100%', height: 250, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
+  mediaContainer: { width: '100%', height: 350, backgroundColor: '#0f172a' }, // Fundo escuro para a foto original
+  mediaImage: { width: '100%', height: '100%' },
+  
+  videoPlaceholder: { width: '100%', height: 350, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
   videoText: { color: '#ffffff', fontWeight: 'bold', fontSize: 14, marginTop: 8 },
   
   postFooter: { flexDirection: 'row', paddingTop: 12, paddingHorizontal: 12 },

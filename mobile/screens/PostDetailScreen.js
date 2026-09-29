@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View, Image, SafeAreaView, ScrollView, TouchableOpacity, Modal, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
 
 export default function PostDetailScreen({ route, navigation }) {
   const [post, setPost] = useState(route.params.post);
@@ -62,22 +62,24 @@ export default function PostDetailScreen({ route, navigation }) {
                 <Text style={styles.videoText}>Assistir Vídeo</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity activeOpacity={0.9} onPress={() => setModalVisible(true)}>
-                <Image source={{ uri: post.media[0] }} style={styles.mediaImage} />
+              <TouchableOpacity activeOpacity={0.9} onPress={() => setModalVisible(true)} style={styles.mediaContainer}>
+                {/* Imagem nunca mais vai distorcer */}
+                <Image source={{ uri: post.media[0] }} style={styles.mediaImage} resizeMode="contain" />
               </TouchableOpacity>
             )
           )}
 
           <View style={styles.postFooter}>
             <View style={styles.pillsContainer}>
-              {/* Botão de Curtir com o Joia Azul */}
+              {/* Botão de Curtir com o Joia Exato do Site */}
               <TouchableOpacity 
                 style={[styles.actionPill, post.userLiked && { backgroundColor: '#eff6ff' }]} 
                 onPress={handleLike}
               >
-                <Ionicons 
-                  name={post.userLiked ? "thumbs-up" : "thumbs-up-outline"} 
-                  size={20} 
+                <FontAwesome5 
+                  name="thumbs-up" 
+                  solid={post.userLiked} 
+                  size={16} 
                   color={post.userLiked ? "#2563eb" : "#737373"} 
                 />
                 <Text style={[styles.actionText, post.userLiked && { color: '#2563eb', fontWeight: 'bold' }]}>
@@ -134,8 +136,10 @@ const styles = StyleSheet.create({
   
   content: { fontSize: 16, color: '#1c1c1c', lineHeight: 24, paddingHorizontal: 16, marginBottom: 16 },
   
-  mediaImage: { width: '100%', height: 400, resizeMode: 'cover' },
-  videoPlaceholder: { width: '100%', height: 300, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
+  mediaContainer: { width: '100%', height: 350, backgroundColor: '#0f172a' },
+  mediaImage: { width: '100%', height: '100%' },
+  
+  videoPlaceholder: { width: '100%', height: 350, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
   videoText: { color: '#ffffff', fontWeight: 'bold', fontSize: 14, marginTop: 8 },
   
   postFooter: { flexDirection: 'row', paddingTop: 16, paddingHorizontal: 16 },
@@ -148,7 +152,6 @@ const styles = StyleSheet.create({
   commentsTitle: { fontSize: 18, fontWeight: 'bold', color: '#1c1c1c', marginBottom: 12 },
   commentsPlaceholder: { color: '#737373', fontStyle: 'italic', fontSize: 14, lineHeight: 20 },
 
-  // Estilos do Modal de Tela Cheia
   modalBackground: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.95)', justifyContent: 'center', alignItems: 'center' },
   closeModalBtn: { position: 'absolute', top: 50, right: 20, zIndex: 10, padding: 8 },
   fullScreenImage: { width: '100%', height: '100%' }
