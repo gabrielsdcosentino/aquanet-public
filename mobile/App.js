@@ -7,10 +7,11 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import FeedScreen from './screens/FeedScreen';
+import PostDetailScreen from './screens/PostDetailScreen'; 
 import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
-import ResetPasswordScreen from './screens/ResetPasswordScreen'; // A nova tela importada aqui
+import ResetPasswordScreen from './screens/ResetPasswordScreen'; 
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -24,6 +25,16 @@ function AuthNavigator({ setUser }) {
       </Stack.Screen>
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} /> 
+    </Stack.Navigator>
+  );
+}
+
+// Roteador interno da aba Início (Feed -> Detalhe do Post)
+function FeedNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Screen name="FeedList" component={FeedScreen} />
+      <Stack.Screen name="PostDetail" component={PostDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -92,7 +103,8 @@ export default function App() {
           }
         })}
       >
-        <Tab.Screen name="Início" component={FeedScreen} />
+        {/* Substituímos o FeedScreen direto pelo FeedNavigator */}
+        <Tab.Screen name="Início" component={FeedNavigator} />
         <Tab.Screen 
           name="Perfil" 
           children={() => <ProfileScreen user={user} onLogout={() => setUser(null)} />} 

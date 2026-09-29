@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, FlatList, ActivityIndicator, Image, TouchableOpacity, Linking } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Importação nova que resolve o aviso amarelo
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { FontAwesome5 } from '@expo/vector-icons';
 
-export default function FeedScreen() {
+export default function FeedScreen({ navigation }) {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,16 +25,34 @@ export default function FeedScreen() {
 
   const isVideo = (url) => {
     if (!url) return false;
-    const lowerUrl = url.toLowerCase();
-    return lowerUrl.includes('.mp4') || lowerUrl.includes('.mov') || lowerUrl.includes('.webm') || lowerUrl.includes('/video/');
+    return url.toLowerCase().match(/\.(mp4|mov|webm)$/) || url.toLowerCase().includes('/video/');
   };
 
-  const handleOpenVideo = (url) => {
-    Linking.openURL(url).catch(err => console.error("Não foi possível abrir o vídeo", err));
+  const handleLike = async (postId) => {
+    // Atualização Otimista: Muda na tela antes mesmo do servidor responder para parecer instantâneo
+    setPosts(currentPosts => currentPosts.map(p => {
+      if (p.id === postId) {
+        return { ...p, likes: p.likes + 1, userLiked: true };
+      }
+      return p;
+    }));
+
+    try {
+      await fetch(`https://aquanet.app.br/api/like_post/${postId}`, {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' } // Simula requisição AJAX do site
+      });
+    } catch (error) {
+      console.error("Erro ao curtir:", error);
+    }
   };
 
   const renderPost = ({ item }) => (
-    <View style={styles.postCard}>
+    <TouchableOpacity 
+      activeOpacity={0.9} 
+      style={styles.postCard}
+      onPress={() => navigation.navigate('PostDetail', { post: item })}
+    >
       <View style={styles.postHeader}>
         <Image source={{ uri: item.author_pic }} style={styles.avatar} />
         <View>
@@ -49,11 +68,7 @@ export default function FeedScreen() {
 
       {item.media && item.media.length > 0 && (
         isVideo(item.media[0]) ? (
-          <TouchableOpacity 
-            activeOpacity={0.8} 
-            style={styles.videoPlaceholder}
-            onPress={() => handleOpenVideo(item.media[0])}
-          >
+          <TouchableOpacity activeOpacity={0.8} style={styles.videoPlaceholder} onPress={() => Linking.openURL(item.media[0])}>
             <Text style={styles.playIcon}>▶️</Text>
             <Text style={styles.videoText}>Tocar Vídeo</Text>
           </TouchableOpacity>
@@ -63,14 +78,22 @@ export default function FeedScreen() {
       )}
 
       <View style={styles.postFooter}>
-        <View style={styles.interactionRow}>
-          <Text style={styles.interactionText}>👍 {item.likes}</Text>
-        </View>
-        <View style={styles.interactionRow}>
-          <Text style={styles.interactionText}>💬 {item.comments}</Text>
+        <TouchableOpacity 
+          style={styles.interactionButton} 
+          onPress={() => handleLike(item.id)}
+        >
+          <FontAwesome5 name="thumbs-up" size={16} color={item.userLiked ? "#2563eb" : "#64748b"} />
+          <Text style={[styles.interactionText, item.userLiked && { color: '#2563eb' }]}>
+            {item.likes}
+          </Text>
+        </TouchableOpacity>
+        
+        <View style={styles.interactionButton}>
+          <FontAwesome5 name="comment" size={16} color="#64748b" />
+          <Text style={styles.interactionText}>{item.comments}</Text>
         </View>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   return (
@@ -115,6 +138,6 @@ const styles = StyleSheet.create({
   playIcon: { fontSize: 40, marginBottom: 8 },
   videoText: { color: '#ffffff', fontWeight: 'bold', fontSize: 14 },
   postFooter: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#f1f5f9', paddingTop: 12 },
-  interactionRow: { flexDirection: 'row', alignItems: 'center', marginRight: 24 },
-  interactionText: { fontSize: 14, color: '#64748b', fontWeight: '600' }
+  interactionButton: { flexDirection: 'row', alignItems: 'center', marginRight: 24, paddingVertical: 4 },
+  interactionText: { fontSize: 14, color: '#64748b', fontWeight: '600', marginLeft: 6 }
 });

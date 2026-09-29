@@ -1396,12 +1396,10 @@ app.register_blueprint(api_bp)
 @app.route('/api/feed', methods=['GET'])
 def api_get_feed():
     try:
-        # Puxa os 20 posts mais recentes para não pesar o payload do celular
         posts = Post.query.order_by(Post.timestamp.desc()).limit(20).all()
         feed_data = []
 
         for post in posts:
-            # Consolida as mídias (formato novo em lista ou fallback do formato antigo)
             media_list = []
             if post.images:
                 media_list = [img.image_file for img in post.images]
@@ -1417,7 +1415,9 @@ def api_get_feed():
                 'timestamp': post.timestamp.strftime('%d/%m às %H:%M'),
                 'media': media_list,
                 'likes': len(post.likes),
-                'comments': len(post.comments)
+                'comments': len(post.comments),
+                # ADICIONE ESTA LINHA: Verifica se o usuário logado já curtiu
+                'userLiked': current_user.has_liked_post(post) if current_user.is_authenticated else False
             })
 
         return jsonify(feed_data), 200
