@@ -1435,16 +1435,14 @@ def api_login():
         # Busca o usuário no banco de dados
         user = User.query.filter_by(email=email).first()
         
-        # Verifica se o usuário existe e se a senha está correta
-        # (Estou assumindo que você usa bcrypt.check_password_hash, que é o padrão do Flask)
-        if user and bcrypt.check_password_hash(user.password, password):
+        # Verifica se o usuário existe e se a senha está correta (usando password_hash)
+        if user and bcrypt.check_password_hash(user.password_hash, password):
             return jsonify({
                 'status': 'success',
                 'user': {
                     'id': user.id,
                     'username': user.username,
                     'email': user.email,
-                    # Se no seu banco a foto de perfil chama image_file, adapte a linha abaixo:
                     'profile_pic': user.image_file if hasattr(user, 'image_file') else None
                 }
             }), 200
