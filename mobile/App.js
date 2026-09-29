@@ -2,14 +2,29 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Roteador de Pilha importado
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import FeedScreen from './screens/FeedScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
+import RegisterScreen from './screens/RegisterScreen';
 
 const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator();
+
+// Roteador responsável pelas telas externas de quem ainda não logou
+function AuthNavigator({ setUser }) {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Screen name="Login">
+        {(props) => <LoginScreen {...props} onLoginSuccess={(userData) => setUser(userData)} />}
+      </Stack.Screen>
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+}
 
 export default function App() {
   const [user, setUser] = useState(null);
@@ -40,10 +55,16 @@ export default function App() {
     );
   }
 
+  // Se não tem usuário logado, entrega a Pilha de Autenticação (Login e Cadastro)
   if (!user) {
-    return <LoginScreen onLoginSuccess={(userData) => setUser(userData)} />;
+    return (
+      <NavigationContainer>
+        <AuthNavigator setUser={setUser} />
+      </NavigationContainer>
+    );
   }
 
+  // Se o usuário está logado, entrega as Abas principais
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -80,10 +101,5 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f1f5f9',
-  }
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f1f5f9' }
 });
