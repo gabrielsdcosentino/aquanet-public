@@ -93,8 +93,8 @@ export default function LoginScreen({ onLoginSuccess, navigation }) {
           <View style={styles.passwordHeader}>
             <Text style={styles.label}>Senha</Text>
             {/* O "Esqueceu a senha" ainda abrirá a web até construirmos a Fase 1.4 */}
-            <TouchableOpacity onPress={() => openWebLink('/reset_password')}>
-              <Text style={styles.forgotText}>Esqueceu?</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('ResetPassword')}>
+                <Text style={styles.forgotText}>Esqueceu?</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.inputContainer}>

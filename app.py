@@ -845,6 +845,7 @@ def delete_comment(comment_id):
     db.session.delete(comment); db.session.commit(); flash('Apagado.', 'success'); return redirect(request.referrer)
 
 @app.route('/api/like_post/<int:post_id>', methods=['POST'])
+@csrf.exempt
 @login_required
 @limiter.limit("60 per minute")
 def api_like_post(post_id):
@@ -1435,6 +1436,7 @@ def api_login():
         user = User.query.filter_by(username=username).first()
         
         if user and bcrypt.check_password_hash(user.password_hash, password):
+            login_user(user, remember=True)
             return jsonify({
                 'status': 'success',
                 'user': {

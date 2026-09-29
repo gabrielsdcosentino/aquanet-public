@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack'; // Roteador de Pilha importado
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -10,6 +10,7 @@ import FeedScreen from './screens/FeedScreen';
 import ProfileScreen from './screens/ProfileScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import ResetPasswordScreen from './screens/ResetPasswordScreen'; // A nova tela importada aqui
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -22,6 +23,7 @@ function AuthNavigator({ setUser }) {
         {(props) => <LoginScreen {...props} onLoginSuccess={(userData) => setUser(userData)} />}
       </Stack.Screen>
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} /> 
     </Stack.Navigator>
   );
 }
@@ -55,7 +57,7 @@ export default function App() {
     );
   }
 
-  // Se não tem usuário logado, entrega a Pilha de Autenticação (Login e Cadastro)
+  // Se não tem usuário logado, entrega a Pilha de Autenticação (Login, Cadastro e Reset)
   if (!user) {
     return (
       <NavigationContainer>
@@ -64,7 +66,7 @@ export default function App() {
     );
   }
 
-  // Se o usuário está logado, entrega as Abas principais
+  // Se o usuário está logado, entrega as Abas principais do app
   return (
     <NavigationContainer>
       <Tab.Navigator
