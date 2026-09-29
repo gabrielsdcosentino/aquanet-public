@@ -1450,6 +1450,48 @@ def api_login():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/register', methods=['POST'])
+@csrf.exempt
+def api_register():
+    try:
+        data = request.get_json()
+        username = data.get('username')
+        email = data.get('email')
+        password = data.get('password')
+
+        # Validações básicas
+        if not username or not email or not password:
+            return jsonify({'error': 'Todos os campos são obrigatórios'}), 400
+
+        if ' ' in username:
+            return jsonify({'error': 'O nome de usuário não pode conter espaços'}), 400
+
+        if contains_bad_words(username):
+            return jsonify({'error': 'Nome de usuário impróprio'}), 400
+
+        # Verifica duplicidade
+        if User.query.filter_by(username=username).first():
+            return jsonify({'error': 'Este nome de usuário já está em uso'}), 409
+
+        if User.query.filter_by(email=email).first():
+            return jsonify({'error': 'Este e-mail já está cadastrado'}), 409
+
+        # Cria a conta
+        new_user = User(
+            username=username, 
+            email=email, 
+            profile_pic_url=f"https://ui-avatars.com/api/?name={username}&background=random&color=fff&size=150"
+        )
+        new_user.set_password(password)
+        
+        db.session.add(new_user)
+        db.session.commit()
+
+        return jsonify({'status': 'success', 'message': 'Conta criada com sucesso!'}), 201
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=False)
 

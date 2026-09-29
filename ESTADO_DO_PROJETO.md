@@ -42,3 +42,36 @@ Nossa arquitetura atual é híbrida:
 1. Preparar o Flask para ser uma API REST (Configurar serialização de JSON e tratar sessão no mobile).
 2. Criar as primeiras rotas de leitura: `/api/v1/feed` e `/api/v1/communities`.
 3. Iniciar o projeto Expo (React Native) no Codespaces.
+
+
+# Estado do Projeto - AquaNet Mobile
+
+## Panorama Atual
+O aplicativo deixou de ser apenas um visualizador estático e passou a se comunicar com a API de produção (Flask/Vercel). A estrutura básica de navegação em abas foi implementada, e a sessão do usuário já persiste localmente no aparelho.
+
+## O que já está implementado e funcional
+- **Backend (Flask):** 
+  - Rota de extração de feed via JSON (`/api/feed`).
+  - Rota de autenticação via JSON (`/api/login` isenta de CSRF).
+- **Frontend (React Native):**
+  - Motor de rolagem (`FlatList`) processando e renderizando publicações, fotos, datas e interações do banco de dados.
+  - Reprodução de vídeos contornada via redirecionamento nativo (`Linking`).
+  - Navegação inferior (Tab Navigator) alternando entre Início e Perfil.
+  - Interface de Login fiel ao design da web.
+  - Persistência de sessão (login contínuo sem re-autenticação) utilizando `AsyncStorage`.
+  - Tela de Perfil básica renderizando dados reais do usuário logado (foto, username e email) e botão funcional de logout.
+
+## Próximas Etapas (Ordem de Execução Estrita)
+
+### Fase 1: Autenticação Nativa Completa (Prioridade Absoluta)
+Para abolir o redirecionamento web, toda a gestão de contas ocorrerá dentro do ecossistema do aplicativo.
+1. **[PENDENTE] Cadastro Nativo (Backend):** Criar a rota `/api/register` no Flask com validação de dados (usuários duplicados, caracteres inválidos).
+2. **[PENDENTE] Roteamento de Pilha (Frontend):** Implementar o `Stack Navigation` para permitir transições fluidas entre as telas `LoginScreen` e `RegisterScreen`.
+3. **[PENDENTE] Cadastro Nativo (Frontend):** Construir a `RegisterScreen.js` capturando os dados e lidando com os retornos de erro/sucesso do backend.
+4. **[PENDENTE] Recuperação de Senha Nativa:** Criar a rota `/api/reset_request` e a interface correspondente.
+5. **[PENDENTE] Login Google Nativo:** Integrar o SDK do Google via Expo Auth Session para captura direta de token no aparelho.
+
+### Fase 2: Interatividade e Operações de CRUD
+6. **[PENDENTE] Sistema de Curtidas:** Integrar a requisição POST silenciosa nos botões do feed e atualizar a contagem de forma otimista na interface.
+7. **[PENDENTE] Criação de Publicações:** Desenvolver a tela `NewPostScreen` com suporte a upload de fotos/vídeos multipart via API.
+8. **[PENDENTE] Sistema de Comentários:** Rota e modal/tela dedicada para carregar e responder interações em uma publicação específica.

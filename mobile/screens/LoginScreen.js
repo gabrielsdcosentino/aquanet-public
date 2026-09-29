@@ -1,12 +1,24 @@
 import { useState } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, ActivityIndicator, Alert, SafeAreaView, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Ionicons } from '@expo/vector-icons';
+import { FontAwesome5 } from '@expo/vector-icons';
 
 export default function LoginScreen({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Função para abrir páginas do site que não precisam rodar nativamente no app
+  const openWebLink = (path) => {
+    Linking.openURL(`https://aquanet.app.br${path}`).catch(err => 
+      console.error("Erro ao abrir navegador", err)
+    );
+  };
+
+  const handleGoogleLogin = () => {
+    // Por enquanto abre o site. Para login nativo, exigirá instalação do expo-auth-session depois.
+    Alert.alert("Aviso", "O login nativo com Google requer configuração de chaves SHA-1 no Google Cloud. Por enquanto, acesse via usuário/senha ou crie uma conta.");
+  };
 
   const handleLogin = async () => {
     if (!username || !password) {
@@ -47,53 +59,116 @@ export default function LoginScreen({ onLoginSuccess }) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>AquaNet</Text>
-        <Text style={styles.subtitle}>Bem-vindo de volta! Acesse seu diário.</Text>
-
-        <View style={styles.inputContainer}>
-          <Ionicons name="person-outline" size={20} color="#94a3b8" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Nome de usuário"
-            placeholderTextColor="#94a3b8"
-            value={username}
-            onChangeText={setUsername}
-            autoCapitalize="none"
-          />
+        <View style={styles.header}>
+          <Text style={styles.title}>Bem-vindo de volta!</Text>
+          <Text style={styles.subtitle}>Acesse seu diário e suas comunidades.</Text>
         </View>
 
-        <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Senha"
-            placeholderTextColor="#94a3b8"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+        {/* Botão Google */}
+        <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleLogin} activeOpacity={0.8}>
+          <FontAwesome5 name="google" size={18} color="#dc2626" style={styles.googleIcon} />
+          <Text style={styles.googleBtnText}>Continuar com o Google</Text>
+        </TouchableOpacity>
+
+        {/* Separador OU */}
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <View style={styles.dividerTextContainer}>
+            <Text style={styles.dividerText}>OU</Text>
+          </View>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+        {/* Campo de Usuário */}
+        <View style={styles.inputWrapper}>
+          <Text style={styles.label}>Usuário</Text>
+          <View style={styles.inputContainer}>
+            <FontAwesome5 name="user" size={16} color="#9ca3af" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Seu nome de usuário"
+              placeholderTextColor="#9ca3af"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+            />
+          </View>
+        </View>
+
+        {/* Campo de Senha */}
+        <View style={styles.inputWrapper}>
+          <View style={styles.passwordHeader}>
+            <Text style={styles.label}>Senha</Text>
+            <TouchableOpacity onPress={() => openWebLink('/reset_password')}>
+              <Text style={styles.forgotText}>Esqueceu?</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.inputContainer}>
+            <FontAwesome5 name="lock" size={16} color="#9ca3af" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="••••••••"
+              placeholderTextColor="#9ca3af"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+          </View>
+        </View>
+
+        {/* Botão Entrar */}
+        <TouchableOpacity style={styles.submitBtn} onPress={handleLogin} disabled={loading} activeOpacity={0.8}>
           {loading ? (
             <ActivityIndicator color="#ffffff" />
           ) : (
-            <Text style={styles.buttonText}>Entrar</Text>
+            <>
+              <FontAwesome5 name="sign-in-alt" size={16} color="#ffffff" style={styles.submitIcon} />
+              <Text style={styles.submitBtnText}>Entrar</Text>
+            </>
           )}
         </TouchableOpacity>
+
+        {/* Rodapé de Cadastro */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Ainda não tem conta? </Text>
+          <TouchableOpacity onPress={() => openWebLink('/register')}>
+            <Text style={styles.registerText}>Cadastre-se grátis</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9', justifyContent: 'center', padding: 20 },
-  card: { backgroundColor: '#ffffff', padding: 24, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 12, elevation: 4 },
-  title: { fontSize: 32, fontWeight: '900', color: '#2563eb', textAlign: 'center', marginBottom: 4, letterSpacing: -1 },
-  subtitle: { fontSize: 14, color: '#64748b', textAlign: 'center', marginBottom: 24 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, marginBottom: 16, paddingHorizontal: 12 },
-  inputIcon: { marginRight: 8 },
-  input: { flex: 1, paddingVertical: 14, fontSize: 16, color: '#0f172a' },
-  button: { backgroundColor: '#2563eb', padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, shadowColor: '#2563eb', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 2 },
-  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' }
+  container: { flex: 1, backgroundColor: '#f3f4f6', justifyContent: 'center', padding: 16 }, // bg-gray-100
+  card: { backgroundColor: '#ffffff', padding: 32, borderRadius: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.1, shadowRadius: 20, elevation: 5, width: '100%', maxWidth: 400, alignSelf: 'center' },
+  header: { alignItems: 'center', marginBottom: 32 },
+  title: { fontSize: 28, fontWeight: '900', color: '#2563eb', marginBottom: 8, letterSpacing: -0.5 }, // text-blue-600
+  subtitle: { fontSize: 16, color: '#6b7280', textAlign: 'center' }, // text-gray-500
+  
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#ffffff', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1, borderColor: '#d1d5db', marginBottom: 24 }, // border-gray-300
+  googleIcon: { marginRight: 12 },
+  googleBtnText: { color: '#374151', fontSize: 16, fontWeight: 'bold' }, // text-gray-700
+  
+  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 24, position: 'relative', justifyContent: 'center' },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#e5e7eb' }, // border-gray-200
+  dividerTextContainer: { position: 'absolute', backgroundColor: '#ffffff', paddingHorizontal: 12 },
+  dividerText: { color: '#6b7280', fontSize: 14, fontWeight: '600' }, // text-gray-500
+  
+  inputWrapper: { marginBottom: 24 },
+  label: { fontSize: 14, fontWeight: 'bold', color: '#374151', marginBottom: 8, marginLeft: 4 }, // text-gray-700
+  passwordHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  forgotText: { fontSize: 12, fontWeight: '600', color: '#2563eb', marginBottom: 8 }, // text-blue-600
+  
+  inputContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9fafb', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 12, paddingHorizontal: 16 }, // bg-gray-50
+  inputIcon: { marginRight: 12 },
+  input: { flex: 1, paddingVertical: 14, fontSize: 16, color: '#111827', fontWeight: '500' },
+  
+  submitBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: '#2563eb', paddingVertical: 14, borderRadius: 12, shadowColor: '#93c5fd', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 3 }, // bg-blue-600
+  submitIcon: { marginRight: 8 },
+  submitBtnText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  
+  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 32 },
+  footerText: { color: '#6b7280', fontSize: 14 },
+  registerText: { color: '#16a34a', fontSize: 14, fontWeight: 'bold' } // text-green-600
 });
