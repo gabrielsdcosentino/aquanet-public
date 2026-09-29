@@ -12,6 +12,7 @@ from flask_wtf.csrf import CSRFProtect
 from werkzeug.utils import secure_filename
 from markupsafe import Markup, escape
 from flask import jsonify
+from flask import request, jsonify
 
 import secrets, os, datetime, unicodedata, re, json
 import cloudinary, cloudinary.uploader, cloudinary.api
@@ -1419,6 +1420,37 @@ def api_get_feed():
             })
 
         return jsonify(feed_data), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    try:
+        # Pega os dados que o celular enviou
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+        
+        # Busca o usuário no banco de dados
+        user = User.query.filter_by(email=email).first()
+        
+        # Verifica se o usuário existe e se a senha está correta
+        # (Estou assumindo que você usa bcrypt.check_password_hash, que é o padrão do Flask)
+        if user and bcrypt.check_password_hash(user.password, password):
+            return jsonify({
+                'status': 'success',
+                'user': {
+                    'id': user.id,
+                    'username': user.username,
+                    'email': user.email,
+                    # Se no seu banco a foto de perfil chama image_file, adapte a linha abaixo:
+                    'profile_pic': user.image_file if hasattr(user, 'image_file') else None
+                }
+            }), 200
+        else:
+            # Erro 401: Não autorizado
+            return jsonify({'error': 'E-mail ou senha incorretos'}), 401
+            
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
