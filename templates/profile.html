@@ -73,56 +73,65 @@
                     </div>
                     <p class="text-gray-800 text-base mb-3">{{ post.content }}</p>
                 </div>
+
                 {% if post.images %}
-        <!-- CARROSSEL INTELIGENTE (FOTOS E VÍDEOS COM VISUAL PROFISSIONAL) -->
-        <div class="relative group mb-3 z-10">
-            <button type="button" onclick="this.nextElementSibling.scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all no-click">
-                <i class="fas fa-chevron-left text-sm pointer-events-none"></i>
-            </button>
-            <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
-                {% for media in post.images %}
-                    <div class="snap-center shrink-0 w-[85%] sm:w-[95%] md:w-full rounded-lg overflow-hidden border border-gray-100 bg-slate-100 flex justify-center items-center">
-                        {% set url = media.image_file | lower %}
-                        {% if '.mp4' in url or '.mov' in url or '.webm' in url or '/video/' in url %}
-                            <div class="w-full bg-black flex justify-center items-center">
-                                <video controls playsinline preload="metadata" class="w-full max-h-[500px] object-contain block no-click">
-                                    <source src="{{ media.image_file }}">
-                                    Seu navegador não suporta vídeos.
-                                </video>
-                            </div>
-                        {% else %}
-                            <img src="{{ media.image_file }}" class="w-full max-h-[500px] object-contain">
+                    <!-- CARROSSEL INTELIGENTE (FOTOS E VÍDEOS COM VISUAL PROFISSIONAL) -->
+                    <div class="relative group mb-3 z-10">
+                        {% if post.images|length > 1 %}
+                        <button type="button" onclick="this.nextElementSibling.scrollBy({left: -300, behavior: 'smooth'})" class="absolute left-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all no-click">
+                            <i class="fas fa-chevron-left text-sm pointer-events-none"></i>
+                        </button>
+                        {% endif %}
+                        
+                        <div class="flex overflow-x-auto snap-x snap-mandatory gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden relative z-10">
+                            {% for media in post.images %}
+                                <div class="snap-center shrink-0 {{ 'w-full' if post.images|length == 1 else 'w-[85%] sm:w-[95%] md:w-full' }} rounded-lg overflow-hidden border border-gray-100 bg-slate-100 flex justify-center items-center">
+                                    {% set url = media.image_file | lower %}
+                                    {% if '.mp4' in url or '.mov' in url or '.webm' in url or '/video/' in url %}
+                                        <div class="w-full bg-black flex justify-center items-center">
+                                            <video controls playsinline preload="metadata" class="w-full max-h-[500px] object-contain block no-click">
+                                                <source src="{{ media.image_file }}">
+                                                Seu navegador não suporta vídeos.
+                                            </video>
+                                        </div>
+                                    {% else %}
+                                        <img src="{{ media.image_file }}" class="w-full max-h-[500px] object-contain">
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        
+                        {% if post.images|length > 1 %}
+                        <button type="button" onclick="this.previousElementSibling.scrollBy({left: 300, behavior: 'smooth'})" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all no-click">
+                            <i class="fas fa-chevron-right text-sm pointer-events-none"></i>
+                        </button>
                         {% endif %}
                     </div>
-                {% endfor %}
-            </div>
-            <button type="button" onclick="this.previousElementSibling.scrollBy({left: 300, behavior: 'smooth'})" class="absolute right-2 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white text-slate-800 rounded-full w-8 h-8 flex items-center justify-center shadow-md z-20 hidden md:group-hover:flex transition-all no-click">
-                <i class="fas fa-chevron-right text-sm pointer-events-none"></i>
-            </button>
-        </div>
-    {% elif post.image_file %}
-        <!-- Fallback para posts antigos -->
-        {% set old_url = post.image_file | lower %}
-        {% if '.mp4' in old_url or '.mov' in old_url or '.webm' in old_url or '/video/' in old_url %}
-            <div class="bg-black flex justify-center relative z-10 mb-3 rounded-lg overflow-hidden">
-                <video controls playsinline preload="metadata" class="w-full max-h-[500px] block no-click">
-                    <source src="{{ post.image_file }}">
-                    Seu navegador não suporta vídeos.
-                </video>
-            </div>
-        {% else %}
-            <div class="bg-slate-100 flex justify-center mb-3 rounded-lg overflow-hidden border border-gray-100 relative z-10">
-                <img src="{{ post.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
-            </div>
-        {% endif %}
-    {% endif %}
+                {% elif post.image_file %}
+                    <!-- Fallback para posts antigos -->
+                    {% set old_url = post.image_file | lower %}
+                    {% if '.mp4' in old_url or '.mov' in old_url or '.webm' in old_url or '/video/' in old_url %}
+                        <div class="bg-black flex justify-center relative z-10 mb-3 rounded-lg overflow-hidden">
+                            <video controls playsinline preload="metadata" class="w-full max-h-[500px] block no-click">
+                                <source src="{{ post.image_file }}">
+                                Seu navegador não suporta vídeos.
+                            </video>
+                        </div>
+                    {% else %}
+                        <div class="bg-slate-100 flex justify-center mb-3 rounded-lg overflow-hidden border border-gray-100 relative z-10">
+                            <img src="{{ post.image_file }}" alt="Imagem do Post" class="w-full max-h-[500px] object-contain">
+                        </div>
+                    {% endif %}
+                {% endif %}
+
                 <div class="p-4 flex items-center text-sm text-gray-600 font-semibold border-t border-gray-100 bg-gray-50 relative z-10">
                     <a href="{{ url_for('post_detail', post_id=post.id) }}" class="flex items-center hover:bg-gray-100 p-2 rounded-md mr-3 relative z-10">
                         <i class="far fa-comment-alt mr-1 text-lg"></i>
                         {{ post.comments|length }} Comentário(s)
                     </a>
 
-                    <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form flex items-center mr-auto relative z-10">
+                    <form action="{{ url_for('api_like_post', post_id=post.id) }}" method="POST" class="like-form flex items-center mr-auto relative z-10" hx-boost="false">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="like-button group flex items-center p-2 rounded-md transition {{ 'text-blue-600 hover:bg-blue-50' if current_user.has_liked_post(post) else 'text-gray-500 hover:bg-gray-200 hover:text-blue-600' }}">
                             <i class="{{ 'fas' if current_user.has_liked_post(post) else 'far' }} fa-thumbs-up text-lg mr-1 transition-transform group-active:scale-110"></i>
                             <span class="like-count-text font-semibold">

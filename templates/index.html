@@ -52,7 +52,7 @@
             </div>
             
            {% if current_user.is_member(current_community) %}
-                <form method="POST" action="{{ url_for('community_feed', community_slug=current_community.slug) }}" enctype="multipart/form-data" class="post-form border-t border-gray-100 pt-4">
+                <form method="POST" action="{{ url_for('community_feed', community_slug=current_community.slug) }}" enctype="multipart/form-data" class="post-form border-t border-gray-100 pt-4" hx-boost="false">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     
                     <div class="flex gap-3 items-start">

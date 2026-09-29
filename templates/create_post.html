@@ -3,119 +3,110 @@
 {% block title %}Criar Publicação - AquaNet{% endblock %}
 
 {% block content %}
-<div class="max-w-2xl mx-auto pb-20">
-    <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-        <h1 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <i class="fas fa-pen-nib text-blue-600"></i> Criar Publicação
-        </h1>
-        
-        <form id="create-post-form" class="post-form space-y-6" method="POST" enctype="multipart/form-data">
+<div class="max-w-xl mx-auto px-0 md:px-0 pb-20">
+    <div class="bg-white sticky top-0 z-20 border-b border-gray-100 px-4 py-3 flex items-center shadow-sm">
+        <a href="{{ url_for('home') }}" class="mr-4 text-gray-800"><i class="fas fa-arrow-left text-lg"></i></a>
+        <h1 class="text-lg font-bold text-gray-900">Criar Publicação</h1>
+    </div>
+
+    <div class="bg-white p-4 shadow-sm md:rounded-lg mt-0 md:mt-4">
+        <!-- Mantém a lógica original alterando a action dinamicamente com base na comunidade selecionada -->
+        <form method="POST" action="" enctype="multipart/form-data" hx-boost="false" class="space-y-4" id="post-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
+
+            <!-- Seletor de Comunidade -->
             <div>
-                <div class="flex justify-between items-end mb-2">
-                    <label class="block text-xs font-bold text-slate-500 uppercase">Onde publicar?</label>
-                    
-                    <a href="{{ url_for('create_community') }}" class="text-[10px] font-bold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors flex items-center">
-                        <i class="fas fa-plus-circle mr-1"></i> Nova Comunidade
-                    </a>
-                </div>
-                
-                <div class="relative">
-                    <select name="community_slug" id="community-select" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 appearance-none focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold text-slate-700" onchange="updateFormAction(this.value)" required>
-                        <option value="" disabled selected>Escolha uma comunidade...</option>
-                        {% for community in communities %}
-                            <option value="{{ community.slug }}">{{ community.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <i class="fas fa-chevron-down absolute right-4 top-4 text-slate-400 pointer-events-none"></i>
-                </div>
+                <label class="block text-xs font-bold text-gray-600 uppercase mb-1">Publicar na comunidade</label>
+                <select id="community-select" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="document.getElementById('post-form').action = this.value;">
+                    <option value="" disabled selected>Selecione uma comunidade...</option>
+                    {% for comm in communities %}
+                        <option value="{{ url_for('community_feed', community_slug=comm.slug) }}">c/{{ comm.name }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
+            <!-- Conteúdo do Post -->
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Conteúdo</label>
-                <textarea name="content" rows="6" placeholder="Escreva algo interessante..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" required>{{ prefilled_content if prefilled_content else '' }}</textarea>
+                <textarea name="content" rows="4" placeholder="No que você está pensando sobre seu aquário?" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none">{{ prefilled_content if prefilled_content else '' }}</textarea>
             </div>
 
+            <!-- Botão de Anexar Mídia -->
             <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Mídia (Fotos em Carrossel ou Vídeo)</label>
-                <label class="flex items-center justify-center w-full h-32 border-2 border-dashed border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-colors group">
-                    <div class="text-center">
-                        <i class="fas.fa-photo-video text-2xl text-slate-300 group-hover:text-blue-500 mb-2 transition-colors"></i>
-                        <p class="text-xs text-slate-400 font-medium">Toque para adicionar fotos ou vídeo</p>
-                    </div>
-                    <input type="file" name="images" id="image-upload" class="hidden" accept="image/*,video/mp4,video/mov,video/webm" multiple>
+                <label for="media-input" class="cursor-pointer inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition">
+                    <i class="fas fa-images text-blue-600 text-lg"></i> Adicionar Fotos ou Vídeos
                 </label>
-                <!-- Container de pré-visualização -->
-                <div id="preview-container" class="mt-4 grid grid-cols-3 gap-2 hidden"></div>
+                <input type="file" id="media-input" name="images" multiple accept="image/*,video/*" class="hidden">
+                
+                <!-- Container das miniaturas corrigido (sem duplicação e com botão de exclusão) -->
+                <div id="preview-container" class="grid grid-cols-3 gap-2 mt-3"></div>
             </div>
 
-           <script>
-                document.getElementById('image-upload').addEventListener('change', function(event) {
-                    const previewContainer = document.getElementById('preview-container');
-                    previewContainer.innerHTML = ''; 
-                    const files = event.target.files;
-                    
-                    if (files && files.length > 0) {
-                        previewContainer.classList.remove('hidden');
-                        Array.from(files).forEach(file => {
-                            const reader = new FileReader();
-                            reader.onload = function(e) {
-                                const imgDiv = document.createElement('div');
-                                imgDiv.className = 'aspect-square rounded-xl overflow-hidden shadow-sm border border-slate-200 bg-black flex items-center justify-center';
-                                
-                                if (file.type && file.type.startsWith('video/')) {
-                                    imgDiv.innerHTML = `<video class="w-full h-full object-cover"><source src="${e.target.result}"></video>`;
-                                } else {
-                                    imgDiv.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-                                }
-                                previewContainer.appendChild(imgDiv);
-                            };
-                            reader.readAsDataURL(file);
-                        });
-                    } else {
-                        previewContainer.classList.add('hidden');
-                    }
-                });
-            </script>
-
-            <script>
-                document.getElementById('image-upload').addEventListener('change', function(event) {
-                    const previewContainer = document.getElementById('preview-container');
-                    previewContainer.innerHTML = ''; 
-                    const files = event.target.files;
-                    
-                    if (files.length > 0) {
-                        previewContainer.classList.remove('hidden');
-                        for (let i = 0; i < files.length; i++) {
-                            const file = files[i];
-                            const reader = new FileReader();
-                            reader.onload = function(e) {
-                                const imgDiv = document.createElement('div');
-                                imgDiv.className = 'aspect-square rounded-xl overflow-hidden shadow-sm border border-slate-200';
-                                imgDiv.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
-                                previewContainer.appendChild(imgDiv);
-                            }
-                            reader.readAsDataURL(file);
-                        }
-                    } else {
-                        previewContainer.classList.add('hidden');
-                    }
-                });
-            </script>
-
-            <button type="submit" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 hover:bg-blue-700 transition-all active:scale-95 text-lg flex justify-center items-center">
-                Publicar
-            </button>
+            <div class="pt-2">
+                <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl transition shadow-sm">
+                    Publicar
+                </button>
+            </div>
         </form>
     </div>
 </div>
 
 <script>
-    function updateFormAction(slug) {
-        const form = document.getElementById('create-post-form');
-        // Atualiza a URL de destino do formulário dinamicamente
-        form.action = "/c/" + slug;
+    const mediaInput = document.getElementById('media-input');
+    const previewContainer = document.getElementById('preview-container');
+    let dt = new DataTransfer();
+
+    mediaInput.addEventListener('change', function(e) {
+        for (let i = 0; i < this.files.length; i++) {
+            dt.items.add(this.files[i]);
+        }
+        updateInputFiles();
+    });
+
+    function updateInputFiles() {
+        mediaInput.files = dt.files;
+        renderPreviews();
+    }
+
+    function renderPreviews() {
+        // Limpa o container antes de desenhar para evitar o efeito de acumular/duplicar
+        previewContainer.innerHTML = '';
+        
+        if (dt.files.length === 0) return;
+
+        Array.from(dt.files).forEach((file, index) => {
+            const reader = new FileReader();
+            const div = document.createElement('div');
+            div.className = 'relative group aspect-square bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-sm';
+
+            reader.onload = function(e) {
+                if (file.type.startsWith('video/')) {
+                    div.innerHTML = `
+                        <video src="${e.target.result}" class="w-full h-full object-cover"></video>
+                        <div class="absolute inset-0 bg-black/30 flex items-center justify-center pointer-events-none">
+                            <i class="fas fa-video text-white text-xl"></i>
+                        </div>
+                    `;
+                } else {
+                    div.innerHTML = `<img src="${e.target.result}" class="w-full h-full object-cover">`;
+                }
+
+                // Botão de fechar (X) para remover o arquivo específico da lista
+                const deleteBtn = document.createElement('button');
+                deleteBtn.type = 'button';
+                deleteBtn.className = 'absolute top-1.5 right-1.5 bg-red-600 hover:bg-red-700 text-white rounded-full w-7 h-7 flex items-center justify-center text-xs shadow-md transition-transform active:scale-95';
+                deleteBtn.innerHTML = '<i class="fas fa-times"></i>';
+                
+                deleteBtn.onclick = function() {
+                    dt.items.remove(index);
+                    updateInputFiles();
+                };
+
+                div.appendChild(deleteBtn);
+            };
+
+            reader.readAsDataURL(file);
+            previewContainer.appendChild(div);
+        });
     }
 </script>
 {% endblock %}
