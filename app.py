@@ -1492,6 +1492,29 @@ def api_register():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/reset_request', methods=['POST'])
+@csrf.exempt
+def api_reset_request():
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        
+        if not email:
+            return jsonify({'error': 'O e-mail é obrigatório'}), 400
+            
+        user = User.query.filter_by(email=email).first()
+        if user:
+            # Reutiliza a função de envio de e-mail que você já tem configurada no app.py
+            send_reset_email(user, mail)
+            
+        return jsonify({
+            'status': 'success', 
+            'message': 'Se o e-mail estiver cadastrado, você receberá um link com as instruções em instantes.'
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(debug=False)
 
